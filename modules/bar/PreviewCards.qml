@@ -5,9 +5,9 @@ import qs.design
 import qs.services
 import '../../services/pictureBounds.js' as PictureBounds
 
-// One set of window preview cards, like the Windows 7 taskbar thumbnails: icon and title on top, a
-// picture below, biggest window first. The popup keeps two sets so the next workspace's cards can load
-// behind the shown ones.
+// One set of window preview cards, like the Windows 7 taskbar thumbnails: icon, title and a close button
+// on top, a picture below, biggest window first. A card lights up under the pointer; clicking it goes to
+// that window. The popup keeps two sets so the next workspace's cards can load behind the shown ones.
 Grid {
     id: root
 
@@ -45,16 +45,22 @@ Grid {
     readonly property int scanSize: 256
     readonly property int scanThreshold: 128
     readonly property int iconSize: 16
+    readonly property int closeSize: 16
+    // Room between a card's edge and its content, so the hover face frames it.
+    readonly property int cardPadding: Theme.space2
+
+    // A card was clicked and its window is being focused; the popup can go.
+    signal windowChosen()
 
     columns: Math.max(Math.min(windows.length, maxColumns), 1)
-    spacing: Theme.space2
+    spacing: Theme.space1
 
     Repeater {
             id: cards
 
             model: root.windows.length
 
-            Column {
+            ControlButton {
                 id: card
 
                 required property int index
@@ -86,8 +92,15 @@ Grid {
                 // Keeps the grabbed copy alive until `sampler` has read it.
                 property var grab: null
 
-                width: Math.max(root.minCardWidth, Math.min(Math.round(aspect * root.previewHeight) + 2, root.maxCardWidth))
-                spacing: Theme.space1
+                kind: 'tool'
+                width: Math.max(root.minCardWidth, Math.min(Math.round(aspect * root.previewHeight) + 2, root.maxCardWidth)) + root.cardPadding * 2
+                height: body.implicitHeight + root.cardPadding * 2
+                Accessible.role: Accessible.Button
+                Accessible.name: title.text
+                onClicked: {
+                    Workspaces.focusWindow(card.window.address)
+                    root.windowChosen()
+                }
 
                 onPreviewChanged: {
                     scannedCrop = null
@@ -155,132 +168,164 @@ Grid {
                     onTriggered: card.scan()
                 }
 
-                Row {
-                    width: parent.width
-                    height: root.iconSize
+                Column {
+                    id: body
+
+                    x: root.cardPadding
+                    y: root.cardPadding
+                    width: card.width - root.cardPadding * 2
                     spacing: Theme.space1
 
-                    GenericAppIcon {
-                        width: root.iconSize
+                    Row {
+                        width: parent.width
                         height: root.iconSize
-                        visible: card.iconPath === ''
-                    }
+                        spacing: Theme.space1
 
-                    AppIconImage {
-                        width: root.iconSize
-                        height: root.iconSize
-                        visible: card.iconPath !== ''
-                        source: card.iconPath
-                    }
-
-                    Text {
-                        width: parent.width - root.iconSize - Theme.space1
-                        height: root.iconSize
-                        verticalAlignment: Text.AlignVCenter
-                        // An untitled window still needs a name in the card.
-                        text: card.window.title === '' ? card.window.appId : card.window.title
-                        color: Theme.glassText
-                        font.family: Theme.fontUi
-                        font.pixelSize: Theme.fontSizeBody
-                        elide: Text.ElideRight
-                    }
-                }
-
-                // A fixed slot keeps the grid steady; the frame inside hugs the picture, so only the
-                // window itself is outlined, not the empty space around it.
-                Item {
-                    id: slot
-
-                    width: parent.width
-                    height: root.previewHeight
-
-                    Rectangle {
-                        // Keep the picture's proportions, as large as the slot allows.
-                        readonly property real fit: card.pictureSize.width > 0 && card.pictureSize.height > 0
-                            ? Math.min((slot.width - 2) / card.pictureSize.width, (slot.height - 2) / card.pictureSize.height)
-                            : 0
-
-                        anchors.centerIn: parent
-                        width: card.pictureReady ? card.pictureSize.width * fit + 2 : slot.width
-                        height: card.pictureReady ? card.pictureSize.height * fit + 2 : slot.height
-                        radius: Theme.radiusControl
-                        color: card.pictureReady ? 'transparent' : Theme.surfaceSunken
-                        border.width: 1
-                        border.color: Theme.surfaceBorder
-
-                        // Shown until the compositor delivers a picture, and kept when it never does.
                         GenericAppIcon {
-                            anchors.centerIn: parent
-                            width: 48
-                            height: 48
-                            visible: card.pictureReady === false
+                            width: root.iconSize
+                            height: root.iconSize
+                            visible: card.iconPath === ''
                         }
 
-                        Item {
-                            id: content
+                        AppIconImage {
+                            width: root.iconSize
+                            height: root.iconSize
+                            visible: card.iconPath !== ''
+                            source: card.iconPath
+                        }
 
-                            anchors.fill: parent
-                            anchors.margins: 1
+                        Text {
+                            id: title
 
-                            // The picture is captured at the window's full size, far bigger than the card.
-                            // Drawn straight down it would alias (look pixelated), so it is first drawn
-                            // at twice the card size and then shown through a mipmapped texture. The view
-                            // holds the whole capture in its own proportions (so it adds no bars of its
-                            // own); the texture takes only the cropped part.
-                            ScreencopyView {
-                                id: view
+                            width: parent.width - root.iconSize - root.closeSize - Theme.space1 * 2
+                            height: root.iconSize
+                            verticalAlignment: Text.AlignVCenter
+                            // An untitled window still needs a name in the card.
+                            text: card.window.title === '' ? card.window.appId : card.window.title
+                            color: Theme.glassText
+                            font.family: Theme.fontUi
+                            font.pixelSize: Theme.fontSizeBody
+                            elide: Text.ElideRight
+                        }
 
-                                width: content.width * 2 / card.crop.width
-                                height: content.height * 2 / card.crop.height
-                                captureSource: card.window.preview
-                                live: root.active && card.still === false
-                                smooth: true
+                        // Shown on the hovered card only, like on Windows 7. It asks the app to close, so
+                        // the app can still ask to save or refuse.
+                        ControlButton {
+                            kind: 'danger'
+                            width: root.closeSize
+                            height: root.closeSize
+                            opacity: card.hovered ? 1 : 0
+                            Accessible.role: Accessible.Button
+                            Accessible.name: qsTr('Close')
+                            onClicked: Workspaces.closeWindow(card.window.address)
+
+                            Behavior on opacity {
+                                NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
                             }
 
-                            ShaderEffectSource {
-                                id: texture
+                            CloseGlyph {
+                                anchors.centerIn: parent
+                                size: 6
+                            }
+                        }
+                    }
+
+                    // A fixed slot keeps the grid steady; the frame inside hugs the picture, so only the
+                    // window itself is outlined, not the empty space around it.
+                    Item {
+                        id: slot
+
+                        width: parent.width
+                        height: root.previewHeight
+
+                        Rectangle {
+                            // Keep the picture's proportions, as large as the slot allows.
+                            readonly property real fit: card.pictureSize.width > 0 && card.pictureSize.height > 0
+                                ? Math.min((slot.width - 2) / card.pictureSize.width, (slot.height - 2) / card.pictureSize.height)
+                                : 0
+
+                            anchors.centerIn: parent
+                            width: card.pictureReady ? card.pictureSize.width * fit + 2 : slot.width
+                            height: card.pictureReady ? card.pictureSize.height * fit + 2 : slot.height
+                            radius: Theme.radiusControl
+                            color: card.pictureReady ? 'transparent' : Theme.surfaceSunken
+                            border.width: 1
+                            border.color: Theme.surfaceBorder
+
+                            // Shown until the compositor delivers a picture, and kept when it never does.
+                            GenericAppIcon {
+                                anchors.centerIn: parent
+                                width: 48
+                                height: 48
+                                visible: card.pictureReady === false
+                            }
+
+                            Item {
+                                id: content
 
                                 anchors.fill: parent
-                                sourceItem: view
-                                hideSource: true
-                                sourceRect: Qt.rect(card.crop.x * view.width, card.crop.y * view.height, content.width * 2, content.height * 2)
-                                textureSize: Qt.size(content.width * 2, content.height * 2)
-                                mipmap: true
-                                smooth: true
-                                // A still picture changes only together with its crop (`applyScan`).
-                                live: card.still === false
-                            }
+                                anchors.margins: 1
 
-                            // Where `scan` reads the pixels; never seen.
-                            Image {
-                                id: scanImage
+                                // The picture is captured at the window's full size, far bigger than the card.
+                                // Drawn straight down it would alias (look pixelated), so it is first drawn
+                                // at twice the card size and then shown through a mipmapped texture. The view
+                                // holds the whole capture in its own proportions (so it adds no bars of its
+                                // own); the texture takes only the cropped part.
+                                ScreencopyView {
+                                    id: view
 
-                                visible: false
-                                onStatusChanged: {
-                                    if (status === Image.Ready) {
-                                        sampler.requestPaint()
+                                    width: content.width * 2 / card.crop.width
+                                    height: content.height * 2 / card.crop.height
+                                    captureSource: card.window.preview
+                                    live: root.active && card.still === false
+                                    smooth: true
+                                }
+
+                                ShaderEffectSource {
+                                    id: texture
+
+                                    anchors.fill: parent
+                                    sourceItem: view
+                                    hideSource: true
+                                    sourceRect: Qt.rect(card.crop.x * view.width, card.crop.y * view.height, content.width * 2, content.height * 2)
+                                    textureSize: Qt.size(content.width * 2, content.height * 2)
+                                    mipmap: true
+                                    smooth: true
+                                    // A still picture changes only together with its crop (`applyScan`).
+                                    live: card.still === false
+                                }
+
+                                // Where `scan` reads the pixels; never seen.
+                                Image {
+                                    id: scanImage
+
+                                    visible: false
+                                    onStatusChanged: {
+                                        if (status === Image.Ready) {
+                                            sampler.requestPaint()
+                                        }
                                     }
                                 }
-                            }
 
-                            Canvas {
-                                id: sampler
+                                Canvas {
+                                    id: sampler
 
-                                width: root.scanSize
-                                height: root.scanSize
-                                opacity: 0
-                                onPaint: {
-                                    if (scanImage.status !== Image.Ready) {
-                                        return
+                                    width: root.scanSize
+                                    height: root.scanSize
+                                    opacity: 0
+                                    onPaint: {
+                                        if (scanImage.status !== Image.Ready) {
+                                            return
+                                        }
+
+                                        const context = getContext('2d')
+                                        context.clearRect(0, 0, width, height)
+                                        context.drawImage(scanImage, 0, 0, width, height)
+                                        const pixels = context.getImageData(0, 0, width, height).data
+                                        scanImage.source = ''
+                                        card.grab = null
+                                        card.applyScan(PictureBounds.opaqueBounds(pixels, width, height, root.scanThreshold))
                                     }
-
-                                    const context = getContext('2d')
-                                    context.clearRect(0, 0, width, height)
-                                    context.drawImage(scanImage, 0, 0, width, height)
-                                    const pixels = context.getImageData(0, 0, width, height).data
-                                    scanImage.source = ''
-                                    card.grab = null
-                                    card.applyScan(PictureBounds.opaqueBounds(pixels, width, height, root.scanThreshold))
                                 }
                             }
                         }

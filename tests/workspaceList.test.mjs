@@ -109,3 +109,32 @@ test('an unknown monitor or position counts as on screen', () => {
     assert.equal(hangsOffMonitor([-100, 0], [800, 600], null), false)
     assert.equal(hangsOffMonitor(undefined, [800, 600], monitor), false)
 })
+
+const firstEmptyWorkspace = new Function(source + '\nreturn firstEmptyWorkspace')()
+
+test('the first empty workspace is the lowest one without windows', () => {
+    const windows = [
+        { workspaceId: 1, appId: 'a', area: 1 },
+        { workspaceId: 2, appId: 'b', area: 1 },
+        { workspaceId: 4, appId: 'c', area: 1 },
+    ]
+    assert.equal(firstEmptyWorkspace(buildEntries([1, 2, 4], windows, 1, 5)), 3)
+})
+
+test('the focused workspace counts when it is the first empty one', () => {
+    assert.equal(firstEmptyWorkspace(buildEntries([], [], 1, 3)), 1)
+})
+
+test('when every listed workspace has windows, the next one after the highest is used', () => {
+    const windows = [
+        { workspaceId: 1, appId: 'a', area: 1 },
+        { workspaceId: 2, appId: 'b', area: 1 },
+        { workspaceId: 7, appId: 'c', area: 1 },
+    ]
+    assert.equal(firstEmptyWorkspace(buildEntries([1, 2, 7], windows, 7, 2)), 8)
+})
+
+test('an entry keeps the window address for focusing and closing', () => {
+    const windows = [{ workspaceId: 1, address: '0x1', appId: 'a', area: 1 }]
+    assert.equal(entryOf(buildEntries([1], windows, 1, 1), 1).windows[0].address, '0x1')
+})

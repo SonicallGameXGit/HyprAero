@@ -64,10 +64,24 @@ PanelWindow {
 
             hideTimer.restart()
         }
+        onWindowChosen: {
+            hideTimer.stop()
+            root.popupButton = null
+        }
     }
 
     GlassPanel {
         anchors.fill: parent
+
+        // Inside both glass borders, flush with the right end like Windows 7's "Show desktop".
+        EmptyWorkspaceButton {
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.right: parent.right
+            anchors.margins: 2
+            width: implicitWidth
+            onClicked: Workspaces.switchToFirstEmpty()
+        }
 
         Item {
             id: strip

@@ -59,10 +59,10 @@ function rankApps(windows) {
         .map(entry => entry[0])
 }
 
-// The windows as { appId, title, area, width, height, offScreen, preview }, biggest first; ties are broken by app id, then title.
+// The windows as { address, appId, title, area, width, height, offScreen, preview }, biggest first; ties are broken by app id, then title.
 function rankWindows(windows) {
     return windows
-        .map(window => ({ appId: window.appId, title: window.title, area: window.area, width: window.width, height: window.height, offScreen: window.offScreen, preview: window.preview }))
+        .map(window => ({ address: window.address, appId: window.appId, title: window.title, area: window.area, width: window.width, height: window.height, offScreen: window.offScreen, preview: window.preview }))
         .sort((a, b) => b.area - a.area || compareText(a.appId, b.appId) || compareText(a.title, b.title))
 }
 
@@ -86,4 +86,19 @@ function hangsOffMonitor(at, size, monitor) {
         || at[1] < monitor.y
         || at[0] + size[0] > monitor.x + monitor.width
         || at[1] + size[1] > monitor.y + monitor.height
+}
+
+// The workspace the "empty workspace" button goes to: the lowest listed one without windows, or the one
+// after the highest when every listed workspace has windows. `entries` is what `buildEntries` returns.
+function firstEmptyWorkspace(entries) {
+    let highest = 0
+    for (const entry of entries) {
+        if (entry.windows.length === 0) {
+            return entry.id
+        }
+
+        highest = Math.max(highest, entry.id)
+    }
+
+    return highest + 1
 }

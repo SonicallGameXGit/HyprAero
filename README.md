@@ -20,6 +20,10 @@ Needs Quickshell and Hyprland (tested with Hyprland 0.56 and a Lua config).
     
     An app without an icon in your icon theme gets a generic window picture. The current workspace has a highlight that glides to the new one.
 - **Window previews**: hover a workspace with windows to see a card per window in a popup that sits on top of the bar, like the Windows 7 taskbar thumbnails: icon and title, then a live picture of the window (a generic icon until the picture arrives, or if the compositor cannot provide one). Each card has the window's proportions. A window hanging off the edge of its monitor shows a still picture of its visible part, taken when the popup opens, instead of a live one: the compositor cannot provide the rest, and a live picture of it would jump around during workspace switches. Moving the pointer to another workspace keeps the current previews until the new ones are ready, then fades between them. Biggest window first, up to 4 cards per row. The popup stays open while the pointer is on it and closes shortly after it leaves. Empty workspaces show nothing.
+    - **Hover a card** to light it up and show its red close button.
+    - **Click a card** to go to that window: its workspace is shown and the window gets focus. The pointer stays where it is.
+    - **Click the close button** to ask the window to close, exactly like its own close button: an app with unsaved work can ask what to do, or refuse.
+- **Empty workspace button**: the narrow strip at the right end of the bar, where Windows 7 has "Show desktop". Click it to go to the first workspace without windows (the lowest-numbered one; when all have windows, the next new one).
 
 ## Theme
 

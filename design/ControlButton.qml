@@ -1,19 +1,26 @@
 import QtQuick
 
-// The family button. kind: 'normal', 'accent' (the one main action) or 'tool' (flat until hovered).
+// The family button. kind: 'normal', 'accent' (the one main action), 'tool' (flat until hovered) or
+// 'danger' (red, for what destroys something).
 Item {
     id: root
 
     property string kind: 'normal'
     property string text: ''
 
-    readonly property bool hovered: mouseArea.containsMouse
+    // Hover counts over the button's own children too (a button inside a button keeps both lit).
+    readonly property bool hovered: hoverHandler.hovered
     readonly property bool pressed: mouseArea.pressed
     readonly property bool flat: kind === 'tool' && !hovered && !pressed
     readonly property bool accent: kind === 'accent'
+    readonly property bool danger: kind === 'danger'
     readonly property var face: {
         if (accent) {
             return pressed ? Theme.accentFaceActive : (hovered ? Theme.accentFaceHover : Theme.accentFace)
+        }
+
+        if (danger) {
+            return pressed ? Theme.dangerFaceActive : (hovered ? Theme.dangerFaceHover : Theme.dangerFace)
         }
 
         return pressed ? Theme.controlFaceActive : (hovered ? Theme.controlFaceHover : Theme.controlFace)
@@ -24,7 +31,17 @@ Item {
     property color faceUpper: face[1]
     property color faceLower: face[2]
     property color faceBottom: face[3]
-    property color borderColor: accent ? Theme.accentBorder : (hovered ? Theme.controlBorderHover : Theme.controlBorder)
+    property color borderColor: {
+        if (accent) {
+            return Theme.accentBorder
+        }
+
+        if (danger) {
+            return Theme.dangerControlBorder
+        }
+
+        return hovered ? Theme.controlBorderHover : Theme.controlBorder
+    }
 
     signal clicked()
 
@@ -75,16 +92,19 @@ Item {
 
         anchors.centerIn: parent
         text: root.text
-        color: root.accent ? Theme.accentText : Theme.controlText
+        color: root.accent || root.danger ? Theme.accentText : Theme.controlText
         font.family: Theme.fontUi
         font.pixelSize: Theme.fontSizeBody
+    }
+
+    HoverHandler {
+        id: hoverHandler
     }
 
     MouseArea {
         id: mouseArea
 
         anchors.fill: parent
-        hoverEnabled: true
         onClicked: root.clicked()
     }
 }

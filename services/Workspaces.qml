@@ -34,6 +34,8 @@ Singleton {
 
             result.push({
                 workspaceId: workspace.id,
+                // Names the window when focusing or closing it; '' when Hyprland gave none.
+                address: typeof info.address === 'string' ? info.address : '',
                 appId: info.class,
                 title: typeof info.title === 'string' ? info.title : '',
                 area: size[0] * size[1],
@@ -89,5 +91,44 @@ Singleton {
     // Hyprland 0.56 with a Lua config takes Lua dispatchers here; the old 'workspace N' text is rejected.
     function switchTo(id: int): void {
         Hyprland.dispatch(`hl.dsp.focus({ workspace = ${id} })`)
+    }
+
+    function switchToFirstEmpty(): void {
+        switchTo(WorkspaceList.firstEmptyWorkspace(entries))
+    }
+
+    // The window with this address, or null when it is gone.
+    function toplevelAt(address: string): var {
+        for (const toplevel of Hyprland.toplevels.values) {
+            const info = toplevel.lastIpcObject
+            if (info !== null && info !== undefined && info.address === address) {
+                return toplevel
+            }
+        }
+
+        return null
+    }
+
+    // Goes to the window's workspace and focuses it; the pointer stays where it is. The address is checked
+    // before it goes into the dispatcher, which is Lua code.
+    function focusWindow(address: string): void {
+        if (toplevelAt(address) === null || /^0x[0-9a-fA-F]+$/.test(address) === false) {
+            console.warn(`Workspaces: no window ${address} to focus`)
+            return
+        }
+
+        Hyprland.dispatch(`hl.dsp.focus({ window = 'address:${address}' })`)
+    }
+
+    // Asks the window to close, as its own close button would: the app may ask to save, or refuse. Goes
+    // through the window's own Wayland handle, so it can only ever reach that window.
+    function closeWindow(address: string): void {
+        const toplevel = toplevelAt(address)
+        if (toplevel === null || toplevel.wayland === null) {
+            console.warn(`Workspaces: no window ${address} to close`)
+            return
+        }
+
+        toplevel.wayland.close()
     }
 }

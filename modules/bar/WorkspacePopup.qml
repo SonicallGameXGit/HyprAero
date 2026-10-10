@@ -31,6 +31,8 @@ PopupWindow {
     readonly property int loadTimeout: 500
 
     signal hoverChanged(bool hovered)
+    // A card was clicked: its window is being focused.
+    signal windowChosen()
 
     implicitWidth: anchor.rect.width
     implicitHeight: windowHeight
@@ -147,8 +149,8 @@ PopupWindow {
 
         x: Math.max(root.edgeMargin, Math.min(wantedX, root.width - width - root.edgeMargin))
         y: root.height - height
-        width: root.front.implicitWidth + Theme.space3 * 2
-        height: root.front.implicitHeight + Theme.space3 * 2
+        width: root.front.implicitWidth + Theme.space2 * 2
+        height: root.front.implicitHeight + Theme.space2 * 2
         cornerRadius: Theme.radiusPanel
         opacity: root.shown && root.windows.length > 0 ? 1 : 0
 
@@ -176,7 +178,6 @@ PopupWindow {
             onHoveredChanged: root.hoverChanged(hovered)
         }
 
-
         // Both sets sit in the same place; the one fading out may be bigger than the panel for a moment.
         Item {
             anchors.fill: parent
@@ -187,11 +188,12 @@ PopupWindow {
 
                 property int workspaceId: 0
 
-                x: Theme.space3
-                y: Theme.space3
+                x: Theme.space2
+                y: Theme.space2
                 active: root.visible && (root.front === firstCards || root.loading)
                 opacity: root.front === firstCards ? 1 : 0
                 onReadyChanged: root.showLoaded(false)
+                onWindowChosen: root.windowChosen()
 
                 Behavior on opacity {
                     NumberAnimation { duration: Theme.motionSoft; easing.type: Easing.OutCubic }
@@ -203,11 +205,12 @@ PopupWindow {
 
                 property int workspaceId: 0
 
-                x: Theme.space3
-                y: Theme.space3
+                x: Theme.space2
+                y: Theme.space2
                 active: root.visible && (root.front === secondCards || root.loading)
                 opacity: root.front === secondCards ? 1 : 0
                 onReadyChanged: root.showLoaded(false)
+                onWindowChosen: root.windowChosen()
 
                 Behavior on opacity {
                     NumberAnimation { duration: Theme.motionSoft; easing.type: Easing.OutCubic }
