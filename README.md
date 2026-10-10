@@ -13,7 +13,12 @@ Needs Quickshell and Hyprland (tested with Hyprland 0.56 and a Lua config).
 ## What works
 
 - **Bar**: one per screen, at the bottom edge.
-- **Workspaces**: click a button to switch to that workspace. The blue one is the current workspace, a raised button has windows on it, a flat one is empty. Workspaces 1 to 10 are always shown, empty ones too; clicking an empty one creates it, like the keyboard shortcut. Others appear while they have windows or focus.
+- **Workspaces**: centered in the bar, 1 to 10 always shown (more appear while they have windows or focus). Click one to switch to it; an empty one is created, like with the keyboard shortcut. What a button shows:
+    - a small blue dot: no windows;
+    - one app icon: windows of a single app;
+    - several apps: the icon of the app with the biggest window, and the second biggest app's icon as a small badge at its bottom-right corner (the rest are not shown).
+    
+    An app without an icon in your icon theme gets a generic window picture. The current workspace has a highlight that glides to the new one.
 
 ## Theme
 

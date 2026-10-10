@@ -111,7 +111,7 @@ The **style** is fully in `.aero/STYLE.md`. This section is the **design** of th
 - The Windows 7 language is the target: a taskbar-like bar with glossy glass, a start-menu-like launcher, a calendar / clock flyout, a volume flyout, Aero balloon-style notifications. The bar defaults to the bottom edge and its position is a user setting (section 5).
 - Anything above that is new needs a proposal first (`.aero/PRINCIPLES.md` section 2).
 
-Tokens live in: `design/Theme.qml` (singleton; only the tokens in use so far, both themes, Slate is chosen by the system colour scheme). Primitives live in: `design/` (`GlassPanel`, `ControlButton`).
+Tokens live in: `design/Theme.qml` (singleton; only the tokens in use so far, both themes, Slate is chosen by the system colour scheme). Primitives live in: `design/` (`GlassPanel`, `ControlButton`, `DotIcon`, `GenericAppIcon`).
 
 ## 8. Reference: the previous shell
 
@@ -121,7 +121,7 @@ Its technology is explicitly **not** carried over: no GJS, Astal, GTK widgets, S
 
 ## 9. Roadmap and current state
 
-Works today: a bar per screen (bottom, glass, namespace `hypraero-bar`) with workspace buttons: click to switch, focused one accent, workspaces with windows normal, empty ones flat. Workspaces 1-10 are always shown; clicking an empty one creates it (Hyprland does that on focus). The theme follows the system colour scheme live. No config, no other modules yet.
+Works today: a bar per screen (bottom, glass, namespace `hypraero-bar`) with centered workspace buttons (48px bar): click to switch; each button shows a dot (empty), the app icon (one app) or the biggest app's icon with the second biggest as a small badge; a highlight slides and stretches to the current workspace. Workspaces 1-10 are always shown; clicking an empty one creates it (Hyprland does that on focus). The theme follows the system colour scheme live. No config, no other modules yet.
 
 Not built yet, roughly in this order (steps 1 and most of 2-3 are done; the bar still lacks clock and tray):
 
@@ -148,3 +148,6 @@ Newest last. One line per decision: date, decision, reason.
 - 2026-10-10 - First version is only the bar with workspace buttons; the glass blur fallback token and reduced-transparency support are postponed. Reason: owner asked for the minimum first.
 - 2026-10-10 - Workspaces 1-10 are always shown, as the owner's Hyprland binds exactly those. Reason: matches the old bar and the shortcuts; more appear only while they exist or have focus.
 - 2026-10-10 - Theme follows the system through the freedesktop portal (`gdbus` call + monitor, parsed in `services/colorScheme.js`), not Qt's `styleHints.colorScheme`. Reason: Qt reported no preference on this setup; the portal is what GTK and browsers follow. Without gdbus or a portal the bar stays Aero light.
+- 2026-10-10 - Workspace icons: apps are ranked by their biggest window (`services/workspaceList.js`), icons come from the desktop entry, then an icon named like the window class, then a drawn generic window. Reason: owner's rule from the old bar; the fallback keeps apps without an icon visible instead of blank.
+- 2026-10-10 - The current-workspace marker is one highlight that slides and stretches (leading edge faster than the trailing one, 120 / 220ms), instead of the old bar's physics bubble. Reason: soft, not bouncy (`.aero/STYLE.md` motion), and it reads as one object moving.
+- 2026-10-10 - Bar height 48px. Reason: owner asked for a bit higher; room for 28px icons plus a 16px badge.
