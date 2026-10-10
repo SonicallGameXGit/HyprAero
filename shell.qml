@@ -1,19 +1,15 @@
-import Quickshell // for PanelWindow
-import QtQuick // for Text
+import Quickshell
+import QtQuick
+import qs.modules.bar
 
-PanelWindow {
-    anchors {
-        top: true
-        left: true
-        right: true
-    }
+ShellRoot {
+    Variants {
+        model: Quickshell.screens
 
-    implicitHeight: 30
+        Bar {
+            required property var modelData
 
-    Text {
-        // center the bar in its parent component (the window)
-        anchors.centerIn: parent
-
-        text: "sdfdsf"
+            screen: modelData
+        }
     }
 }
