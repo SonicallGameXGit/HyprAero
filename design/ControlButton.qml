@@ -19,7 +19,20 @@ Item {
         return pressed ? Theme.controlFaceActive : (hovered ? Theme.controlFaceHover : Theme.controlFace)
     }
 
+    // The face and border fade between states instead of switching; a flat tool button fades in.
+    property color faceTop: face[0]
+    property color faceUpper: face[1]
+    property color faceLower: face[2]
+    property color faceBottom: face[3]
+    property color borderColor: accent ? Theme.accentBorder : (hovered ? Theme.controlBorderHover : Theme.controlBorder)
+
     signal clicked()
+
+    Behavior on faceTop { ColorAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic } }
+    Behavior on faceUpper { ColorAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic } }
+    Behavior on faceLower { ColorAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic } }
+    Behavior on faceBottom { ColorAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic } }
+    Behavior on borderColor { ColorAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic } }
 
     implicitWidth: label.implicitWidth + Theme.space3 * 2
     implicitHeight: 28
@@ -27,15 +40,19 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: Theme.radiusControl
-        visible: !root.flat
+        opacity: root.flat ? 0 : 1
         border.width: 1
-        border.color: root.accent ? Theme.accentBorder : (root.hovered ? Theme.controlBorderHover : Theme.controlBorder)
+        border.color: root.borderColor
+
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
+        }
 
         gradient: Gradient {
-            GradientStop { position: 0.0; color: root.face[0] }
-            GradientStop { position: 0.49; color: root.face[1] }
-            GradientStop { position: 0.5; color: root.face[2] }
-            GradientStop { position: 1.0; color: root.face[3] }
+            GradientStop { position: 0.0; color: root.faceTop }
+            GradientStop { position: 0.49; color: root.faceUpper }
+            GradientStop { position: 0.5; color: root.faceLower }
+            GradientStop { position: 1.0; color: root.faceBottom }
         }
 
         Rectangle {
@@ -45,7 +62,11 @@ Item {
             color: 'transparent'
             border.width: 1
             border.color: Theme.controlInner
-            visible: !root.pressed
+            opacity: root.pressed ? 0 : 1
+
+            Behavior on opacity {
+                NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
+            }
         }
     }
 

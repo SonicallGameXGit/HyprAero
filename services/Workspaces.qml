@@ -35,7 +35,12 @@ Singleton {
             result.push({
                 workspaceId: workspace.id,
                 appId: info.class,
+                title: typeof info.title === 'string' ? info.title : '',
                 area: size[0] * size[1],
+                width: size[0],
+                height: size[1],
+                // The Wayland handle the live preview captures; null when the compositor has none.
+                preview: toplevel.wayland,
             })
         }
 

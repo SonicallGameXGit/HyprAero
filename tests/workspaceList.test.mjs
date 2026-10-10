@@ -74,3 +74,19 @@ test('equal sizes are ordered by app id', () => {
     ]
     assert.equal(entryOf(buildEntries([1], windows, 1, 1), 1).mainApp, 'a')
 })
+
+test('an entry lists its own windows, biggest first, ties by app id then title', () => {
+    const windows = [
+        { workspaceId: 1, appId: 'b', title: 'two', area: 100 },
+        { workspaceId: 1, appId: 'a', title: 'zed', area: 100 },
+        { workspaceId: 1, appId: 'a', title: 'alpha', area: 100 },
+        { workspaceId: 1, appId: 'big', title: 'main', area: 900 },
+        { workspaceId: 2, appId: 'other', title: 'elsewhere', area: 5000 },
+    ]
+    const entry = entryOf(buildEntries([1, 2], windows, 1, 2), 1)
+    assert.deepEqual(entry.windows.map(window => window.title), ['main', 'alpha', 'zed', 'two'])
+})
+
+test('an empty workspace has no windows', () => {
+    assert.deepEqual(entryOf(buildEntries([], [], 1, 2), 1).windows, [])
+})

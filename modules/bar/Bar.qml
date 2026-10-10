@@ -16,8 +16,54 @@ PanelWindow {
         right: true
     }
 
+    // The button whose window list is open. Cleared after a short delay so the pointer can move
+    // from the button onto the popup without it closing.
+    property var popupButton: null
+    // The last hovered button that had windows; the popup keeps showing it while it fades out.
+    property var lastButton: null
+
     implicitHeight: 48
     color: 'transparent'
+
+    function buttonHoverChanged(button: var): void {
+        if (button.hovered) {
+            hideTimer.stop()
+            popupButton = button
+            if (button.entry.windows.length > 0) {
+                lastButton = button
+            }
+
+            return
+        }
+
+        hideTimer.restart()
+    }
+
+    Timer {
+        id: hideTimer
+
+        interval: 150
+        onTriggered: root.popupButton = null
+    }
+
+    WorkspacePopup {
+        // The window spans the whole bar on its top edge and stays put; the panel inside glides.
+        anchor.window: root
+        anchor.rect: Qt.rect(0, -2, root.width, 1)
+        anchor.edges: Edges.Top
+        anchor.gravity: Edges.Top
+        shown: root.popupButton !== null && root.popupButton.entry.windows.length > 0
+        windows: root.lastButton === null ? [] : root.lastButton.entry.windows
+        centerX: root.lastButton === null ? 0 : root.lastButton.mapToItem(null, root.lastButton.width / 2, 0).x
+        onHoverChanged: hovered => {
+            if (hovered) {
+                hideTimer.stop()
+                return
+            }
+
+            hideTimer.restart()
+        }
+    }
 
     GlassPanel {
         anchors.fill: parent
@@ -59,10 +105,13 @@ PanelWindow {
                     model: Workspaces.entries.length
 
                     WorkspaceButton {
+                        id: button
+
                         required property int index
 
                         entry: Workspaces.entries[index]
                         onClicked: Workspaces.switchTo(entry.id)
+                        onHoveredChanged: root.buttonHoverChanged(button)
                     }
                 }
             }

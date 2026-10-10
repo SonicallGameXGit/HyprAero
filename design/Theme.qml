@@ -50,6 +50,9 @@ Singleton {
     readonly property color glassShineMiddle: slate ? '#08ffffff' : '#1fffffff'
     readonly property color glassText: slate ? '#e9eef3' : '#0d2238'
 
+    readonly property color surfaceSunken: slate ? '#1b2025' : '#f2f6fb'
+    readonly property color surfaceBorder: slate ? '#0d1013' : '#a9b9cc'
+
     // Gradient stops of a control face: top, 49%, 50%, bottom.
     readonly property var controlFace: slate
         ? ['#5a626b', '#474e56', '#363c43', '#2f343a']

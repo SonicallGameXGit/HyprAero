@@ -8,7 +8,8 @@
 //
 // Icons: windows are grouped by app; an app counts with its biggest window. The biggest app is the
 // main icon and the second biggest is the small badge. No windows: both are null (the bar draws a dot).
-// `windows` is [{ workspaceId, appId, area }].
+// `windows` is [{ workspaceId, appId, title, area }]. Each entry also carries its own `windows`, biggest
+// first, for the hover list.
 function buildEntries(workspaceIds, windows, focusedId, minimumCount) {
     const occupied = new Set()
     for (const id of workspaceIds) {
@@ -30,13 +31,15 @@ function buildEntries(workspaceIds, windows, focusedId, minimumCount) {
 
     const sorted = Array.from(ids).sort((a, b) => a - b)
     return sorted.map(id => {
-        const apps = rankApps(windows.filter(window => window.workspaceId === id))
+        const own = windows.filter(window => window.workspaceId === id)
+        const apps = rankApps(own)
         return {
             id: id,
             focused: id === focusedId,
             occupied: occupied.has(id) || apps.length > 0,
             mainApp: apps.length > 0 ? apps[0] : null,
             secondApp: apps.length > 1 ? apps[1] : null,
+            windows: rankWindows(own),
         }
     })
 }
@@ -54,4 +57,19 @@ function rankApps(windows) {
     return Array.from(biggest.entries())
         .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
         .map(entry => entry[0])
+}
+
+// The windows as { appId, title, area, width, height, preview }, biggest first; ties are broken by app id, then title.
+function rankWindows(windows) {
+    return windows
+        .map(window => ({ appId: window.appId, title: window.title, area: window.area, width: window.width, height: window.height, preview: window.preview }))
+        .sort((a, b) => b.area - a.area || compareText(a.appId, b.appId) || compareText(a.title, b.title))
+}
+
+function compareText(a, b) {
+    if (a === b) {
+        return 0
+    }
+
+    return a < b ? -1 : 1
 }
