@@ -32,15 +32,12 @@ ControlButton {
         visible: root.mainApp !== '' && root.mainPath === ''
     }
 
-    Image {
+    AppIconImage {
         anchors.centerIn: parent
         width: root.iconSize
         height: root.iconSize
-        sourceSize: Qt.size(root.iconSize * 2, root.iconSize * 2)
         visible: root.mainPath !== ''
         source: root.mainPath
-        asynchronous: true
-        smooth: true
     }
 
     GenericAppIcon {
@@ -51,15 +48,12 @@ ControlButton {
         visible: root.secondApp !== '' && root.secondPath === ''
     }
 
-    Image {
+    AppIconImage {
         x: parent.width / 2 + root.iconSize / 2 - root.badgeSize + 2
         y: parent.height / 2 + root.iconSize / 2 - root.badgeSize + 2
         width: root.badgeSize
         height: root.badgeSize
-        sourceSize: Qt.size(root.badgeSize * 2, root.badgeSize * 2)
         visible: root.secondPath !== ''
         source: root.secondPath
-        asynchronous: true
-        smooth: true
     }
 }

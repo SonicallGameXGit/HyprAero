@@ -59,10 +59,10 @@ function rankApps(windows) {
         .map(entry => entry[0])
 }
 
-// The windows as { appId, title, area, width, height, preview }, biggest first; ties are broken by app id, then title.
+// The windows as { appId, title, area, width, height, offScreen, preview }, biggest first; ties are broken by app id, then title.
 function rankWindows(windows) {
     return windows
-        .map(window => ({ appId: window.appId, title: window.title, area: window.area, width: window.width, height: window.height, preview: window.preview }))
+        .map(window => ({ appId: window.appId, title: window.title, area: window.area, width: window.width, height: window.height, offScreen: window.offScreen, preview: window.preview }))
         .sort((a, b) => b.area - a.area || compareText(a.appId, b.appId) || compareText(a.title, b.title))
 }
 
@@ -72,4 +72,18 @@ function compareText(a, b) {
     }
 
     return a < b ? -1 : 1
+}
+
+// Whether any part of a window lies outside its monitor. `at` is [x, y] and `size` is [width, height] of
+// the window, `monitor` is { x, y, width, height } in the same (logical) coordinates, or null when unknown.
+// Unknown counts as on screen.
+function hangsOffMonitor(at, size, monitor) {
+    if (monitor === null || at === undefined || at.length < 2) {
+        return false
+    }
+
+    return at[0] < monitor.x
+        || at[1] < monitor.y
+        || at[0] + size[0] > monitor.x + monitor.width
+        || at[1] + size[1] > monitor.y + monitor.height
 }

@@ -39,6 +39,8 @@ Singleton {
                 area: size[0] * size[1],
                 width: size[0],
                 height: size[1],
+                // Hyprland leaves the part of a window outside its monitor blank in the capture.
+                offScreen: WorkspaceList.hangsOffMonitor(info.at, size, monitorRect(toplevel.monitor)),
                 // The Wayland handle the live preview captures; null when the compositor has none.
                 preview: toplevel.wayland,
             })
@@ -68,6 +70,20 @@ Singleton {
 
         interval: 200
         onTriggered: Hyprland.refreshToplevels()
+    }
+
+    // The monitor's rectangle in layout (logical) coordinates, or null when it is unknown.
+    function monitorRect(monitor: var): var {
+        if (monitor === null || monitor === undefined || monitor.scale <= 0) {
+            return null
+        }
+
+        return {
+            x: monitor.x,
+            y: monitor.y,
+            width: monitor.width / monitor.scale,
+            height: monitor.height / monitor.scale,
+        }
     }
 
     // Hyprland 0.56 with a Lua config takes Lua dispatchers here; the old 'workspace N' text is rejected.

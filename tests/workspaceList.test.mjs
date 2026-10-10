@@ -90,3 +90,22 @@ test('an entry lists its own windows, biggest first, ties by app id then title',
 test('an empty workspace has no windows', () => {
     assert.deepEqual(entryOf(buildEntries([], [], 1, 2), 1).windows, [])
 })
+
+const hangsOffMonitor = new Function(source + '\nreturn hangsOffMonitor')()
+const monitor = { x: 0, y: 0, width: 1920, height: 1080 }
+
+test('a window inside its monitor does not hang off it', () => {
+    assert.equal(hangsOffMonitor([0, 0], [1920, 1080], monitor), false)
+})
+
+test('a window one pixel past any edge hangs off its monitor', () => {
+    assert.equal(hangsOffMonitor([-1, 0], [800, 600], monitor), true)
+    assert.equal(hangsOffMonitor([0, -1], [800, 600], monitor), true)
+    assert.equal(hangsOffMonitor([1121, 0], [800, 600], monitor), true)
+    assert.equal(hangsOffMonitor([0, 481], [800, 600], monitor), true)
+})
+
+test('an unknown monitor or position counts as on screen', () => {
+    assert.equal(hangsOffMonitor([-100, 0], [800, 600], null), false)
+    assert.equal(hangsOffMonitor(undefined, [800, 600], monitor), false)
+})

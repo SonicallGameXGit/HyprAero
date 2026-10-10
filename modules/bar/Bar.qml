@@ -53,6 +53,7 @@ PanelWindow {
         anchor.edges: Edges.Top
         anchor.gravity: Edges.Top
         shown: root.popupButton !== null && root.popupButton.entry.windows.length > 0
+        workspaceId: root.lastButton === null ? 0 : root.lastButton.entry.id
         windows: root.lastButton === null ? [] : root.lastButton.entry.windows
         centerX: root.lastButton === null ? 0 : root.lastButton.mapToItem(null, root.lastButton.width / 2, 0).x
         onHoverChanged: hovered => {

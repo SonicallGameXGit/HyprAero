@@ -1,11 +1,8 @@
 import Quickshell
-import Quickshell.Wayland
 import QtQuick
 import qs.design
-import qs.services
 
-// The window previews of a workspace, shown above its button like the Windows 7 taskbar thumbnails:
-// one card per window (icon and title on top, a live picture below), biggest window first.
+// The window previews of a workspace, shown above its button (the cards are `PreviewCards`).
 //
 // The popup window itself is created once, as wide as the bar, and never moves; only the glass panel
 // inside it glides to the hovered button. Moving or resizing a popup window makes the compositor
@@ -14,21 +11,24 @@ import qs.services
 PopupWindow {
     id: root
 
-    // The windows to show, the x of the hovered button's center in the bar, and whether to show at all.
+    // The workspace and windows to show, the x of the hovered button's center in the bar, and whether to
+    // show at all.
+    property int workspaceId: 0
     property var windows: []
     property real centerX: 0
     property bool shown: false
 
-    readonly property int maxColumns: 4
-    readonly property int columns: Math.max(Math.min(windows.length, maxColumns), 1)
-    readonly property int cardWidth: 200
-    readonly property int previewHeight: 120
-    readonly property int iconSize: 16
     readonly property int edgeMargin: Theme.space2
     // Room for the tallest list (three rows of cards) so the window never has to resize.
     readonly property int windowHeight: 520
     // The first placement after a pause snaps; only moves between buttons glide.
     property bool glide: false
+    // Two card sets: the shown one, and the other one, which loads the next workspace behind it while
+    // `loading` and then fades in, so moving between workspaces never shows empty cards.
+    property PreviewCards front: firstCards
+    property bool loading: false
+    // How long a set may load before it is shown anyway (a picture that never arrives must not block it).
+    readonly property int loadTimeout: 500
 
     signal hoverChanged(bool hovered)
 
@@ -40,12 +40,95 @@ PopupWindow {
         item: panel
     }
 
+    onWorkspaceIdChanged: route()
+    onWindowsChanged: route()
+
+    // Once fully hidden, nothing is kept: the next opening starts fresh.
+    onVisibleChanged: {
+        if (visible) {
+            return
+        }
+
+        loading = false
+        firstCards.windows = []
+        secondCards.windows = []
+        firstCards.workspaceId = 0
+        secondCards.workspaceId = 0
+    }
+
     onShownChanged: {
         if (shown) {
+            route()
             return
         }
 
         glide = false
+    }
+
+    // A refresh of the shown workspace updates its cards in place. Another workspace loads in the other set
+    // and is shown once ready (`showLoaded`). With nothing shown yet there is nothing to keep, so it goes
+    // straight to the front.
+    function route(): void {
+        const other = front === firstCards ? secondCards : firstCards
+        if (front.windows.length === 0) {
+            loading = false
+            front.workspaceId = workspaceId
+            front.windows = windows
+            return
+        }
+
+        if (front.workspaceId === workspaceId) {
+            front.windows = windows
+            if (loading) {
+                loading = false
+                other.windows = []
+                other.workspaceId = 0
+            }
+
+            return
+        }
+
+        other.workspaceId = workspaceId
+        other.windows = windows
+        loading = true
+        loadTimer.restart()
+        // Coming back to the set that is still fading out: it is already loaded.
+        Qt.callLater(showLoaded, false)
+    }
+
+    function showLoaded(force: bool): void {
+        const other = front === firstCards ? secondCards : firstCards
+        if (loading === false || (force === false && other.ready === false)) {
+            return
+        }
+
+        loading = false
+        loadTimer.stop()
+        front = other
+        clearTimer.restart()
+    }
+
+    Timer {
+        id: loadTimer
+
+        interval: root.loadTimeout
+        onTriggered: root.showLoaded(true)
+    }
+
+    // Empties the set that faded out, so its captures stop and the next load starts with fresh cards.
+    Timer {
+        id: clearTimer
+
+        interval: Theme.motionSoft
+        onTriggered: {
+            if (root.loading) {
+                return
+            }
+
+            const other = root.front === firstCards ? secondCards : firstCards
+            other.windows = []
+            other.workspaceId = 0
+        }
     }
 
     // Once the panel has been placed, later moves animate.
@@ -64,8 +147,8 @@ PopupWindow {
 
         x: Math.max(root.edgeMargin, Math.min(wantedX, root.width - width - root.edgeMargin))
         y: root.height - height
-        width: grid.implicitWidth + Theme.space3 * 2
-        height: grid.implicitHeight + Theme.space3 * 2
+        width: root.front.implicitWidth + Theme.space3 * 2
+        height: root.front.implicitHeight + Theme.space3 * 2
         cornerRadius: Theme.radiusPanel
         opacity: root.shown && root.windows.length > 0 ? 1 : 0
 
@@ -93,123 +176,41 @@ PopupWindow {
             onHoveredChanged: root.hoverChanged(hovered)
         }
 
-        Grid {
-            id: grid
 
-            x: Theme.space3
-            y: Theme.space3
-            columns: root.columns
-            spacing: Theme.space2
+        // Both sets sit in the same place; the one fading out may be bigger than the panel for a moment.
+        Item {
+            anchors.fill: parent
+            clip: true
 
-            Repeater {
-                model: root.windows.length
+            PreviewCards {
+                id: firstCards
 
-                Column {
-                    id: card
+                property int workspaceId: 0
 
-                    required property int index
+                x: Theme.space3
+                y: Theme.space3
+                active: root.visible && (root.front === firstCards || root.loading)
+                opacity: root.front === firstCards ? 1 : 0
+                onReadyChanged: root.showLoaded(false)
 
-                    readonly property var window: root.windows[index]
-                    readonly property string iconPath: AppIcons.pathFor(window.appId)
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.motionSoft; easing.type: Easing.OutCubic }
+                }
+            }
 
-                    width: root.cardWidth
-                    spacing: Theme.space1
+            PreviewCards {
+                id: secondCards
 
-                    Row {
-                        width: parent.width
-                        height: root.iconSize
-                        spacing: Theme.space1
+                property int workspaceId: 0
 
-                        GenericAppIcon {
-                            width: root.iconSize
-                            height: root.iconSize
-                            visible: card.iconPath === ''
-                        }
+                x: Theme.space3
+                y: Theme.space3
+                active: root.visible && (root.front === secondCards || root.loading)
+                opacity: root.front === secondCards ? 1 : 0
+                onReadyChanged: root.showLoaded(false)
 
-                        Image {
-                            width: root.iconSize
-                            height: root.iconSize
-                            sourceSize: Qt.size(root.iconSize * 2, root.iconSize * 2)
-                            visible: card.iconPath !== ''
-                            source: card.iconPath
-                            asynchronous: true
-                            smooth: true
-                        }
-
-                        Text {
-                            width: parent.width - root.iconSize - Theme.space1
-                            height: root.iconSize
-                            verticalAlignment: Text.AlignVCenter
-                            // An untitled window still needs a name in the card.
-                            text: card.window.title === '' ? card.window.appId : card.window.title
-                            color: Theme.glassText
-                            font.family: Theme.fontUi
-                            font.pixelSize: Theme.fontSizeBody
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    // A fixed slot keeps the grid steady; the frame inside hugs the picture, so only the
-                    // window itself is outlined, not the empty space around it.
-                    Item {
-                        id: slot
-
-                        width: parent.width
-                        height: root.previewHeight
-
-                        Rectangle {
-                            // Keep the window's proportions, as large as the slot allows. The size comes
-                            // from Hyprland: the capture view reports none of its own.
-                            readonly property real fit: card.window.width > 0 && card.window.height > 0
-                                ? Math.min((slot.width - 2) / card.window.width, (slot.height - 2) / card.window.height)
-                                : 0
-
-                            anchors.centerIn: parent
-                            width: view.hasContent ? card.window.width * fit + 2 : slot.width
-                            height: view.hasContent ? card.window.height * fit + 2 : slot.height
-                            radius: Theme.radiusControl
-                            color: view.hasContent ? 'transparent' : Theme.surfaceSunken
-                            border.width: 1
-                            border.color: Theme.surfaceBorder
-
-                            // Shown until the compositor delivers a picture, and kept when it never does.
-                            GenericAppIcon {
-                                anchors.centerIn: parent
-                                width: 48
-                                height: 48
-                                visible: !view.hasContent
-                            }
-
-                            Item {
-                                id: content
-
-                                anchors.fill: parent
-                                anchors.margins: 1
-
-                                // The picture is captured at the window's full size, far bigger than the card.
-                                // Drawn straight down it would alias (look pixelated), so it is first drawn
-                                // at twice the card size and then shown through a mipmapped texture.
-                                ScreencopyView {
-                                    id: view
-
-                                    width: content.width * 2
-                                    height: content.height * 2
-                                    captureSource: card.window.preview
-                                    live: root.visible
-                                    smooth: true
-                                }
-
-                                ShaderEffectSource {
-                                    anchors.fill: parent
-                                    sourceItem: view
-                                    hideSource: true
-                                    textureSize: Qt.size(view.width, view.height)
-                                    mipmap: true
-                                    smooth: true
-                                }
-                            }
-                        }
-                    }
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.motionSoft; easing.type: Easing.OutCubic }
                 }
             }
         }
