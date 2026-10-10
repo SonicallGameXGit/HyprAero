@@ -76,4 +76,16 @@ Singleton {
         : ['#5aa6d8', '#2f84c4', '#1568ad', '#1c78bf']
     readonly property color accentBorder: slate ? '#06121d' : '#134e86'
     readonly property color accentText: '#ffffff'
+
+    readonly property color iconBlueLight: '#9ad6ff'
+    readonly property color iconBlueDark: '#1f7fd6'
+    readonly property color iconBlueEdge: '#0f4f94'
+    readonly property color iconPaperLight: '#ffffff'
+    readonly property color iconPaperDark: '#d3e0ee'
+    readonly property color iconPaperEdge: '#5f7590'
+    readonly property color iconGlossTop: '#e6ffffff'
+    readonly property color iconGlossBottom: '#14ffffff'
+    readonly property color iconShadow: '#59000000'
+
+    readonly property int motionSoft: 220
 }
