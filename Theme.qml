@@ -80,12 +80,18 @@ Singleton {
     readonly property color accentBorder: slate ? '#06121d' : '#134e86'
     readonly property color accentText: '#ffffff'
 
+    readonly property var dangerFace: ['#f7a79c', '#e5604f', '#cf3524', '#dc4a38']
+    readonly property var dangerFaceHover: ['#ffc0b7', '#f07a6a', '#dd4534', '#ea5e4c']
+    readonly property var dangerFaceActive: ['#d0685b', '#b84032', '#9c2417', '#aa3123']
+    readonly property color dangerControlBorder: slate ? '#2a0704' : '#7a1810'
+
     readonly property color iconBlueLight: '#9ad6ff'
     readonly property color iconBlueDark: '#1f7fd6'
     readonly property color iconBlueEdge: '#0f4f94'
     readonly property color iconPaperLight: '#ffffff'
     readonly property color iconPaperDark: '#d3e0ee'
     readonly property color iconPaperEdge: '#5f7590'
+    readonly property color iconInk: '#ffffff'
     readonly property color iconGlossTop: '#e6ffffff'
     readonly property color iconGlossBottom: '#14ffffff'
     readonly property color iconShadow: '#59000000'
