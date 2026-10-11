@@ -101,6 +101,8 @@ Grid {
                     : root.fallbackAspect
                 // Keeps the grabbed copy alive until `sampler` has read it.
                 property var grab: null
+                // Its window was asked to close: no more frames are asked for (`Workspaces.closingAddresses`).
+                readonly property bool closing: Workspaces.closingAddresses.includes(window.address)
 
                 kind: 'tool'
                 highlighted: root.menuAddress !== '' && root.menuAddress === window.address
@@ -128,7 +130,7 @@ Grid {
 
                 // Takes a fresh frame and scans it once it has had time to arrive.
                 function refreshStill(): void {
-                    if (view.hasContent === false) {
+                    if (view.hasContent === false || closing) {
                         return
                     }
 
@@ -137,7 +139,14 @@ Grid {
                 }
 
                 // Copies a small version of the whole capture; `sampler` reads its pixels.
+                // The popup may have closed since the scan was timed: its items are then out of any window (or
+                // in a hidden one), nothing can be copied, and the next opening scans again (`onActiveChanged`).
                 function scan(): void {
+                    const host = view.Window.window
+                    if (host === null || host.visible === false) {
+                        return
+                    }
+
                     view.grabToImage(result => {
                         grab = result
                         scanImage.source = result.url
@@ -304,7 +313,7 @@ Grid {
                                     width: content.width * 2 / card.crop.width
                                     height: content.height * 2 / card.crop.height
                                     captureSource: card.window.preview
-                                    live: root.active && card.still === false
+                                    live: root.active && card.still === false && card.closing === false
                                     smooth: true
                                 }
 

@@ -84,6 +84,16 @@ Singleton {
         focusedId,
         minimumCount,
     )
+    // Windows the shell asked to close (addresses); their previews stop capturing before the request goes
+    // out. Hyprland 0.56 ignores a request for a frame of a window it has just dropped without creating
+    // the frame, and when Quickshell then destroys that frame Hyprland ends the shell's Wayland connection
+    // ("invalid object", the whole shell is gone). A live preview asks for the next frame right after each
+    // one arrives, so it is very likely to hit that moment when its window closes. Wayland requests are
+    // handled in order, so with the capture stopped first no request can come after the window. Kept for
+    // `closingHold` only: an app may ask to save or refuse, and its preview then goes live again. Long, as
+    // some apps take seconds to go.
+    property var closingAddresses: []
+    readonly property int closingHold: 10000
 
     // Hyprland only tells us about opened / closed / moved windows; resizes arrive as raw events.
     // Refreshing (debounced) keeps the window sizes behind the icon order current.
@@ -112,6 +122,13 @@ Singleton {
 
         interval: 200
         onTriggered: Hyprland.refreshToplevels()
+    }
+
+    Timer {
+        id: closingTimer
+
+        interval: root.closingHold
+        onTriggered: root.closingAddresses = []
     }
 
     // The number of a window's workspace (0: unknown). Quickshell's workspace first, as it follows window
@@ -268,6 +285,11 @@ Singleton {
             return
         }
 
+        // Stops its previews at once (the bindings follow synchronously), before the close is sent.
+        if (closingAddresses.includes(address) === false) {
+            closingAddresses = closingAddresses.concat([address])
+        }
+        closingTimer.restart()
         toplevel.wayland.close()
     }
 }
