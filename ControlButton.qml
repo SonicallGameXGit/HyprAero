@@ -7,23 +7,26 @@ Item {
 
     property string kind: 'normal'
     property string text: ''
+    // Looks hovered without the pointer on it, e.g. while something dragged is over it.
+    property bool highlighted: false
 
     // Hover counts over the button's own children too (a button inside a button keeps both lit).
     readonly property bool hovered: hoverHandler.hovered
     readonly property bool pressed: mouseArea.pressed
-    readonly property bool flat: kind === 'tool' && !hovered && !pressed
+    readonly property bool lit: hovered || highlighted
+    readonly property bool flat: kind === 'tool' && !lit && !pressed
     readonly property bool accent: kind === 'accent'
     readonly property bool danger: kind === 'danger'
     readonly property var face: {
         if (accent) {
-            return pressed ? Theme.accentFaceActive : (hovered ? Theme.accentFaceHover : Theme.accentFace)
+            return pressed ? Theme.accentFaceActive : (lit ? Theme.accentFaceHover : Theme.accentFace)
         }
 
         if (danger) {
-            return pressed ? Theme.dangerFaceActive : (hovered ? Theme.dangerFaceHover : Theme.dangerFace)
+            return pressed ? Theme.dangerFaceActive : (lit ? Theme.dangerFaceHover : Theme.dangerFace)
         }
 
-        return pressed ? Theme.controlFaceActive : (hovered ? Theme.controlFaceHover : Theme.controlFace)
+        return pressed ? Theme.controlFaceActive : (lit ? Theme.controlFaceHover : Theme.controlFace)
     }
 
     // The face and border fade between states instead of switching; a flat tool button fades in.
@@ -40,7 +43,7 @@ Item {
             return Theme.dangerControlBorder
         }
 
-        return hovered ? Theme.controlBorderHover : Theme.controlBorder
+        return lit ? Theme.controlBorderHover : Theme.controlBorder
     }
 
     signal clicked()

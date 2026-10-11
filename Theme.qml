@@ -97,4 +97,11 @@ Singleton {
     readonly property color iconShadow: '#59000000'
 
     readonly property int motionSoft: 220
+
+    readonly property real dragImageOpacity: 0.75
+    // focus-glow: a 1px ring, then a soft glow around it (blur, spread), the same in both themes.
+    readonly property color focusGlowRing: '#3c9be6'
+    readonly property color focusGlowColor: '#bf3c9be6'
+    readonly property int focusGlowBlur: 6
+    readonly property int focusGlowSpread: 1
 }
