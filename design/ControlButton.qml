@@ -1,7 +1,9 @@
 import QtQuick
+import QtQuick.Effects
 
 // The family button. kind: 'normal', 'accent' (the one main action), 'tool' (flat until hovered) or
-// 'danger' (red, for what destroys something).
+// 'danger' (red, for what destroys something). With keyboard focus it glows (focus-glow) and Enter or
+// Space press it.
 Item {
     id: root
 
@@ -56,13 +58,29 @@ Item {
 
     implicitWidth: label.implicitWidth + Theme.space3 * 2
     implicitHeight: 28
+    Accessible.role: Accessible.Button
+    Accessible.name: text
+    Accessible.onPressAction: clicked()
+    Keys.onReturnPressed: clicked()
+    Keys.onEnterPressed: clicked()
+    Keys.onSpacePressed: clicked()
+
+    // The glow sits outside the button, so it is drawn first.
+    RectangularShadow {
+        anchors.fill: parent
+        radius: Theme.radiusControl
+        blur: Theme.focusGlowBlur
+        spread: Theme.focusGlowSpread
+        color: Theme.focusGlowColor
+        visible: root.activeFocus
+    }
 
     Rectangle {
         anchors.fill: parent
         radius: Theme.radiusControl
-        opacity: root.flat ? 0 : 1
+        opacity: root.flat && root.activeFocus === false ? 0 : 1
         border.width: 1
-        border.color: root.borderColor
+        border.color: root.activeFocus ? Theme.focusGlowRing : root.borderColor
 
         Behavior on opacity {
             NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }

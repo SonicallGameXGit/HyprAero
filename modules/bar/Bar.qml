@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Wayland
 import QtQuick
 import qs.design
+import qs.modules.startmenu
 import qs.services
 import '../../services/workspaceList.js' as WorkspaceList
 
@@ -158,10 +159,35 @@ PanelWindow {
         }
     }
 
-    GlassPanel {
-        anchors.fill: parent
+    // The orb's popup has its bottom-left corner on the bar's.
+    StartButton {
+        id: startButton
 
-        // Inside both glass borders, flush with the right end like Windows 7's "Show desktop".
+        anchor.window: root
+        anchor.rect: Qt.rect(0, root.height - height, width, height)
+        anchor.edges: Edges.Top | Edges.Left
+        anchor.gravity: Edges.Bottom | Edges.Right
+        barHeight: root.height
+        onClicked: StartMenuState.toggle(root.screen.name)
+    }
+
+    // Grows up and to the right from the bar's left end, its bottom on the top of the orb, as in Vista.
+    StartMenu {
+        anchor.window: root
+        anchor.rect: Qt.rect(0, -2 - startButton.rise, 1, 1)
+        anchor.edges: Edges.Top | Edges.Left
+        anchor.gravity: Edges.Top | Edges.Right
+        shown: StartMenuState.openScreen === root.screen.name
+    }
+
+    // Its left and right borders lie just off the screen, so the bar reads as running on past both edges.
+    GlassPanel {
+        x: -2
+        width: parent.width + 4
+        height: parent.height
+
+        // Inside the top and bottom glass borders and flush with the screen's right edge (the panel's right
+        // border is off the screen), like Windows 7's "Show desktop".
         EmptyWorkspaceButton {
             anchors.top: parent.top
             anchors.bottom: parent.bottom

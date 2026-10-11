@@ -24,4 +24,13 @@ Singleton {
 
         return Quickshell.iconPath(appId, true)
     }
+
+    // An icon of the theme by name ('folder-documents', a desktop entry's icon), '' when it has none.
+    function forName(name: string): string {
+        if (name === '') {
+            return ''
+        }
+
+        return Quickshell.iconPath(name, true)
+    }
 }

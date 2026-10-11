@@ -148,6 +148,21 @@ Aero (light) is the base; Slate overrides only what differs. Values not listed f
 
 Each material is `light` -> `dark` gradient plus an `edge` outline: `icon-blue` (`#9ad6ff` `#1f7fd6` `#0f4f94`), `icon-green` (`#baf083` `#3fa52e` `#23701a`), `icon-gold` (`#ffee9a` `#f0a81c` `#a86a00`), `icon-red` (`#ffa695` `#d83a2a` `#8f1a10`), `icon-paper` (`#ffffff` `#d3e0ee` `#5f7590`), `icon-steel` (`#d5dde6` `#7d8b9e` `#3f4c5e`). Shared: `icon-shine` white 0.5, `icon-ink` `#ffffff`, `icon-ink-dark` `#2b2100`, `icon-gloss-top` white 0.9, `icon-gloss-bottom` white 0.08, `icon-shadow` black 0.35.
 
+### Start orb (the same in both themes)
+
+The round glass button that opens a start menu, after the Windows 7 orb: a dark glass sphere lit from below, a glossy shine on its upper half, the member's mark glowing in the middle. Drawn from these values, never from a picture of the original.
+
+| Token | Value |
+| --- | --- |
+| `orb-edge` | `#04101c` |
+| `orb-body` (radial, from the bottom centre outwards) | `#46c2ff` at 0% -> `#16609c` at 45% -> `#0a1d33` at 100% |
+| `orb-rim` (inner ring) | `rgba(255,255,255,0.4)` |
+| `orb-shine` | vertical gradient white 0.75 -> 0.05 over the upper half |
+| `orb-hover-tint` / `orb-pressed-tint` | `rgba(120,215,255,0.28)` / `rgba(0,16,36,0.35)` |
+| `orb-glow` (hover, around the orb) | `rgba(90,200,255,0.85)`, 10px |
+| `orb-mark` | `#00e5d0` -> `#00a8f4` (top -> bottom; Hyprland's colours, for a Hyprland member) |
+| `orb-mark-glow` | `rgba(0,229,208,0.65)` |
+
 ### Avatars
 
 `avatar-1..6`: `#2f8fd8 #3fa56a #d9822b #c2507f #7a62c9 #2aa3a8`, chosen by a stable hash of the identity. All sit under one glass overlay: `avatar-shine` (white 0.45 -> 0.08 at 49% -> 0 at 50%), `avatar-glass` (`inset 0 0 0 1px rgba(255,255,255,0.4), inset 0 -4px 6px -2px rgba(0,0,0,0.28)`), `avatar-text` `#ffffff`.
