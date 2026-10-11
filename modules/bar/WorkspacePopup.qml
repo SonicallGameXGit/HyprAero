@@ -1,6 +1,7 @@
 import Quickshell
 import QtQuick
 import qs.design
+import qs.services
 
 // The window previews of a workspace, shown above its button (the cards are `PreviewCards`).
 //
@@ -17,6 +18,11 @@ PopupWindow {
     property var windows: []
     property real centerX: 0
     property bool shown: false
+    // The bar's screen, for the ghost a dragged card leaves behind.
+    property var barScreen: null
+    // Where this window's top-left is in the bar's coordinates: as wide as the bar and anchored above it,
+    // its bottom edge sits at the anchor's top.
+    readonly property point barOffset: Qt.point(anchor.rect.x, anchor.rect.y - height)
 
     readonly property int edgeMargin: Theme.space2
     // Room for the tallest list (three rows of cards) so the window never has to resize.
@@ -29,6 +35,9 @@ PopupWindow {
     property bool loading: false
     // How long a set may load before it is shown anyway (a picture that never arrives must not block it).
     readonly property int loadTimeout: 500
+    // A card is being dragged. The popup is hidden but kept, and its cards stay as they are until the drop,
+    // even if the windows change: rebuilding them would destroy the card the drag started from.
+    readonly property bool dragging: firstCards.dragging || secondCards.dragging
 
     signal hoverChanged(bool hovered)
     // A card was clicked: its window is being focused.
@@ -38,12 +47,19 @@ PopupWindow {
     implicitHeight: windowHeight
     color: 'transparent'
     visible: shown || panel.opacity > 0
+    // Hidden during any drag out of the bar (a card or a workspace button): the drop layer under the popup
+    // must get the drop wherever it is.
     mask: Region {
-        item: panel
+        item: BarDrag.active ? null : panel
     }
 
     onWorkspaceIdChanged: route()
     onWindowsChanged: route()
+    onDraggingChanged: {
+        if (dragging === false) {
+            route()
+        }
+    }
 
     // Once fully hidden, nothing is kept: the next opening starts fresh.
     onVisibleChanged: {
@@ -71,6 +87,10 @@ PopupWindow {
     // and is shown once ready (`showLoaded`). With nothing shown yet there is nothing to keep, so it goes
     // straight to the front.
     function route(): void {
+        if (dragging) {
+            return
+        }
+
         const other = front === firstCards ? secondCards : firstCards
         if (front.windows.length === 0) {
             loading = false
@@ -152,7 +172,7 @@ PopupWindow {
         width: root.front.implicitWidth + Theme.space2 * 2
         height: root.front.implicitHeight + Theme.space2 * 2
         cornerRadius: Theme.radiusPanel
-        opacity: root.shown && root.windows.length > 0 ? 1 : 0
+        opacity: root.shown && root.windows.length > 0 && BarDrag.active === false ? 1 : 0
 
         Behavior on x {
             enabled: root.glide
@@ -192,6 +212,8 @@ PopupWindow {
                 y: Theme.space2
                 active: root.visible && (root.front === firstCards || root.loading)
                 opacity: root.front === firstCards ? 1 : 0
+                screen: root.barScreen
+                windowOffset: root.barOffset
                 onReadyChanged: root.showLoaded(false)
                 onWindowChosen: root.windowChosen()
 
@@ -209,6 +231,8 @@ PopupWindow {
                 y: Theme.space2
                 active: root.visible && (root.front === secondCards || root.loading)
                 opacity: root.front === secondCards ? 1 : 0
+                screen: root.barScreen
+                windowOffset: root.barOffset
                 onReadyChanged: root.showLoaded(false)
                 onWindowChosen: root.windowChosen()
 

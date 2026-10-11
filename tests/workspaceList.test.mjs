@@ -138,3 +138,124 @@ test('an entry keeps the window address for focusing and closing', () => {
     const windows = [{ workspaceId: 1, address: '0x1', appId: 'a', area: 1 }]
     assert.equal(entryOf(buildEntries([1], windows, 1, 1), 1).windows[0].address, '0x1')
 })
+
+const isWindowAddress = new Function(source + '\nreturn isWindowAddress')()
+
+test('a window address is 0x and hex digits, nothing else', () => {
+    assert.equal(isWindowAddress('0x55f3b1d9b170'), true)
+    assert.equal(isWindowAddress('0xABCdef01'), true)
+    assert.equal(isWindowAddress(''), false)
+    assert.equal(isWindowAddress('0x'), false)
+    assert.equal(isWindowAddress('55f3b1d9b170'), false)
+    assert.equal(isWindowAddress('0x1\' }) hl.exec_cmd(\'rm\''), false)
+    assert.equal(isWindowAddress(undefined), false)
+})
+
+const dropWorkspace = new Function(source + '\nreturn dropWorkspace')()
+// Buttons 40 wide with 4 between them, starting at 100: 1 [100-140], 2 [144-184], 3 [188-228], 4 [232-272].
+// Reach of the bar: 48 over the buttons, 240 at the sides.
+const near = { buttons: 48, sides: 240 }
+const slotsOf = emptyIds => [1, 2, 3, 4].map((id, index) => ({
+    id: id,
+    left: 100 + index * 44,
+    right: 140 + index * 44,
+    empty: emptyIds.includes(id),
+}))
+
+test('a drop on a button goes to that workspace, empty or not', () => {
+    assert.equal(dropWorkspace(160, 0, slotsOf([]), near), 2)
+    assert.equal(dropWorkspace(200, -10, slotsOf([3]), near), 3)
+})
+
+test('a drop in the gap between buttons goes to the closer one, the left one on a tie', () => {
+    assert.equal(dropWorkspace(141, 0, slotsOf([]), near), 1)
+    assert.equal(dropWorkspace(143, 0, slotsOf([]), near), 2)
+    assert.equal(dropWorkspace(142, 0, slotsOf([]), near), 1)
+})
+
+test('a drop a little above the buttons still counts as on them', () => {
+    assert.equal(dropWorkspace(250, 48, slotsOf([]), near), 4)
+})
+
+test('right of the buttons, near the bar, goes to the rightmost free workspace', () => {
+    assert.equal(dropWorkspace(900, 0, slotsOf([1, 3]), near), 3)
+    assert.equal(dropWorkspace(273, 30, slotsOf([2]), near), 2)
+    assert.equal(dropWorkspace(900, 240, slotsOf([1, 3]), near), 3)
+})
+
+test('left of the buttons, near the bar, goes to the leftmost free workspace', () => {
+    assert.equal(dropWorkspace(10, 0, slotsOf([2, 4]), near), 2)
+    assert.equal(dropWorkspace(99, 40, slotsOf([4]), near), 4)
+    assert.equal(dropWorkspace(10, 240, slotsOf([2, 4]), near), 2)
+})
+
+test('the sides reach higher than the buttons', () => {
+    // 200 above the bar: still the rightmost free one at the side, but already "up" over the buttons.
+    assert.equal(dropWorkspace(900, 200, slotsOf([1, 3]), near), 3)
+    assert.equal(dropWorkspace(160, 200, slotsOf([1, 3]), near), 1)
+    // Past the side's reach it is "up" there too.
+    assert.equal(dropWorkspace(900, 241, slotsOf([1, 3]), near), 1)
+})
+
+test('away from the bar goes to the lowest free workspace, wherever along the bar', () => {
+    assert.equal(dropWorkspace(160, 49, slotsOf([3, 4]), near), 3)
+    assert.equal(dropWorkspace(900, 500, slotsOf([3, 4]), near), 3)
+    assert.equal(dropWorkspace(10, 500, slotsOf([4]), near), 4)
+})
+
+test('with no free workspace the sides and away from the bar do nothing', () => {
+    assert.equal(dropWorkspace(900, 0, slotsOf([]), near), 0)
+    assert.equal(dropWorkspace(10, 0, slotsOf([]), near), 0)
+    assert.equal(dropWorkspace(160, 300, slotsOf([]), near), 0)
+})
+
+test('no buttons at all: nowhere to drop', () => {
+    assert.equal(dropWorkspace(160, 0, [], near), 0)
+})
+
+const workspaceMovePlan = new Function(source + '\nreturn workspaceMovePlan')()
+
+test('a workspace moved to a number nobody has just takes that number', () => {
+    assert.equal(workspaceMovePlan(2, 7, true, false, [1, 2, 3], 1), 'renumber')
+})
+
+test('moving the workspace on screen keeps the view on its old number', () => {
+    assert.equal(workspaceMovePlan(1, 7, true, false, [1, 2, 3], 1), 'renumberAndStay')
+})
+
+test('moving onto the empty workspace on screen shows the source first, then renumbers it', () => {
+    assert.equal(workspaceMovePlan(2, 5, true, false, [1, 2, 5], 5), 'showThenRenumber')
+})
+
+test('moving onto a workspace with windows moves the windows one by one', () => {
+    assert.equal(workspaceMovePlan(2, 3, true, true, [1, 2, 3], 1), 'moveWindows')
+    assert.equal(workspaceMovePlan(2, 3, true, true, [1, 2, 3], 3), 'moveWindows')
+})
+
+test('an empty workspace shown on another monitor cannot be renumbered onto, so windows move', () => {
+    assert.equal(workspaceMovePlan(2, 4, true, false, [1, 2, 4], 1), 'moveWindows')
+})
+
+test('nothing to move, the same workspace or bad ids: nothing happens', () => {
+    assert.equal(workspaceMovePlan(2, 7, false, false, [1, 2], 1), 'none')
+    assert.equal(workspaceMovePlan(2, 2, true, true, [1, 2], 1), 'none')
+    assert.equal(workspaceMovePlan(0, 2, true, false, [1], 1), 'none')
+    assert.equal(workspaceMovePlan(2, -1, true, false, [1, 2], 1), 'none')
+})
+
+const workspaceNumber = new Function(source + '\nreturn workspaceNumber')()
+
+test('a workspace number is its id when Quickshell knows it', () => {
+    assert.equal(workspaceNumber(7, '7'), 7)
+    assert.equal(workspaceNumber(3, 'web'), 3)
+})
+
+test('a placeholder workspace (id -1) is numbered by its name', () => {
+    assert.equal(workspaceNumber(-1, '6'), 6)
+})
+
+test('a placeholder without a numeric name stays unknown', () => {
+    assert.equal(workspaceNumber(-1, 'web'), -1)
+    assert.equal(workspaceNumber(-1, ''), -1)
+    assert.equal(workspaceNumber(-1, undefined), -1)
+})

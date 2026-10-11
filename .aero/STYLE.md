@@ -54,6 +54,7 @@ Aero (light) is the base; Slate overrides only what differs. Values not listed f
 | `space-1` .. `space-6` | 4 / 8 / 12 / 16 / 24 / 32 px |
 | `radius-control` / `panel` / `window` | 3 / 6 / 8 px |
 | `motion-fast` / `motion-soft` | 120ms / 220ms, ease-out |
+| `drag-image-opacity` | 0.75 (a picture carried under the pointer, so what it is over stays visible) |
 
 ### Backdrop (Frutiger Aero imagery)
 

@@ -23,6 +23,18 @@ Needs Quickshell and Hyprland (tested with Hyprland 0.56 and a Lua config).
     - **Hover a card** to light it up and show its red close button.
     - **Click a card** to go to that window: its workspace is shown and the window gets focus. The pointer stays where it is.
     - **Click the close button** to ask the window to close, exactly like its own close button: an app with unsaved work can ask what to do, or refuse.
+    - **Drag a card** to move its window to another workspace. The card comes off the popup and stays under the pointer exactly where you took it, see-through so you can see what is under it. The workspace button where the window would land lights up, so you always know before letting go. You stay on the workspace you are on. Where you drop it:
+        - **on a workspace button**: that workspace (empty ones too, so a window can go to a new one). The bar does not have to be hit exactly: up to 48px above it still counts, and between two buttons the closer one is taken;
+        - **left of the workspace buttons**, on the bar or up to 240px above it: the leftmost workspace without windows;
+        - **right of the workspace buttons**, on the bar or up to 240px above it: the rightmost workspace without windows;
+        - **anywhere higher up the screen**: the lowest workspace without windows.
+
+        When there is no workspace without windows, dropping on the sides or higher up does nothing (no button lights up). Dropping it on its own workspace's button leaves it where it is.
+
+        **Changed your mind?** Where you took the card from, a glass "Put back" slot stays. Bring the card back over it (its edge glows blue) and let go: nothing happens, as if you had never picked it up.
+- **Drag a workspace button** (one with windows) to move the whole workspace: all its windows go together. It works exactly like dragging a card: the button stays under the pointer where you took it, the target button lights up, the same places count (a button, left or right of the buttons, or higher up), and a glass slot (just the "put back" arrow, as the button is small) stays in its place to drop it back on. You stay on the workspace number you are on.
+    - **To a workspace without windows**: the workspace simply takes the new number, so everything stays exactly as it was: layout, positions, sizes, order, fullscreen and floating windows.
+    - **To a workspace that already has windows**: the windows are moved in one by one (biggest first) and Hyprland fits them in among the ones there, so their layout is not kept (there is no way to keep two layouts in one place).
 - **Empty workspace button**: the narrow strip at the right end of the bar, where Windows 7 has "Show desktop". Click it to go to the first workspace without windows (the lowest-numbered one; when all have windows, the next new one).
 
 ## Theme
@@ -38,3 +50,9 @@ hl.layer_rule({ match = { namespace = "hypraero-bar" }, blur = true, ignore_alph
 ```
 
 The exact rule syntax depends on your Hyprland version; without it the bar still looks fine, just without blur.
+
+While a window or workspace is dragged out of the bar, a transparent layer named `hypraero-drop` covers the screen (it draws what you carry and the "Put back" slot, and takes the drop). With blur on it, the slot is frosted glass over what is behind it (only the slot and the carried picture are blurred, the rest of the layer is fully transparent); `no_anim` makes it appear at once if your config animates layers:
+
+```lua
+hl.layer_rule({ match = { namespace = "hypraero-drop" }, blur = true, ignore_alpha = 0.2, no_anim = true })
+```

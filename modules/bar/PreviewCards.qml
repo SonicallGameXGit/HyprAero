@@ -7,13 +7,19 @@ import '../../services/pictureBounds.js' as PictureBounds
 
 // One set of window preview cards, like the Windows 7 taskbar thumbnails: icon, title and a close button
 // on top, a picture below, biggest window first. A card lights up under the pointer; clicking it goes to
-// that window. The popup keeps two sets so the next workspace's cards can load behind the shown ones.
+// that window, dragging it moves the window to another workspace (see `Bar.dropTarget`). The popup keeps two sets so
+// the next workspace's cards can load behind the shown ones.
 Grid {
     id: root
 
     // The windows to show, and whether this set is in use: only then are its pictures captured.
     property var windows: []
     property bool active: false
+    // A card of this set is being dragged; the popup must keep it (and its window list) until it is dropped.
+    property bool dragging: false
+    // Passed to each card's `DragSource`: the bar's screen and the popup window's place in the bar.
+    property var screen: null
+    property point windowOffset: Qt.point(0, 0)
     // Every card has its picture (or will never get one), so the set can be shown without blank cards.
     readonly property bool ready: {
         if (cards.count !== windows.length) {
@@ -166,6 +172,13 @@ Grid {
 
                     interval: root.scanDelay
                     onTriggered: card.scan()
+                }
+
+                DragSource {
+                    address: card.window.address
+                    screen: root.screen
+                    windowOffset: root.windowOffset
+                    onDraggingChanged: root.dragging = dragging
                 }
 
                 Column {

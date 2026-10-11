@@ -3,11 +3,14 @@ import qs.design
 import qs.services
 
 // One workspace: a dot when empty, the app icon when it has one app, and the biggest app's icon
-// with the second biggest as a small badge in the bottom-right corner when it has several.
+// with the second biggest as a small badge in the bottom-right corner when it has several. One with
+// windows can be dragged to move all of them to another workspace.
 ControlButton {
     id: root
 
     property var entry: null
+    // The bar's screen, for the ghost left behind while the workspace is dragged.
+    property var screen: null
 
     readonly property string mainApp: entry === null || entry.mainApp === null ? '' : entry.mainApp
     readonly property string secondApp: entry === null || entry.secondApp === null ? '' : entry.secondApp
@@ -19,6 +22,11 @@ ControlButton {
     kind: 'tool'
     implicitWidth: 44
     implicitHeight: 40
+
+    DragSource {
+        workspaceId: root.entry !== null && root.entry.windows.length > 0 ? root.entry.id : 0
+        screen: root.screen
+    }
 
     DotIcon {
         anchors.centerIn: parent

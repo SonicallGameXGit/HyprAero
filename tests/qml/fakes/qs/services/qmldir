@@ -1,0 +1,3 @@
+module qs.services
+singleton BarDrag 1.0 BarDrag.qml
+singleton Workspaces 1.0 Workspaces.qml

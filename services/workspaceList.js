@@ -102,3 +102,94 @@ function firstEmptyWorkspace(entries) {
 
     return highest + 1
 }
+
+// Whether `address` looks like a Hyprland window address (`0x` and hex digits). Addresses go into
+// dispatchers, which are Lua code, so nothing else may get through.
+function isWindowAddress(address) {
+    return typeof address === 'string' && /^0x[0-9a-fA-F]+$/.test(address)
+}
+
+// The workspace a window dragged out of the bar goes to when dropped, or 0 for none (nothing happens).
+// `x` is the pointer's position along the bar, `away` how far it is from the bar toward the middle of the
+// screen (0 or less: on the bar). `slots` are the workspace buttons in bar order, as
+// [{ id, left, right, empty }] with `left` / `right` in the same coordinates as `x`.
+//
+// Near the bar the pointer counts as on it, so it need not be aimed exactly: within `near.buttons` over
+// the buttons it picks the closest one; within `near.sides` before the first button the leftmost
+// workspace without windows, past the last one the rightmost. The sides reach further, so a drop toward a
+// corner is easy, while the middle stays short so "up" is quick to reach. Anywhere else it picks the
+// lowest workspace without windows. No such workspace: 0.
+function dropWorkspace(x, away, slots, near) {
+    if (slots.length === 0) {
+        return 0
+    }
+
+    const free = slots.filter(slot => slot.empty)
+    const lowestFree = free.length > 0 ? free[0].id : 0
+    const beforeButtons = x < slots[0].left
+    const pastButtons = x > slots[slots.length - 1].right
+    const reach = beforeButtons || pastButtons ? near.sides : near.buttons
+    if (away > reach || beforeButtons) {
+        return lowestFree
+    }
+
+    if (pastButtons) {
+        return free.length > 0 ? free[free.length - 1].id : 0
+    }
+
+    let closest = slots[0]
+    let closestDistance = Infinity
+    for (const slot of slots) {
+        const distance = Math.max(slot.left - x, x - slot.right, 0)
+        if (distance < closestDistance) {
+            closest = slot
+            closestDistance = distance
+        }
+    }
+
+    return closest.id
+}
+
+// How every window of workspace `fromId` goes to workspace `toId`. `existingIds` are the workspaces
+// Hyprland has right now (an empty one exists only while it is shown somewhere).
+//
+// - 'renumber': the target does not exist, so the source workspace just takes its id; layout, positions,
+//   sizes and order stay exactly as they are.
+// - 'renumberAndStay': the same, but the source is the one on screen; the view then goes back to the old
+//   id, so it stays on the number it was on, as when a single window is moved away.
+// - 'showThenRenumber': the target is the empty workspace on screen. Showing the source first lets
+//   Hyprland drop the empty one, then the source takes its id; the view ends on the number it was on.
+// - 'moveWindows': the target exists with windows (or empty on another monitor): the windows are moved
+//   one by one and Hyprland places them among the ones already there.
+// - 'none': nothing to move, or the same workspace.
+function workspaceMovePlan(fromId, toId, fromHasWindows, toHasWindows, existingIds, focusedId) {
+    if (fromId <= 0 || toId <= 0 || fromId === toId || fromHasWindows === false) {
+        return 'none'
+    }
+
+    if (existingIds.includes(toId) === false) {
+        return fromId === focusedId ? 'renumberAndStay' : 'renumber'
+    }
+
+    if (toHasWindows === false && toId === focusedId) {
+        return 'showThenRenumber'
+    }
+
+    return 'moveWindows'
+}
+
+// The number of a workspace as Quickshell reports it. Quickshell 0.3.2 gives a workspace it has only
+// heard of by name (as after a renumber) the id -1 until its next full refresh, which may never come;
+// its name is then the number Hyprland gave it. A renamed workspace has a real id, so this only matters
+// for those placeholders. Still unknown: -1.
+function workspaceNumber(id, name) {
+    if (id > 0) {
+        return id
+    }
+
+    if (typeof name === 'string' && /^[0-9]+$/.test(name)) {
+        return Number(name)
+    }
+
+    return -1
+}
