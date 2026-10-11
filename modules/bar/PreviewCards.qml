@@ -5,8 +5,8 @@ import qs.design
 import qs.services
 import '../../services/pictureBounds.js' as PictureBounds
 
-// One set of window preview cards, like the Windows 7 taskbar thumbnails: icon, title and a close button
-// on top, a picture below, biggest window first. A card lights up under the pointer; clicking it goes to
+// One set of window preview cards, like the Windows 7 taskbar thumbnails: icon, title, a maximize / restore
+// and a close button on top, a picture below, biggest window first. A card lights up under the pointer; clicking it goes to
 // that window, dragging it moves the window to another workspace (see `Bar.dropTarget`). The popup keeps two sets so
 // the next workspace's cards can load behind the shown ones.
 Grid {
@@ -53,7 +53,8 @@ Grid {
     readonly property int scanSize: 256
     readonly property int scanThreshold: 128
     readonly property int iconSize: 16
-    readonly property int closeSize: 16
+    // The caption buttons (maximize / restore and close).
+    readonly property int captionSize: 16
     // Room between a card's edge and its content, so the hover face frames it.
     readonly property int cardPadding: Theme.space2
 
@@ -233,7 +234,7 @@ Grid {
                         Text {
                             id: title
 
-                            width: parent.width - root.iconSize - root.closeSize - Theme.space1 * 2
+                            width: parent.width - root.iconSize - root.captionSize * 2 - Theme.space1 * 3
                             height: root.iconSize
                             verticalAlignment: Text.AlignVCenter
                             // An untitled window still needs a name in the card.
@@ -244,12 +245,34 @@ Grid {
                             elide: Text.ElideRight
                         }
 
+                        // Windows' maximize / restore, after the window's place in the layout: a tiled
+                        // window fills its place like a maximized one, so it shows "restore" and floats the
+                        // window; a floating one shows "maximize" and fits it back into the layout.
+                        ControlButton {
+                            width: root.captionSize
+                            height: root.captionSize
+                            opacity: card.hovered ? 1 : 0
+                            Accessible.role: Accessible.Button
+                            Accessible.name: card.window.floating ? qsTr('Fit into layout') : qsTr('Float freely')
+                            onClicked: Workspaces.setFloating(card.window.address, card.window.floating === false)
+
+                            Behavior on opacity {
+                                NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
+                            }
+
+                            MaximizeGlyph {
+                                anchors.centerIn: parent
+                                size: 8
+                                restore: card.window.floating === false
+                            }
+                        }
+
                         // Shown on the hovered card only, like on Windows 7. It asks the app to close, so
                         // the app can still ask to save or refuse.
                         ControlButton {
                             kind: 'danger'
-                            width: root.closeSize
-                            height: root.closeSize
+                            width: root.captionSize
+                            height: root.captionSize
                             opacity: card.hovered ? 1 : 0
                             Accessible.role: Accessible.Button
                             Accessible.name: qsTr('Close')

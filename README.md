@@ -2,13 +2,120 @@
 
 A Windows Aero style desktop shell for Hyprland, built on Quickshell. Work in progress.
 
-## Run
+## Setting it up
+
+The Lua examples go into your Hyprland config (`~/.config/hypr/hyprland.lua`). Only the first two steps are needed to run the shell; the rest makes it look and feel the way it is meant to.
+
+### 1. What you need
+
+- **Hyprland** 0.56 or newer, with a **Lua config** (`hyprland.lua`). The shell talks to Hyprland in Lua (switching workspaces, moving windows), which a classic `hyprland.conf` setup does not understand.
+- **Quickshell** 0.3.2 or newer (on Arch: `pacman -S quickshell`).
+- **gdbus** (part of glib2) and **xdg-desktop-portal** with a backend that knows the light / dark setting (`xdg-desktop-portal-gtk`, `-gnome` or `-kde`), so the shell follows your theme. Without them it stays light.
+- A UI font: Segoe UI, Selawik, Noto Sans or Open Sans, the first one installed is used (`noto-fonts` is the easy choice).
+- **xdg-utils** (`xdg-open`), so the start menu's folders open in your file manager.
+- Optional: **xdg-terminal-exec** or a `$TERMINAL` variable (the start menu's Terminal and terminal apps; otherwise the first of kitty, foot, alacritty, wezterm, konsole and xterm found), **hyprlock** (Lock in the start menu).
+
+### 2. Get it and run it
 
 ```bash
-qs --path=./     # from the project root; qs log to read the log, qs kill to stop
+git clone https://github.com/SonicallGameXGit/HyprAero.git ~/HyprAero
+qs --path ~/HyprAero     # qs log --path ~/HyprAero reads its log, qs kill --path ~/HyprAero stops it
 ```
 
-Needs Quickshell and Hyprland (tested with Hyprland 0.56 and a Lua config).
+To start it with Hyprland, add it to the autostart. If you used another bar (Waybar, an AGS shell, ...), take that one out, or both will show:
+
+```lua
+local hyprAero = "~/HyprAero"   -- where you cloned it; the examples below use this too
+
+hl.on("hyprland.start", function()
+    hl.exec_cmd("qs --path " .. hyprAero)
+end)
+```
+
+### 3. Blur behind the glass
+
+The shell draws its own glass, so it looks right without blur, but real Aero glass is frosted: what is behind it is blurred. Only Hyprland can do that, and only for what your config asks it to. Turn blur on and add these two layer rules:
+
+```lua
+hl.config({
+    decoration = {
+        blur = {
+            enabled  = true,
+            size     = 5,
+            passes   = 2,
+            popups   = true,     -- apps' own right-click menus get frosted too
+            vibrancy = 0.1696,
+        },
+    },
+})
+
+-- The bar and everything that opens from it: the start button, the start menu, the window previews,
+-- right-click menus and tooltips.
+hl.layer_rule({ match = { namespace = "hypraero-bar" }, blur = true, blur_popups = true, ignore_alpha = 0.5 })
+-- What you carry while dragging a window, a workspace or an app, and its "Put back" slot.
+hl.layer_rule({ match = { namespace = "hypraero-drop" }, blur = true, ignore_alpha = 0.2, no_anim = true })
+```
+
+Why each part is there:
+
+- **`blur_popups = true`**: the start menu, the window previews and the menus are popups of the bar. Hyprland blurs a layer's popups only when its rule says so; without it only the bar itself is frosted, and the menu's glass shows what is behind it sharp.
+- **`ignore_alpha = 0.5`**: blur only where the shell draws glass. The window previews' popup is much bigger than the panel you see (so it never has to move), and menus and the start button have soft shadows; without this, Hyprland blurs those see-through parts too, and you get a frosted rectangle around them. The glass itself is more opaque than 0.5 in both themes, the shadows are lighter, so only the glass is kept.
+- **`hypraero-drop`**: while something is dragged out of the bar, a transparent layer covers the screen to draw it and take the drop. With blur, the "Put back" slot is frosted glass; the rest of the layer is fully transparent and stays clear. `no_anim` makes it appear at once if your config animates layers.
+
+### 4. Windows: floating and rounded, as on Windows
+
+Windows 7 opens every window floating, with rounded corners and a soft shadow. These rules do the same: every window opens floating, a floating window gets the family's 8px window corners, and a tiled one (after **Fit into layout**, see the window previews) stays square, as tiled windows touch each other.
+
+```lua
+hl.config({
+    general = {
+        gaps_in     = 0,
+        gaps_out    = 0,
+        border_size = 0,   -- the shell's look comes from the glass and shadows, not from a coloured border
+    },
+
+    decoration = {
+        rounding = 0,      -- tiled windows: square
+
+        shadow = {
+            enabled      = true,
+            range        = 16,
+            render_power = 2,
+            color        = "rgba(00000033)",   -- soft, never a heavy black block
+        },
+    },
+})
+
+hl.window_rule({
+    name  = "float-all",
+    match = { class = ".*" },
+    float = true,
+})
+
+hl.window_rule({
+    name  = "round-windows-on-float",
+    match = { float = true },
+    rounding       = 8,
+    rounding_power = 8,
+})
+```
+
+The rounding rule follows the window: tile a floating window and its corners turn square, float it again and they are rounded.
+
+### 5. Key bindings
+
+Windows' own shortcuts, where Hyprland has no reason to differ:
+
+```lua
+-- The start menu (on the focused monitor; `open` and `close` work too).
+hl.bind("ALT + SPACE", hl.dsp.exec_cmd("qs ipc --path " .. hyprAero .. " call startMenu toggle"))
+-- A terminal (any terminal you use).
+hl.bind("SUPER + C", hl.dsp.exec_cmd("kitty"))
+-- The file manager, as Win + E on Windows (any file manager you use).
+hl.bind("SUPER + E", hl.dsp.exec_cmd("thunar"))
+-- Close the focused window, as on Windows; the app can still ask to save.
+hl.bind("ALT + F4", hl.dsp.window.close())
+```
 
 ## What works
 
@@ -20,8 +127,9 @@ Needs Quickshell and Hyprland (tested with Hyprland 0.56 and a Lua config).
     
     An app without an icon in your icon theme gets a generic window picture. The current workspace has a highlight that glides to the new one.
 - **Window previews**: hover a workspace with windows to see a card per window in a popup that sits on top of the bar, like the Windows 7 taskbar thumbnails: icon and title, then a live picture of the window (a generic icon until the picture arrives, or if the compositor cannot provide one). Each card has the window's proportions. A window hanging off the edge of its monitor shows a still picture of its visible part, taken when the popup opens, instead of a live one: the compositor cannot provide the rest, and a live picture of it would jump around during workspace switches. Moving the pointer to another workspace keeps the current previews until the new ones are ready, then fades between them. Biggest window first, up to 4 cards per row. The popup stays open while the pointer is on it and closes shortly after it leaves. Empty workspaces show nothing.
-    - **Hover a card** to light it up and show its red close button.
+    - **Hover a card** to light it up and show its two buttons, as on a Windows title bar: maximize / restore and the red close button.
     - **Click a card** to go to that window: its workspace is shown and the window gets focus. The pointer stays where it is.
+    - **Click the maximize / restore button** to switch the window between the tiled layout and floating, like maximizing and restoring on Windows. A tiled window fills its place, so it shows the "restore" picture (two boxes) and floats the window; a floating window shows the "maximize" picture (one box) and fits it back into the layout. The same as **Float freely** / **Fit into layout** in the card's menu.
     - **Click the close button** to ask the window to close, exactly like its own close button: an app with unsaved work can ask what to do, or refuse.
     - **Drag a card** to move its window to another workspace. The card comes off the popup and stays under the pointer exactly where you took it, see-through so you can see what is under it. The workspace button where the window would land lights up, so you always know before letting go. You stay on the workspace you are on. Where you drop it:
         - **on a workspace button**: that workspace (empty ones too, so a window can go to a new one). The bar does not have to be hit exactly: up to 48px above it still counts, and between two buttons the closer one is taken;
@@ -62,11 +170,7 @@ Needs Quickshell and Hyprland (tested with Hyprland 0.56 and a Lua config).
     - **How "most used" is worked out**: each time you use an app it gets a point, and points fade by half every two weeks without use. Apps you use now rank above ones you used a lot long ago, and an app you stop using slides back to its A to Z place over a couple of months. Using an app means starting it from the menu, or keeping one of its windows focused for 10 seconds (so apps started by a key binding or a terminal count too; this can be turned off, see Settings). It counts at most once every 10 minutes per app, and not while you are away from the computer (5 minutes without input). Featured apps and usage are kept in `~/.local/state/hypraero/start-menu.json` (or under `$XDG_STATE_HOME`).
     - **Right side, your places**: your picture (`~/.face`, or a coloured square with your initial when there is none) and name (opens your home folder), Documents, Pictures, Music, Videos and Downloads (your XDG folders; one you set to your home folder is left out), Computer (the file system root) and Terminal. Pointing at a place shows its icon in the picture frame. Folders open in your default file manager. The terminal is `xdg-terminal-exec` when installed, else `$TERMINAL`, else the first of kitty, foot, alacritty, wezterm, konsole and xterm that is installed. Apps that ask to run in a terminal use the same one.
     - **Shut down** turns the computer off; the arrow next to it has Restart, Sleep, Lock and Log out. Shut down, Restart and Log out close all your apps, so they ask first (Escape or a click outside says no). Lock runs `hyprlock` when it is installed, otherwise asks the session to lock (`loginctl lock-session`), which needs a locker listening for it, such as `hypridle` with a lock command; without one, Lock does nothing.
-    - **Open it with a key**: bind a key to `qs ipc --path /path/to/HyprAero call startMenu toggle` (also `open` and `close`). It opens on the focused monitor. For example, in a Lua config:
-
-        ```lua
-        hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("qs ipc --path /path/to/HyprAero call startMenu toggle"))
-        ```
+    - **Open it with a key**: Alt + Space with the binding from "Key bindings" above. It opens on the focused monitor.
 
 ## Settings
 
@@ -88,21 +192,3 @@ Settings live in `~/.config/hypraero/config.json` (or under `$XDG_CONFIG_HOME`; 
 ## Theme
 
 The bar follows the system light/dark setting (the desktop portal's `color-scheme`, so GNOME/GTK settings or your portal backend) and changes live. It needs `gdbus` (part of glib2); without it the bar stays light.
-
-## Blur behind the bar (optional)
-
-The bar draws its own glass. For real blur behind it, add a layer rule for the namespace `hypraero-bar` to your Hyprland config, for example in Lua:
-
-```lua
-hl.layer_rule({ match = { namespace = "hypraero-bar" }, blur = true, ignore_alpha = 0.2 })
-```
-
-The exact rule syntax depends on your Hyprland version; without it the bar still looks fine, just without blur.
-
-The start menu, the window previews and the right-click menus are popups of the bar, so they are blurred only when the bar's rule also covers its popups (`blur_popups = true` in the rule above, `blurpopups` in a classic `.conf`). Without it the glass of the menu shows what is behind it unblurred.
-
-While a window or workspace is dragged out of the bar, a transparent layer named `hypraero-drop` covers the screen (it draws what you carry and the "Put back" slot, and takes the drop). With blur on it, the slot is frosted glass over what is behind it (only the slot and the carried picture are blurred, the rest of the layer is fully transparent); `no_anim` makes it appear at once if your config animates layers:
-
-```lua
-hl.layer_rule({ match = { namespace = "hypraero-drop" }, blur = true, ignore_alpha = 0.2, no_anim = true })
-```
