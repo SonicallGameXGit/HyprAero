@@ -26,16 +26,18 @@ const apps = [
     app('org.gnome.Nautilus', 'Files', { command: ['/usr/bin/nautilus', '--new-window'] }),
 ]
 
-test('sections: featured apart, both by use then A to Z', () => {
+test('sections: featured apart by use, then the used ones by use, then the rest A to Z', () => {
     const scores = { zathura: 1, firefox: 5, kitty: 2, code: 2 }
     const sections = menu.buildSections(apps, scores, ['kitty', 'audacity', 'gone'])
     assert.deepEqual(ids(sections.featured), ['kitty', 'audacity'])
-    assert.deepEqual(ids(sections.others), ['firefox', 'code', 'zathura', 'org.gnome.Nautilus'])
+    assert.deepEqual(ids(sections.used), ['firefox', 'code', 'zathura'])
+    assert.deepEqual(ids(sections.rest), ['org.gnome.Nautilus'])
 })
 
-test('sections: with no use at all, plain A to Z ignoring case', () => {
+test('sections: with no use at all, every app is left over, plain A to Z ignoring case', () => {
     const sections = menu.buildSections(apps, {}, [])
-    assert.deepEqual(ids(sections.others), ['audacity', 'org.gnome.Nautilus', 'firefox', 'kitty', 'code', 'zathura'])
+    assert.deepEqual(ids(sections.used), [])
+    assert.deepEqual(ids(sections.rest), ['audacity', 'org.gnome.Nautilus', 'firefox', 'kitty', 'code', 'zathura'])
 })
 
 test('search: empty finds nothing (the sections show instead)', () => {
@@ -83,30 +85,35 @@ test('launch: no arguments opens a plain terminal', () => {
 
 const kinds = rows => rows.map(row => row.kind === 'app' ? row.app.id : row.kind + ':' + row.section)
 
-test('rows: each header under its apps with the line above it, featured ones at the bottom', () => {
-    const rows = menu.menuRows({ featured: [app('kitty', 'kitty')], others: [app('firefox', 'Firefox')] })
-    assert.deepEqual(kinds(rows), ['firefox', 'separator:', 'header:others', 'kitty', 'separator:', 'header:featured'])
+test('rows: top to bottom, featured, the line, most used, the line, the rest', () => {
+    const rows = menu.menuRows({ featured: [app('kitty', 'kitty')], used: [app('firefox', 'Firefox')], rest: [app('a', 'A')] })
+    assert.deepEqual(kinds(rows), ['header:featured', 'kitty', 'separator:', 'header:used', 'firefox', 'separator:', 'a'])
 })
 
 test('rows: no featured app yet shows a hint in its place', () => {
-    const rows = menu.menuRows({ featured: [], others: [] })
-    assert.deepEqual(kinds(rows), ['separator:', 'header:others', 'hint:featured', 'separator:', 'header:featured'])
+    const rows = menu.menuRows({ featured: [], used: [], rest: [app('a', 'A')] })
+    assert.deepEqual(kinds(rows), ['header:featured', 'hint:featured', 'separator:', 'a'])
 })
 
-test('rows: a search shows its results over the line and its header, or a hint when nothing matched', () => {
-    assert.deepEqual(kinds(menu.searchRows([app('a', 'A'), app('b', 'B')])), ['a', 'b', 'separator:', 'header:search'])
+test('rows: an empty section leaves out its header and its line', () => {
+    const rows = menu.menuRows({ featured: [app('kitty', 'kitty')], used: [app('firefox', 'Firefox')], rest: [] })
+    assert.deepEqual(kinds(rows), ['header:featured', 'kitty', 'separator:', 'header:used', 'firefox'])
+})
+
+test('rows: a search shows its header over its results, or a hint when nothing matched', () => {
+    assert.deepEqual(kinds(menu.searchRows([app('a', 'A'), app('b', 'B')])), ['header:search', 'a', 'b'])
     assert.deepEqual(kinds(menu.searchRows([])), ['hint:search'])
 })
 
 test('keyboard: steps skip headers and separators and stop at the ends', () => {
-    const rows = menu.menuRows({ featured: [app('kitty', 'kitty')], others: [app('a', 'A'), app('b', 'B')] })
-    // a, b, separator, header, kitty, separator, header
-    assert.equal(menu.nextAppRow(rows, rows.length, -1), 4)
-    assert.equal(menu.nextAppRow(rows, 4, -1), 1)
-    assert.equal(menu.nextAppRow(rows, 1, -1), 0)
-    assert.equal(menu.nextAppRow(rows, 0, -1), 0)
-    assert.equal(menu.nextAppRow(rows, -1, 1), 0)
-    assert.equal(menu.nextAppRow(rows, 4, 1), 4)
+    const rows = menu.menuRows({ featured: [app('kitty', 'kitty')], used: [app('a', 'A')], rest: [app('b', 'B')] })
+    // header, kitty, separator, header, a, separator, b
+    assert.equal(menu.nextAppRow(rows, -1, 1), 1)
+    assert.equal(menu.nextAppRow(rows, 1, 1), 4)
+    assert.equal(menu.nextAppRow(rows, 4, 1), 6)
+    assert.equal(menu.nextAppRow(rows, 6, 1), 6)
+    assert.equal(menu.nextAppRow(rows, rows.length, -1), 6)
+    assert.equal(menu.nextAppRow(rows, 1, -1), 1)
 })
 
 test('detail: the description, else the program, else nothing', () => {

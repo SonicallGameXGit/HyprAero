@@ -11,11 +11,12 @@ PopupWindow {
 
     property int barHeight: 48
 
-    readonly property int orbDiameter: 50
-    // The gap between the orb and the screen's bottom edge.
-    readonly property int bottomGap: 3
-    // How far the orb rises above the bar's top edge.
-    readonly property int rise: orbDiameter + bottomGap - barHeight
+    readonly property int orbDiameter: 54
+    // How far the orb rises above the bar's top edge: it is centred on the bar, so as much of it hangs
+    // below the screen's bottom edge, out of sight.
+    readonly property int rise: (orbDiameter - barHeight) / 2
+    // How much of the bar the button takes from its left end (the corner that counts as the orb).
+    readonly property int barWidth: corner.width
     // Room around the orb for its hover glow.
     readonly property int glowRoom: Theme.orbGlowBlur
 
@@ -50,7 +51,7 @@ PopupWindow {
         id: orb
 
         x: Theme.space2
-        y: root.height - root.bottomGap - root.orbDiameter
+        y: root.height - root.barHeight / 2 - root.orbDiameter / 2
         diameter: root.orbDiameter
         hovered: root.hovered
         pressed: root.pressed

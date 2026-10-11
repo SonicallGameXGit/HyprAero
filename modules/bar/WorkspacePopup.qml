@@ -23,6 +23,8 @@ PopupWindow {
     // Where this window's top-left is in the bar's coordinates: as wide as the bar and anchored above it,
     // its bottom edge sits at the anchor's top.
     readonly property point barOffset: Qt.point(anchor.rect.x, anchor.rect.y - height)
+    // The window whose right-click menu is open; its card stays lit.
+    property string menuAddress: ''
 
     readonly property int edgeMargin: Theme.space2
     // Room for the tallest list (three rows of cards) so the window never has to resize.
@@ -42,6 +44,8 @@ PopupWindow {
     signal hoverChanged(bool hovered)
     // A card was clicked: its window is being focused.
     signal windowChosen()
+    // A card was right-clicked; `at` is in the bar's coordinates.
+    signal windowMenuRequested(var window, point at)
 
     implicitWidth: anchor.rect.width
     implicitHeight: windowHeight
@@ -214,8 +218,10 @@ PopupWindow {
                 opacity: root.front === firstCards ? 1 : 0
                 screen: root.barScreen
                 windowOffset: root.barOffset
+                menuAddress: root.menuAddress
                 onReadyChanged: root.showLoaded(false)
                 onWindowChosen: root.windowChosen()
+                onWindowMenuRequested: (window, at) => root.windowMenuRequested(window, at)
 
                 Behavior on opacity {
                     NumberAnimation { duration: Theme.motionSoft; easing.type: Easing.OutCubic }
@@ -233,8 +239,10 @@ PopupWindow {
                 opacity: root.front === secondCards ? 1 : 0
                 screen: root.barScreen
                 windowOffset: root.barOffset
+                menuAddress: root.menuAddress
                 onReadyChanged: root.showLoaded(false)
                 onWindowChosen: root.windowChosen()
+                onWindowMenuRequested: (window, at) => root.windowMenuRequested(window, at)
 
                 Behavior on opacity {
                     NumberAnimation { duration: Theme.motionSoft; easing.type: Easing.OutCubic }

@@ -6,10 +6,11 @@ import qs.design
 import qs.services
 import '../../services/startMenu.js' as StartMenuList
 
-// The start menu, opened by the orb at the bar's left end. Laid out like the Windows 7 one, read from the
-// search field upwards for a bar at the bottom: on the left a white pane with "Featured" and the featured
-// apps right above the search field, the dark line, then "Most used" and every other app above it (most
-// used first, then A to Z); on the right, on the glass, the user's places and the shut down button.
+// The start menu, opened by the orb at the bar's left end. Laid out like the Windows 7 one: on the left a
+// white pane read from the top, "Featured" and the featured apps, the dark line, "Most used" and the apps
+// used lately, another line and every app left (A to Z), with the search field under it; on the right, on
+// the glass, the user's places and the shut down button. An app with actions of its own opens them under
+// it like a tree branch.
 //
 // It takes the keyboard while open (typing goes to the search) and closes on Escape, on a click outside,
 // and once something was started. An app can also be dragged out of it and dropped on a workspace, to
@@ -30,7 +31,7 @@ PopupWindow {
     property bool dragPointerShown: false
     property bool puttingBack: false
     // An app is being dragged out of this menu.
-    readonly property bool dragFromHere: BarDrag.appId !== '' && BarDrag.originScreen === barScreen
+    readonly property bool dragFromHere: BarDrag.from === 'startMenu' && BarDrag.originScreen === barScreen
 
     readonly property int menuWidth: 440
     readonly property int menuHeight: 560
@@ -107,21 +108,22 @@ PopupWindow {
     }
 
     // A search starts on its best result; back without one, nothing is current and the list is back at
-    // the bottom.
+    // the top.
     onRowsChanged: {
         if (search.text.trim() !== '') {
             list.selectFirst()
             return
         }
 
-        list.selected = -1
-        list.scrollToBottom()
+        list.select(-1)
+        list.scrollToTop()
     }
 
     function reset(): void {
         search.text = ''
-        list.selected = -1
-        list.scrollToBottom()
+        list.expanded = []
+        list.select(-1)
+        list.scrollToTop()
         contextMenu.close()
         dialog.open = false
         pendingPower = ''
@@ -231,13 +233,20 @@ PopupWindow {
             return
         }
 
+        // Right and Left open and close the current app's actions while there is no text to move through;
+        // Tab does it always, as in the old launcher.
+        const browsing = search.text === ''
         if (event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
             list.move(event.key === Qt.Key_Up ? -1 : 1)
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             const app = list.selectedApp()
             if (app !== null) {
-                launch(app, -1)
+                launch(app, list.selectedAction)
             }
+        } else if (event.key === Qt.Key_Tab) {
+            list.expandSelected(-1)
+        } else if (browsing && (event.key === Qt.Key_Right || event.key === Qt.Key_Left) && list.selectedApp() !== null) {
+            list.expandSelected(event.key === Qt.Key_Right ? 1 : 0)
         } else if (event.key === Qt.Key_Menu) {
             const app = list.selectedApp()
             if (app !== null) {
@@ -299,7 +308,7 @@ PopupWindow {
                 windowOffset: root.barOffset
                 returnArea: content
                 touchControls: Config.startMenu.touchControls
-                onLaunched: app => root.launch(app, -1)
+                onLaunched: (app, actionIndex) => root.launch(app, actionIndex)
                 onMenuRequested: (app, at) => root.openAppMenu(app, list.mapToItem(content, at))
             }
         }

@@ -27,13 +27,36 @@ PanelWindow {
     // How far above the bar a dragged window still counts as on it (`WorkspaceList.dropWorkspace`), so
     // the bar need not be hit exactly: a little over the buttons, a lot beside them.
     readonly property var dropReach: ({ buttons: 48, sides: 240 })
-    // The workspace a window (or a workspace's windows, or an app from the start menu) dragged over this
-    // screen would go to if dropped now (0: none); its button
-    // lights up so the drop is never a surprise.
-    // Where it would be put back nothing would happen, so no button lights up.
-    readonly property int dropTarget: dropLayer.hovered && dropLayer.puttingBack === false
+    // The app of what is dragged, if it can be pinned: an app (from the start menu or a pin), or a window
+    // whose app has a desktop entry; '' otherwise (a workspace, a window of an unknown app).
+    readonly property string dragApp: {
+        if (BarDrag.appId !== '') {
+            return BarDrag.appId
+        }
+
+        if (BarDrag.address === '') {
+            return ''
+        }
+
+        const window = Workspaces.windows.find(item => item.address === BarDrag.address)
+        return window === undefined ? '' : Apps.appFor(window.appId)
+    }
+    // Where on the pins an app or a window dragged over this screen would be pinned if dropped now (-1:
+    // not over the pins); the pins show a mark there.
+    readonly property int pinGap: dropLayer.hovered && dropLayer.puttingBack === false
+        ? pinGapAt(dropLayer.pointer)
+        : -1
+    // The workspace a window (or a workspace's windows, or an app) dragged over this screen would go to if
+    // dropped now (0: none); its button lights up so the drop is never a surprise. Where it would be put
+    // back, or over the pins, no button lights up.
+    readonly property int dropTarget: dropLayer.hovered && dropLayer.puttingBack === false && onPins(dropLayer.pointer) === false
         ? dropWorkspaceAt(dropLayer.pointer)
         : 0
+    // The window or the pinned app whose right-click menu is open (null: none).
+    property var menuWindow: null
+    property var menuApp: null
+    // The pin the pointer rests on, for its tooltip.
+    property Item hoveredPin: null
     // How many workspace buttons there are. It holds still during a drag: rebuilding the buttons would
     // destroy the one a workspace drag started from.
     property int buttonCount: 0
@@ -70,6 +93,79 @@ PanelWindow {
         return WorkspaceList.dropWorkspace(point.x, away, slots, dropReach)
     }
 
+    // Whether a drop at `point` (drop layer coordinates) belongs to the pins: an app or a window over the
+    // pins, on the bar itself. A workspace is never pinned, so the pins are no place for it.
+    function onPins(point: point): bool {
+        if (BarDrag.appId === '' && BarDrag.address === '') {
+            return false
+        }
+
+        const left = pinBar.mapToItem(null, 0, 0).x
+        const onBar = point.y >= dropLayer.height - root.height
+        return onBar && point.x >= left && point.x <= left + pinBar.width
+    }
+
+    // The gap of the pins a drop at `point` would pin the dragged app in, -1 when it is not over the pins
+    // or cannot be pinned (a window of an app without a desktop entry: nothing happens there).
+    function pinGapAt(point: point): int {
+        if (onPins(point) === false || dragApp === '') {
+            return -1
+        }
+
+        return pinBar.gapAt(point.x)
+    }
+
+    // A preview card's menu, `at` in the bar's coordinates. Windows 7 bolds what a click does.
+    function openWindowMenu(window: var, at: point): void {
+        const app = Apps.appFor(window.appId)
+        const pinned = Pins.isPinned(app)
+        menuApp = null
+        menuWindow = window
+        barMenu.show([
+            { text: qsTr('Focus'), bold: true, action: 'focus' },
+            { separator: true },
+            { text: qsTr('Fit into layout'), enabled: window.floating, action: 'tile' },
+            { text: qsTr('Float freely'), enabled: window.floating === false, action: 'float' },
+            { text: pinned ? qsTr('Unpin from bar') : qsTr('Pin to bar'), enabled: app !== '', action: pinned ? 'unpin' : 'pin', app: app },
+            { separator: true },
+            { text: qsTr('Close'), action: 'close' },
+        ], at)
+    }
+
+    // A pin's menu: the app, its own actions hanging under it, and unpinning.
+    function openPinMenu(app: var, at: point): void {
+        const items = [{ text: app.name, bold: true, action: 'open' }]
+        for (let index = 0; index < app.actions.length; index++) {
+            items.push({ text: app.actions[index], indent: true, action: 'action', index: index })
+        }
+
+        items.push({ separator: true })
+        items.push({ text: qsTr('Unpin from bar'), action: 'unpin', app: app.id })
+        menuWindow = null
+        menuApp = app
+        barMenu.show(items, at)
+    }
+
+    function menuChosen(item: var): void {
+        if (item.action === 'focus') {
+            Workspaces.focusWindow(menuWindow.address)
+            hideTimer.stop()
+            root.popupButton = null
+        } else if (item.action === 'tile' || item.action === 'float') {
+            Workspaces.setFloating(menuWindow.address, item.action === 'float')
+        } else if (item.action === 'pin') {
+            Pins.pin(item.app)
+        } else if (item.action === 'unpin') {
+            Pins.unpin(item.app)
+        } else if (item.action === 'close') {
+            Workspaces.closeWindow(menuWindow.address)
+        } else if (item.action === 'open') {
+            Apps.launch(menuApp.id, -1)
+        } else if (item.action === 'action') {
+            Apps.launch(menuApp.id, item.index)
+        }
+    }
+
     function buttonHoverChanged(button: var): void {
         if (button.hovered) {
             hideTimer.stop()
@@ -85,13 +181,13 @@ PanelWindow {
     }
 
     // While a card is dragged the pointer is off the popup, but the popup stays (hidden): the drag started
-    // from it.
+    // from it. It stays too while a card's menu is open over it.
     Timer {
         id: hideTimer
 
         interval: 150
         onTriggered: {
-            if (popup.dragging) {
+            if (popup.dragging || barMenu.visible) {
                 return
             }
 
@@ -107,6 +203,17 @@ PanelWindow {
         onDropped: {
             // Back where it was taken from: as if it was never taken.
             if (dropLayer.puttingBack) {
+                return
+            }
+
+            // Pinned there (a pin moves there); a window stays where it is. A start menu it came from stays
+            // open: nothing was started.
+            if (root.onPins(dropLayer.pointer)) {
+                const gap = root.pinGapAt(dropLayer.pointer)
+                if (gap >= 0) {
+                    Pins.placeAt(root.dragApp, gap)
+                }
+
                 return
             }
 
@@ -154,10 +261,12 @@ PanelWindow {
 
             hideTimer.restart()
         }
+        menuAddress: barMenu.visible && root.menuWindow !== null ? root.menuWindow.address : ''
         onWindowChosen: {
             hideTimer.stop()
             root.popupButton = null
         }
+        onWindowMenuRequested: (window, at) => root.openWindowMenu(window, at)
         // After a drop the pointer is wherever it was let go; the popup closes unless it is on a button
         // or on the popup again.
         onDraggingChanged: {
@@ -179,6 +288,22 @@ PanelWindow {
         onClicked: StartMenuState.toggle(root.screen.name)
     }
 
+    BarMenu {
+        id: barMenu
+
+        anchor.window: root
+        onChosen: item => root.menuChosen(item)
+        // The previews it was opened over close unless the pointer is back on them.
+        onDismissed: hideTimer.restart()
+    }
+
+    BarTooltip {
+        anchor.window: root
+        target: root.hoveredPin
+        shown: root.hoveredPin !== null && BarDrag.active === false && barMenu.visible === false
+        text: root.hoveredPin === null ? '' : root.hoveredPin.app.name
+    }
+
     // Grows up and to the right from the bar's left end, its bottom on the top of the orb, as in Vista.
     StartMenu {
         anchor.window: root
@@ -198,6 +323,25 @@ PanelWindow {
         x: -2
         width: parent.width + 4
         height: parent.height
+
+        // Right of the orb's corner (the orb takes the pointer there).
+        PinBar {
+            id: pinBar
+
+            x: 2 + startButton.barWidth + Theme.space1
+            anchors.verticalCenter: parent.verticalCenter
+            screen: root.screen
+            gap: root.pinGap
+            menuApp: barMenu.visible && root.menuApp !== null ? root.menuApp.id : ''
+            onMenuRequested: (app, at) => root.openPinMenu(app, pinBar.mapToItem(null, at))
+            onPinHovered: (pin, hovered) => {
+                if (hovered) {
+                    root.hoveredPin = pin
+                } else if (root.hoveredPin === pin) {
+                    root.hoveredPin = null
+                }
+            }
+        }
 
         // Inside the top and bottom glass borders and flush with the screen's right edge (the panel's right
         // border is off the screen), like Windows 7's "Show desktop".

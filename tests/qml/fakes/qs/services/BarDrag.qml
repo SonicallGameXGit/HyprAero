@@ -8,6 +8,7 @@ QtObject {
     property string address: ''
     property int workspaceId: 0
     property string appId: ''
+    property string from: ''
     property int begins: 0
     property int begunWorkspaceId: 0
     property string begunAppId: ''
@@ -16,7 +17,8 @@ QtObject {
 
     readonly property bool active: address !== '' || workspaceId !== 0 || appId !== ''
 
-    function begin(windowAddress: string, workspace: int, app: string, grab: var, size: size, point: point, screen: var, rect: rect, returnArea: rect): void {
+    function begin(windowAddress: string, workspace: int, app: string, source: string, grab: var, size: size, point: point, screen: var, rect: rect, returnArea: rect): void {
+        from = source
         address = windowAddress
         workspaceId = workspace
         appId = app
@@ -31,5 +33,6 @@ QtObject {
         address = ''
         workspaceId = 0
         appId = ''
+        from = ''
     }
 }

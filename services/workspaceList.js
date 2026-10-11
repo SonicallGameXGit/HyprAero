@@ -59,10 +59,21 @@ function rankApps(windows) {
         .map(entry => entry[0])
 }
 
-// The windows as { address, appId, title, area, width, height, offScreen, preview }, biggest first; ties are broken by app id, then title.
+// The windows as { address, appId, title, area, width, height, floating, offScreen, preview }, biggest
+// first; ties are broken by app id, then title.
 function rankWindows(windows) {
     return windows
-        .map(window => ({ address: window.address, appId: window.appId, title: window.title, area: window.area, width: window.width, height: window.height, offScreen: window.offScreen, preview: window.preview }))
+        .map(window => ({
+            address: window.address,
+            appId: window.appId,
+            title: window.title,
+            area: window.area,
+            width: window.width,
+            height: window.height,
+            floating: window.floating,
+            offScreen: window.offScreen,
+            preview: window.preview,
+        }))
         .sort((a, b) => b.area - a.area || compareText(a.appId, b.appId) || compareText(a.title, b.title))
 }
 

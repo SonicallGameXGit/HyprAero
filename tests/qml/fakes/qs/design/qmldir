@@ -1,6 +1,7 @@
 module qs.design
 singleton Theme 1.0 ../../../../../design/Theme.qml
 AppIconImage 1.0 ../../../../../design/AppIconImage.qml
+ChevronGlyph 1.0 ../../../../../design/ChevronGlyph.qml
 DragSource 1.0 ../../../../../design/DragSource.qml
 GenericAppIcon 1.0 ../../../../../design/GenericAppIcon.qml
 SearchGlyph 1.0 ../../../../../design/SearchGlyph.qml

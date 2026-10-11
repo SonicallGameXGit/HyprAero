@@ -20,6 +20,8 @@ Grid {
     // Passed to each card's `DragSource`: the bar's screen and the popup window's place in the bar.
     property var screen: null
     property point windowOffset: Qt.point(0, 0)
+    // The window whose right-click menu is open; its card stays lit.
+    property string menuAddress: ''
     // Every card has its picture (or will never get one), so the set can be shown without blank cards.
     readonly property bool ready: {
         if (cards.count !== windows.length) {
@@ -57,6 +59,8 @@ Grid {
 
     // A card was clicked and its window is being focused; the popup can go.
     signal windowChosen()
+    // A card was right-clicked; `at` is in the bar's coordinates.
+    signal windowMenuRequested(var window, point at)
 
     columns: Math.max(Math.min(windows.length, maxColumns), 1)
     spacing: Theme.space1
@@ -99,6 +103,7 @@ Grid {
                 property var grab: null
 
                 kind: 'tool'
+                highlighted: root.menuAddress !== '' && root.menuAddress === window.address
                 width: Math.max(root.minCardWidth, Math.min(Math.round(aspect * root.previewHeight) + 2, root.maxCardWidth)) + root.cardPadding * 2
                 height: body.implicitHeight + root.cardPadding * 2
                 Accessible.role: Accessible.Button
@@ -172,6 +177,15 @@ Grid {
 
                     interval: root.scanDelay
                     onTriggered: card.scan()
+                }
+
+                // The card's own MouseArea takes only the left button, so a right press comes down to here.
+                TapHandler {
+                    acceptedButtons: Qt.RightButton
+                    onTapped: eventPoint => {
+                        const at = card.mapToItem(null, eventPoint.position)
+                        root.windowMenuRequested(card.window, Qt.point(at.x + root.windowOffset.x, at.y + root.windowOffset.y))
+                    }
                 }
 
                 DragSource {

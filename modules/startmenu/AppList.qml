@@ -5,16 +5,20 @@ import qs.design
 import qs.services
 import '../../services/startMenu.js' as StartMenuList
 
-// The left pane's list: rows from `startMenu.js`, stacked from the bottom up, so the featured section (or
-// the search results) sits right above the search field and a short list hangs from there. Rows still
-// read top to bottom. One row is current (`selected`, an index into `rows`): the one under the pointer or the one
-// the keyboard moved to.
+// The left pane's list: rows from `startMenu.js`, top to bottom. One row is current (`selected`, an index
+// into `rows`): the one under the pointer or the one the keyboard moved to. An app with actions of its own
+// can be opened like a tree branch (`expanded`), its actions hanging under it; then one of them can be the
+// current one instead of the app (`selectedAction`).
 Item {
     id: root
 
     // Top to bottom.
     property var rows: []
     property int selected: -1
+    // Of the current app: -1 for the app itself, else the index of its action.
+    property int selectedAction: -1
+    // The ids of the apps whose actions are shown.
+    property var expanded: []
     property Tooltip tooltip: null
     // Passed to each row's `DragSource`: the bar's screen, the menu window's place in the bar, and where a
     // drop puts the app back (the whole menu).
@@ -25,13 +29,34 @@ Item {
     // picks it up at once, and the list only scrolls with the wheel, the scrollbar or the keyboard.
     property bool touchControls: false
 
-    signal launched(var app)
+    // `actionIndex` is -1 for the app itself.
+    signal launched(var app, int actionIndex)
     signal menuRequested(var app, point at)
 
-    // Up is -1, down is +1, in reading order; the first step up from nothing lands on the lowest app.
+    // Up is -1, down is +1, in reading order, through the actions of an open app too; the first step up
+    // from nothing lands on the lowest app.
     function move(step: int): void {
+        const app = selectedApp()
+        if (app !== null && isExpanded(app.id)) {
+            const next = selectedAction + step
+            if (next >= -1 && next < app.actions.length) {
+                selectedAction = next
+                return
+            }
+        }
+
         const from = selected === -1 && step < 0 ? rows.length : selected
-        select(StartMenuList.nextAppRow(rows, from, step))
+        const index = StartMenuList.nextAppRow(rows, from, step)
+        if (index === selected) {
+            return
+        }
+
+        select(index)
+        // Going up into an open app lands on its last action, the row right above.
+        const landed = selectedApp()
+        if (step < 0 && landed !== null && isExpanded(landed.id)) {
+            selectedAction = landed.actions.length - 1
+        }
     }
 
     function selectFirst(): void {
@@ -40,14 +65,34 @@ Item {
 
     function select(index: int): void {
         selected = index
+        selectedAction = -1
         if (index >= 0) {
-            view.positionViewAtIndex(viewIndex(index), ListView.Contain)
+            view.positionViewAtIndex(index, ListView.Contain)
         }
     }
 
-    // The view holds the rows bottom first.
-    function viewIndex(rowIndex: int): int {
-        return rows.length - 1 - rowIndex
+    function isExpanded(id: string): bool {
+        return expanded.includes(id)
+    }
+
+    function setExpanded(app: var, on: bool): void {
+        if (on === isExpanded(app.id) || (on && app.actions.length === 0)) {
+            return
+        }
+
+        expanded = on ? expanded.concat([app.id]) : expanded.filter(id => id !== app.id)
+        const current = selectedApp()
+        if (on === false && current !== null && current.id === app.id) {
+            selectedAction = -1
+        }
+    }
+
+    // Opens or closes the current app's actions (`on`: open, close, or -1: the other way).
+    function expandSelected(on: int): void {
+        const app = selectedApp()
+        if (app !== null) {
+            setExpanded(app, on === -1 ? isExpanded(app.id) === false : on === 1)
+        }
     }
 
     function selectedApp(): var {
@@ -58,13 +103,14 @@ Item {
         return rows[selected].app
     }
 
-    function scrollToBottom(): void {
+    function scrollToTop(): void {
         view.positionViewAtBeginning()
     }
 
     onRowsChanged: {
         if (selected >= rows.length) {
             selected = -1
+            selectedAction = -1
         }
     }
 
@@ -73,21 +119,21 @@ Item {
 
         anchors.fill: parent
         anchors.margins: 1
+        // The rows stop where the scrollbar starts: a press on the scrollbar must never reach a row, whose drag
+        // handler watches every press under it and could take the drag over.
+        anchors.rightMargin: scrollBar.visible ? scrollBar.width : 1
         clip: true
-        verticalLayoutDirection: ListView.BottomToTop
         boundsBehavior: Flickable.StopAtBounds
         acceptedButtons: root.touchControls ? Qt.LeftButton : Qt.NoButton
         // A picked up app belongs to the drag; the list must not go on following the press.
         interactive: BarDrag.active === false
-        model: root.rows.slice().reverse()
+        model: root.rows
 
         delegate: Loader {
             id: slot
 
             required property var modelData
             required property int index
-
-            readonly property int rowIndex: root.rows.length - 1 - index
 
             width: ListView.view.width
             sourceComponent: {
@@ -112,16 +158,22 @@ Item {
                 AppRow {
                     app: slot.modelData.app
                     big: slot.modelData.section === 'featured'
-                    lit: root.selected === slot.rowIndex
+                    lit: root.selected === slot.index
+                    litAction: root.selectedAction
+                    expanded: root.isExpanded(slot.modelData.app.id)
                     featured: Apps.isFeatured(slot.modelData.app.id)
                     tooltip: root.tooltip
                     screen: root.screen
                     windowOffset: root.windowOffset
                     returnArea: root.returnArea
                     holdToDrag: root.touchControls
-                    onPointed: root.selected = slot.rowIndex
-                    onLaunched: root.launched(slot.modelData.app)
+                    onPointed: actionIndex => {
+                        root.selected = slot.index
+                        root.selectedAction = actionIndex
+                    }
+                    onLaunched: actionIndex => root.launched(slot.modelData.app, actionIndex)
                     onFeatureToggled: Apps.setFeatured(slot.modelData.app.id, featured === false)
+                    onExpandToggled: root.setExpanded(slot.modelData.app, expanded === false)
                     onMenuRequested: at => root.menuRequested(slot.modelData.app, mapToItem(root, at))
                 }
             }
@@ -146,7 +198,7 @@ Item {
 
                         SortGlyph {
                             anchors.verticalCenter: parent.verticalCenter
-                            visible: slot.modelData.section === 'others'
+                            visible: slot.modelData.section === 'used'
                             size: 14
                             color: Theme.headingText
                         }
@@ -165,7 +217,7 @@ Item {
                                     return qsTr('Featured')
                                 }
 
-                                if (slot.modelData.section === 'others') {
+                                if (slot.modelData.section === 'used') {
                                     return qsTr('Most used')
                                 }
 
@@ -230,13 +282,30 @@ Item {
 
         readonly property real shown: view.visibleArea.heightRatio
         readonly property bool active: barArea.containsMouse || barArea.pressed
+        // The view only estimates the height of rows it has not built yet, so its numbers shift while it
+        // scrolls. While the thumb is held (`held`) it keeps the size it had when taken and stays where the
+        // pointer puts it (`heldY`); the list follows it, not the other way round.
+        property bool held: false
+        property real heldHeight: 0
+        property real heldY: 0
+        readonly property real freeHeight: Math.max(height * shown, Theme.space4)
+        readonly property real thumbHeight: held ? heldHeight : freeHeight
         // How far the thumb's top can move.
-        readonly property real travel: height - thumb.height
+        readonly property real travel: height - thumbHeight
 
-        // Scrolls so the thumb's top is at `thumbY`.
+        // Scrolls so the thumb's top is at `thumbY`. The ends are asked for by name: a thumb at the bottom
+        // must show the last row, whatever the estimate says.
         function scrollTo(thumbY: real): void {
-            const ratio = travel > 0 ? Math.max(0, Math.min(thumbY / travel, 1)) : 0
-            view.contentY = view.originY + ratio * (view.contentHeight - view.height)
+            const y = Math.max(0, Math.min(thumbY, travel))
+            heldY = y
+            const ratio = travel > 0 ? y / travel : 0
+            if (ratio === 0) {
+                view.positionViewAtBeginning()
+            } else if (ratio === 1) {
+                view.positionViewAtEnd()
+            } else {
+                view.contentY = view.originY + ratio * (view.contentHeight - view.height)
+            }
         }
 
         visible: shown < 1
@@ -253,8 +322,10 @@ Item {
             width: scrollBar.active ? Theme.space2 : Theme.space1
             radius: width / 2
             color: scrollBar.active ? Theme.controlBorderHover : Theme.rowSelectedBorder
-            height: Math.max(scrollBar.height * scrollBar.shown, Theme.space4)
-            y: scrollBar.travel * (view.visibleArea.yPosition / Math.max(1 - scrollBar.shown, 0.0001))
+            height: scrollBar.thumbHeight
+            y: scrollBar.held
+                ? scrollBar.heldY
+                : scrollBar.travel * (view.visibleArea.yPosition / Math.max(1 - scrollBar.shown, 0.0001))
 
             Behavior on width {
                 NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
@@ -273,15 +344,22 @@ Item {
 
             anchors.fill: parent
             hoverEnabled: true
+            // Nothing else may take the press over once the thumb has it (the list itself with touch controls).
+            preventStealing: true
+            // A press takes the thumb at once, on it or beside it (then it jumps there), and every move until
+            // the release belongs to it, wherever the pointer goes.
             onPressed: mouse => {
-                if (mouse.y >= thumb.y && mouse.y <= thumb.y + thumb.height) {
-                    grabOffset = mouse.y - thumb.y
-                    return
+                const onThumb = mouse.y >= thumb.y && mouse.y <= thumb.y + thumb.height
+                scrollBar.heldHeight = scrollBar.freeHeight
+                scrollBar.heldY = thumb.y
+                scrollBar.held = true
+                grabOffset = onThumb ? mouse.y - thumb.y : scrollBar.heldHeight / 2
+                if (onThumb === false) {
+                    scrollBar.scrollTo(mouse.y - grabOffset)
                 }
-
-                grabOffset = thumb.height / 2
-                scrollBar.scrollTo(mouse.y - grabOffset)
             }
+            onReleased: scrollBar.held = false
+            onCanceled: scrollBar.held = false
             onPositionChanged: mouse => {
                 if (pressed) {
                     scrollBar.scrollTo(mouse.y - grabOffset)

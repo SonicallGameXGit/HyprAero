@@ -14,6 +14,9 @@ Singleton {
     property string address: ''
     property int workspaceId: 0
     property string appId: ''
+    // What it was taken out of when that matters: 'pins' (a pin, which a drop on the pins moves) or
+    // 'startMenu' (an app row); '' otherwise.
+    property string from: ''
     // The dragged item's picture (a grab result, kept here so its image stays alive), its size, and the
     // point of it the pointer holds.
     property var picture: null
@@ -29,7 +32,8 @@ Singleton {
 
     readonly property bool active: address !== '' || workspaceId !== 0 || appId !== ''
 
-    function begin(windowAddress: string, workspace: int, app: string, grab: var, size: size, point: point, screen: var, rect: rect, returnArea: rect): void {
+    function begin(windowAddress: string, workspace: int, app: string, source: string, grab: var, size: size, point: point, screen: var, rect: rect, returnArea: rect): void {
+        from = source
         picture = grab
         pictureSize = size
         hotSpot = point
@@ -45,6 +49,7 @@ Singleton {
         address = ''
         workspaceId = 0
         appId = ''
+        from = ''
         picture = null
         originScreen = null
     }

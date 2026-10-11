@@ -28,24 +28,29 @@ function compareByUse(a, b, scores) {
     return compareNames(a, b)
 }
 
-// The two lists of the menu without a search: the featured apps, and every other app. Both by use, then
-// A to Z. A featured id without an installed app is left out (the app may come back).
+// The three lists of the menu without a search: the featured apps (by use, then A to Z), the other apps
+// that have been used (most used first), and every app left (A to Z). A featured id without an installed
+// app is left out (the app may come back).
 function buildSections(apps, scores, featuredIds) {
     const featured = []
-    const others = []
+    const used = []
+    const rest = []
     for (const app of apps) {
         if (featuredIds.includes(app.id)) {
             featured.push(app)
+        } else if (scoreOf(scores, app.id) > 0) {
+            used.push(app)
         } else {
-            others.push(app)
+            rest.push(app)
         }
     }
 
     const byUse = (a, b) => compareByUse(a, b, scores)
     featured.sort(byUse)
-    others.sort(byUse)
+    used.sort(byUse)
+    rest.sort(compareNames)
 
-    return { featured: featured, others: others }
+    return { featured: featured, used: used, rest: rest }
 }
 
 // Where `query` (lower case) is found in the app, as `{ tier, index }`, lower is better; null when it is
@@ -167,17 +172,11 @@ function launchCommand(command, inTerminal) {
 }
 
 // The rows of the list, top to bottom: `{ kind: 'header' | 'app' | 'separator' | 'hint', section, app }`.
-// The menu is read from the search field upwards, so each section's header sits under its apps: from the
-// bottom, "Featured" and the featured apps (a hint when none are featured yet), the dark line, "Most used"
-// and every other app above it.
+// "Featured" and the featured apps (a hint when none are featured yet), the dark line, "Most used" and the
+// used apps, another dark line, then every app left. A section with nothing in it leaves out its header
+// and its line, except "Featured", which keeps the hint saying how to fill it.
 function menuRows(sections) {
-    const rows = []
-    for (const app of sections.others) {
-        rows.push({ kind: 'app', section: 'others', app: app })
-    }
-
-    rows.push({ kind: 'header', section: 'others' })
-    rows.push({ kind: 'separator', section: '' })
+    const rows = [{ kind: 'header', section: 'featured' }]
     if (sections.featured.length === 0) {
         rows.push({ kind: 'hint', section: 'featured' })
     }
@@ -186,22 +185,35 @@ function menuRows(sections) {
         rows.push({ kind: 'app', section: 'featured', app: app })
     }
 
-    rows.push({ kind: 'header', section: 'featured' })
+    if (sections.used.length > 0) {
+        rows.push({ kind: 'separator', section: '' })
+        rows.push({ kind: 'header', section: 'used' })
+        for (const app of sections.used) {
+            rows.push({ kind: 'app', section: 'used', app: app })
+        }
+    }
+
+    if (sections.rest.length > 0) {
+        rows.push({ kind: 'separator', section: '' })
+        for (const app of sections.rest) {
+            rows.push({ kind: 'app', section: 'rest', app: app })
+        }
+    }
+
     return rows
 }
 
-// The rows of a search: the results with their header under them, or a hint that nothing matched.
+// The rows of a search: its header over the results, or a hint that nothing matched.
 function searchRows(results) {
     if (results.length === 0) {
         return [{ kind: 'hint', section: 'search' }]
     }
 
-    const rows = []
+    const rows = [{ kind: 'header', section: 'search' }]
     for (const app of results) {
         rows.push({ kind: 'app', section: 'search', app: app })
     }
 
-    rows.push({ kind: 'header', section: 'search' })
     return rows
 }
 

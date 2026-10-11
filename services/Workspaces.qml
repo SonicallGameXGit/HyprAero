@@ -53,6 +53,8 @@ Singleton {
                 area: size[0] * size[1],
                 width: size[0],
                 height: size[1],
+                // Outside the tiling layout, moved and sized freely.
+                floating: info.floating === true,
                 // Hyprland leaves the part of a window outside its monitor blank in the capture.
                 offScreen: WorkspaceList.hangsOffMonitor(info.at, size, monitorRect(toplevel.monitor)),
                 // The Wayland handle the live preview captures; null when the compositor has none.
@@ -231,6 +233,16 @@ Singleton {
                 moveWindow(window.address, toId)
             }
         }
+    }
+
+    // Takes the window out of the tiling layout (`on`), free to move and resize, or puts it back in.
+    function setFloating(address: string, on: bool): void {
+        if (toplevelAt(address) === null || WorkspaceList.isWindowAddress(address) === false) {
+            console.warn(`Workspaces: no window ${address} to float or tile`)
+            return
+        }
+
+        Hyprland.dispatch(`hl.dsp.window.float({ action = '${on ? 'set' : 'unset'}', window = 'address:${address}' })`)
     }
 
     // Has Hyprland start `command` so the app's window opens on workspace `workspaceId` (created if needed)

@@ -21,6 +21,8 @@ Item {
     property string address: ''
     property int workspaceId: 0
     property string appId: ''
+    // What it is taken out of, for the drop to know (`BarDrag.from`): 'pins', 'startMenu' or ''.
+    property string from: ''
     property Item picture: parent
     property bool holdToDrag: false
     // The screen of the bar it belongs to, and where its window's top-left is in that bar's coordinates
@@ -75,7 +77,7 @@ Item {
             }
 
             const origin = barRect(picture)
-            BarDrag.begin(address, workspaceId, appId, result, Qt.size(picture.width, picture.height), hotSpot, screen, origin, returnArea === null ? origin : barRect(returnArea))
+            BarDrag.begin(address, workspaceId, appId, from, result, Qt.size(picture.width, picture.height), hotSpot, screen, origin, returnArea === null ? origin : barRect(returnArea))
             root.Drag.active = true
         })
     }
