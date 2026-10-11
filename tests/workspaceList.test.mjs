@@ -1,6 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 // The module is a QML library script; strip the pragma and evaluate it as plain JS.
 const source = readFileSync(new URL('../services/workspaceList.js', import.meta.url), 'utf8').replace('.pragma library', '')
@@ -258,4 +261,79 @@ test('a placeholder without a numeric name stays unknown', () => {
     assert.equal(workspaceNumber(-1, 'web'), -1)
     assert.equal(workspaceNumber(-1, ''), -1)
     assert.equal(workspaceNumber(-1, undefined), -1)
+})
+
+const startOnWorkspace = new Function(source + '\nreturn startOnWorkspace')()
+
+// Text that has broken quoting somewhere: quotes of both kinds, backslashes, a Lua long bracket, shell and
+// Lua syntax, line breaks, a control character followed by digits, and text beyond ASCII.
+const trickyArguments = [
+    'plain',
+    'two words',
+    'it\'s',
+    '"double"',
+    'back\\slash\\',
+    '\'; rm -rf ~; echo \'',
+    '$(echo no) `echo no` $HOME',
+    '\' }) hl.dsp.exit() --',
+    ']] [[ ]=]',
+    'line\nbreak\r\ttab',
+    '\u00012345',
+    'Привет 🌊',
+    '',
+]
+
+// Runs the dispatcher through real Lua with `exec_cmd` replaced by a stand-in that hands back what it was
+// given, then the command text through `sh`, so both layers of quoting are checked as Hyprland reads them.
+const runDispatch = dispatch => {
+    const stub = 'hl = { dsp = { exec_cmd = function(cmd, rules) io.write(cmd, \'\\0\', rules.workspace) end } }\n'
+    const output = execFileSync('lua', ['-'], { input: stub + dispatch, encoding: 'utf8' })
+    const [shellText, workspace] = output.split('\0')
+    return { shellText: shellText, workspace: workspace }
+}
+
+const hasLua = (() => {
+    try {
+        execFileSync('lua', ['-v'])
+        return true
+    } catch {
+        return false
+    }
+})()
+
+test('an app goes to the workspace without the view following it', () => {
+    assert.equal(
+        startOnWorkspace(['kitty'], '', 4),
+        'hl.dsp.exec_cmd(\'exec \\\'kitty\\\'\', { workspace = \'4 silent\' })',
+    )
+})
+
+test('nothing to start or no real workspace: no dispatcher', () => {
+    assert.equal(startOnWorkspace([], '', 4), '')
+    assert.equal(startOnWorkspace(['kitty'], '', 0), '')
+    assert.equal(startOnWorkspace(['kitty'], '', -2), '')
+    assert.equal(startOnWorkspace(['kitty'], '', 2.5), '')
+})
+
+test('every argument reaches the app exactly as it was, through Lua and sh', { skip: hasLua === false && 'lua is not installed' }, () => {
+    const dispatch = startOnWorkspace(['printf', '%s\\n'].concat(trickyArguments), '', 3)
+    const { shellText, workspace } = runDispatch(dispatch)
+    assert.equal(workspace, '3 silent')
+    const printed = execFileSync('sh', ['-c', shellText], { encoding: 'utf8' })
+    assert.equal(printed, trickyArguments.map(argument => argument + '\n').join(''))
+})
+
+test('the app starts in its working directory, whatever its name', { skip: hasLua === false && 'lua is not installed' }, () => {
+    const folder = mkdtempSync(join(tmpdir(), 'hypraero it\'s $(x) '))
+    try {
+        const { shellText } = runDispatch(startOnWorkspace(['pwd'], folder, 1))
+        assert.equal(execFileSync('sh', ['-c', shellText], { encoding: 'utf8' }), folder + '\n')
+    } finally {
+        rmSync(folder, { recursive: true })
+    }
+})
+
+test('a working directory that is missing starts nothing', { skip: hasLua === false && 'lua is not installed' }, () => {
+    const { shellText } = runDispatch(startOnWorkspace(['echo', 'started'], '/nonexistent/hypraero', 1))
+    assert.throws(() => execFileSync('sh', ['-c', shellText], { encoding: 'utf8', stdio: 'pipe' }))
 })

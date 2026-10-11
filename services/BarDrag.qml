@@ -3,15 +3,17 @@ pragma Singleton
 import Quickshell
 import QtQuick
 
-// What is being dragged out of a bar, shared by every screen: one window (a preview card) or a whole
-// workspace (its button). The drop layer of each screen shows the picture under the pointer and takes
-// the drop. Nothing here talks to Hyprland.
+// What is being dragged out of a bar or its start menu, shared by every screen: one window (a preview
+// card), a whole workspace (its button) or an app to start (a start menu row). The drop layer of each
+// screen shows the picture under the pointer and takes the drop. Nothing here talks to Hyprland.
 Singleton {
     id: root
 
-    // The dragged window ('' when it is not a window) or workspace (0 when it is not a workspace).
+    // The dragged window ('' when it is not a window), workspace (0 when it is not a workspace) or app
+    // (its desktop entry id, '' when it is not an app).
     property string address: ''
     property int workspaceId: 0
+    property string appId: ''
     // The dragged item's picture (a grab result, kept here so its image stays alive), its size, and the
     // point of it the pointer holds.
     property var picture: null
@@ -21,22 +23,28 @@ Singleton {
     // top-left is 0, 0; above the bar is negative). A drop back there changes nothing.
     property var originScreen: null
     property rect originRect: Qt.rect(0, 0, 0, 0)
+    // Where a drop counts as putting it back, in the same coordinates: the ghost itself, or more (the
+    // whole start menu for an app).
+    property rect returnRect: Qt.rect(0, 0, 0, 0)
 
-    readonly property bool active: address !== '' || workspaceId !== 0
+    readonly property bool active: address !== '' || workspaceId !== 0 || appId !== ''
 
-    function begin(windowAddress: string, workspace: int, grab: var, size: size, point: point, screen: var, rect: rect): void {
+    function begin(windowAddress: string, workspace: int, app: string, grab: var, size: size, point: point, screen: var, rect: rect, returnArea: rect): void {
         picture = grab
         pictureSize = size
         hotSpot = point
         originScreen = screen
         originRect = rect
+        returnRect = returnArea
         address = windowAddress
         workspaceId = workspace
+        appId = app
     }
 
     function end(): void {
         address = ''
         workspaceId = 0
+        appId = ''
         picture = null
         originScreen = null
     }

@@ -1,0 +1,9 @@
+module qs.design
+singleton Theme 1.0 ../../../../../design/Theme.qml
+AppIconImage 1.0 ../../../../../design/AppIconImage.qml
+DragSource 1.0 ../../../../../design/DragSource.qml
+GenericAppIcon 1.0 ../../../../../design/GenericAppIcon.qml
+SearchGlyph 1.0 ../../../../../design/SearchGlyph.qml
+SortGlyph 1.0 ../../../../../design/SortGlyph.qml
+StarGlyph 1.0 ../../../../../design/StarGlyph.qml
+Tooltip 1.0 ../../../../../design/Tooltip.qml

@@ -27,10 +27,11 @@ PanelWindow {
     // How far above the bar a dragged window still counts as on it (`WorkspaceList.dropWorkspace`), so
     // the bar need not be hit exactly: a little over the buttons, a lot beside them.
     readonly property var dropReach: ({ buttons: 48, sides: 240 })
-    // The workspace a window dragged over this screen would go to if dropped now (0: none); its button
+    // The workspace a window (or a workspace's windows, or an app from the start menu) dragged over this
+    // screen would go to if dropped now (0: none); its button
     // lights up so the drop is never a surprise.
-    // Over the ghost of what is dragged nothing would happen, so no button lights up.
-    readonly property int dropTarget: dropLayer.hovered && dropLayer.overOrigin === false
+    // Where it would be put back nothing would happen, so no button lights up.
+    readonly property int dropTarget: dropLayer.hovered && dropLayer.puttingBack === false
         ? dropWorkspaceAt(dropLayer.pointer)
         : 0
     // How many workspace buttons there are. It holds still during a drag: rebuilding the buttons would
@@ -105,7 +106,7 @@ PanelWindow {
         barHeight: root.height
         onDropped: {
             // Back where it was taken from: as if it was never taken.
-            if (dropLayer.overOrigin) {
+            if (dropLayer.puttingBack) {
                 return
             }
 
@@ -121,6 +122,13 @@ PanelWindow {
 
             if (BarDrag.workspaceId !== 0) {
                 Workspaces.moveWorkspace(BarDrag.workspaceId, target)
+                return
+            }
+
+            // Started, so the menu it came from has done its job, as after a click.
+            if (BarDrag.appId !== '') {
+                Apps.launchOn(BarDrag.appId, target)
+                StartMenuState.close()
             }
         }
     }
@@ -178,6 +186,11 @@ PanelWindow {
         anchor.edges: Edges.Top | Edges.Left
         anchor.gravity: Edges.Top | Edges.Right
         shown: StartMenuState.openScreen === root.screen.name
+        barScreen: root.screen
+        // The drop layer's pointer in bar coordinates: the bar runs along the layer's bottom edge.
+        dragPointer: Qt.point(dropLayer.pointer.x, dropLayer.pointer.y - dropLayer.height + root.height)
+        dragPointerShown: dropLayer.hovered && dropLayer.pointerKnown
+        puttingBack: dropLayer.puttingBack
     }
 
     // Its left and right borders lie just off the screen, so the bar reads as running on past both edges.

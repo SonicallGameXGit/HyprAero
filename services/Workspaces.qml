@@ -233,6 +233,20 @@ Singleton {
         }
     }
 
+    // Has Hyprland start `command` so the app's window opens on workspace `workspaceId` (created if needed)
+    // and the view stays where it is. Only Hyprland can do that: it ties the first window to the process it
+    // started. An app that hands the start to an instance already running (some browsers) opens its window
+    // there instead, as with Hyprland's own exec rules.
+    function startOn(command: list<string>, workingDirectory: string, workspaceId: int): void {
+        const dispatch = WorkspaceList.startOnWorkspace(command, workingDirectory, workspaceId)
+        if (dispatch === '') {
+            console.warn(`Workspaces: cannot start ${command.join(' ')} on workspace ${workspaceId}`)
+            return
+        }
+
+        Hyprland.dispatch(dispatch)
+    }
+
     // Asks the window to close, as its own close button would: the app may ask to save, or refuse. Goes
     // through the window's own Wayland handle, so it can only ever reach that window.
     function closeWindow(address: string): void {

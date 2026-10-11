@@ -16,6 +16,14 @@ Item {
     property var rows: []
     property int selected: -1
     property Tooltip tooltip: null
+    // Passed to each row's `DragSource`: the bar's screen, the menu window's place in the bar, and where a
+    // drop puts the app back (the whole menu).
+    property var screen: null
+    property point windowOffset: Qt.point(0, 0)
+    property Item returnArea: null
+    // Phone-like: dragging the list scrolls it and an app is picked up by holding it. Off: dragging an app
+    // picks it up at once, and the list only scrolls with the wheel, the scrollbar or the keyboard.
+    property bool touchControls: false
 
     signal launched(var app)
     signal menuRequested(var app, point at)
@@ -68,6 +76,9 @@ Item {
         clip: true
         verticalLayoutDirection: ListView.BottomToTop
         boundsBehavior: Flickable.StopAtBounds
+        acceptedButtons: root.touchControls ? Qt.LeftButton : Qt.NoButton
+        // A picked up app belongs to the drag; the list must not go on following the press.
+        interactive: BarDrag.active === false
         model: root.rows.slice().reverse()
 
         delegate: Loader {
@@ -104,6 +115,10 @@ Item {
                     lit: root.selected === slot.rowIndex
                     featured: Apps.isFeatured(slot.modelData.app.id)
                     tooltip: root.tooltip
+                    screen: root.screen
+                    windowOffset: root.windowOffset
+                    returnArea: root.returnArea
+                    holdToDrag: root.touchControls
                     onPointed: root.selected = slot.rowIndex
                     onLaunched: root.launched(slot.modelData.app)
                     onFeatureToggled: Apps.setFeatured(slot.modelData.app.id, featured === false)
@@ -208,18 +223,76 @@ Item {
         }
     }
 
-    // Where the list is scrolled to; only while it is longer than the pane. Not draggable: the wheel and
-    // the keyboard scroll.
-    Rectangle {
+    // Where the list is scrolled to; only while it is longer than the pane. It widens under the pointer;
+    // drag it to scroll, press beside it to bring it there, or use the wheel on it.
+    Item {
+        id: scrollBar
+
         readonly property real shown: view.visibleArea.heightRatio
+        readonly property bool active: barArea.containsMouse || barArea.pressed
+        // How far the thumb's top can move.
+        readonly property real travel: height - thumb.height
+
+        // Scrolls so the thumb's top is at `thumbY`.
+        function scrollTo(thumbY: real): void {
+            const ratio = travel > 0 ? Math.max(0, Math.min(thumbY / travel, 1)) : 0
+            view.contentY = view.originY + ratio * (view.contentHeight - view.height)
+        }
 
         visible: shown < 1
+        anchors.top: view.top
+        anchors.bottom: view.bottom
         anchors.right: parent.right
-        anchors.rightMargin: 2
-        width: 4
-        radius: width / 2
-        color: Theme.rowSelectedBorder
-        height: Math.max(view.height * shown, 16)
-        y: 1 + (view.height - height) * (view.visibleArea.yPosition / Math.max(1 - shown, 0.0001))
+        width: Theme.space3
+
+        Rectangle {
+            id: thumb
+
+            anchors.right: parent.right
+            anchors.rightMargin: 1
+            width: scrollBar.active ? Theme.space2 : Theme.space1
+            radius: width / 2
+            color: scrollBar.active ? Theme.controlBorderHover : Theme.rowSelectedBorder
+            height: Math.max(scrollBar.height * scrollBar.shown, Theme.space4)
+            y: scrollBar.travel * (view.visibleArea.yPosition / Math.max(1 - scrollBar.shown, 0.0001))
+
+            Behavior on width {
+                NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
+            }
+
+            Behavior on color {
+                ColorAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
+            }
+        }
+
+        MouseArea {
+            id: barArea
+
+            // Where on the thumb the pointer holds it.
+            property real grabOffset: 0
+
+            anchors.fill: parent
+            hoverEnabled: true
+            onPressed: mouse => {
+                if (mouse.y >= thumb.y && mouse.y <= thumb.y + thumb.height) {
+                    grabOffset = mouse.y - thumb.y
+                    return
+                }
+
+                grabOffset = thumb.height / 2
+                scrollBar.scrollTo(mouse.y - grabOffset)
+            }
+            onPositionChanged: mouse => {
+                if (pressed) {
+                    scrollBar.scrollTo(mouse.y - grabOffset)
+                }
+            }
+            // The list is beside this strip, not under it, so the wheel is passed on by hand.
+            onWheel: wheel => {
+                const top = view.originY
+                const bottom = view.originY + view.contentHeight - view.height
+                view.contentY = Math.max(top, Math.min(view.contentY - wheel.angleDelta.y, bottom))
+            }
+        }
     }
 }

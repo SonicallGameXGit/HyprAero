@@ -109,6 +109,45 @@ function isWindowAddress(address) {
     return typeof address === 'string' && /^0x[0-9a-fA-F]+$/.test(address)
 }
 
+// The text as one word for `sh`: in single quotes, where nothing is special, and each `'` closed, escaped
+// and reopened.
+function shellQuote(text) {
+    return '\'' + text.split('\'').join('\'\\\'\'') + '\''
+}
+
+// The text as a Lua string literal. Every character that could end the literal or change what follows
+// (the quote, the backslash, line breaks and other control characters) is escaped, so the text can never
+// be read as Lua code. Control characters use three-digit escapes, so a digit after one cannot join it.
+function luaString(text) {
+    let result = '\''
+    for (const character of text) {
+        const code = character.codePointAt(0)
+        if (character === '\\' || character === '\'') {
+            result += '\\' + character
+        } else if (code < 32 || code === 127) {
+            result += '\\' + String(code).padStart(3, '0')
+        } else {
+            result += character
+        }
+    }
+
+    return result + '\''
+}
+
+// The dispatcher that has Hyprland start `command` (a list of arguments, no field codes) so its first
+// window opens on workspace `workspaceId` while the view stays where it is. Hyprland runs it with `sh`
+// and ties the window to the process it started. '' when there is nothing valid to start.
+function startOnWorkspace(command, workingDirectory, workspaceId) {
+    if (command.length === 0 || Number.isInteger(workspaceId) === false || workspaceId <= 0) {
+        return ''
+    }
+
+    // `exec` keeps the app in the process Hyprland started, so the window still belongs to it.
+    const run = 'exec ' + command.map(shellQuote).join(' ')
+    const shellText = workingDirectory === '' ? run : `cd ${shellQuote(workingDirectory)} && ${run}`
+    return `hl.dsp.exec_cmd(${luaString(shellText)}, { workspace = '${workspaceId} silent' })`
+}
+
 // The workspace a window dragged out of the bar goes to when dropped, or 0 for none (nothing happens).
 // `x` is the pointer's position along the bar, `away` how far it is from the bar toward the middle of the
 // screen (0 or less: on the bar). `slots` are the workspace buttons in bar order, as

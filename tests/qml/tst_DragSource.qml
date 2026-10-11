@@ -1,7 +1,7 @@
 import QtQuick
 import QtTest
 import qs.services
-import '../../modules/bar'
+import '../../design'
 
 // A drag source inside a button must not take the button's clicks: clicking a workspace with windows, or
 // a preview card, has to keep working while both can also be dragged.

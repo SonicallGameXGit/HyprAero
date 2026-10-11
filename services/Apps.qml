@@ -5,6 +5,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import 'appUsage.js' as AppUsage
+import 'launchPlacement.js' as LaunchPlacement
 import 'startMenu.js' as StartMenuList
 
 // The installed apps for the start menu: which are featured, how much each is used, and starting them.
@@ -17,11 +18,14 @@ import 'startMenu.js' as StartMenuList
 Singleton {
     id: root
 
-    // Whether focus counts as use. A setting once the config file exists.
-    property bool countFocus: true
+    // Whether focus counts as use (`startMenu.countFocus` in the config file).
+    readonly property bool countFocus: Config.startMenu.countFocus
     readonly property int focusDwell: 10000
     // Seconds without input after which the user counts as away.
     readonly property int awayAfter: 300
+    // The format of an app dragged out of the start menu: its desktop entry id. Private to the shell, so
+    // dropping it on an app does nothing there.
+    readonly property string appDragFormat: 'application/x-hypraero-app'
 
     property var featured: []
     property var usage: ({})
@@ -74,6 +78,10 @@ Singleton {
     }
     // The app (desktop entry id) whose window has focus, '' when none or unknown.
     property string focusedApp: ''
+    // Apps dropped on a workspace that may still open windows (`launchPlacement.js`), and the addresses of
+    // the windows already looked at, so only new ones are placed. Nothing is watched while it is empty.
+    property var launches: []
+    property var seenWindows: []
 
     onActiveAppIdChanged: updateFocus()
 
@@ -119,13 +127,13 @@ Singleton {
         save()
     }
 
-    // Starts the app (or one of its desktop actions, `actionIndex` >= 0) as its own process, not a child
-    // of the shell, and counts it as a use.
-    function launch(id: string, actionIndex: int): void {
+    // What starts the app (or one of its desktop actions, `actionIndex` >= 0): `{ command, workingDirectory }`
+    // with the terminal already added for terminal apps, or null when it cannot be started.
+    function startCommand(id: string, actionIndex: int): var {
         const entry = DesktopEntries.byId(id)
         if (entry === null || entry === undefined) {
             console.warn(`Apps: no app ${id} to start`)
-            return
+            return null
         }
 
         let command = Array.from(entry.command)
@@ -133,7 +141,7 @@ Singleton {
             const actions = Array.from(entry.actions)
             if (actionIndex >= actions.length) {
                 console.warn(`Apps: ${id} has no action ${actionIndex}`)
-                return
+                return null
             }
 
             command = Array.from(actions[actionIndex].command)
@@ -141,16 +149,70 @@ Singleton {
 
         if (command.length === 0) {
             console.warn(`Apps: ${id} has no command to run`)
+            return null
+        }
+
+        return {
+            command: StartMenuList.launchCommand(command, entry.runInTerminal),
+            workingDirectory: entry.workingDirectory,
+        }
+    }
+
+    // Starts the app (or one of its desktop actions, `actionIndex` >= 0) as its own process, not a child
+    // of the shell, and counts it as a use.
+    function launch(id: string, actionIndex: int): void {
+        const start = startCommand(id, actionIndex)
+        if (start === null) {
             return
         }
 
-        const context = { command: StartMenuList.launchCommand(command, entry.runInTerminal) }
-        if (entry.workingDirectory !== '') {
-            context.workingDirectory = entry.workingDirectory
+        const context = { command: start.command }
+        if (start.workingDirectory !== '') {
+            context.workingDirectory = start.workingDirectory
         }
 
         Quickshell.execDetached(context)
         countUse(id)
+    }
+
+    // Starts the app so its window opens on workspace `workspaceId` while the view stays where it is (an
+    // app dropped on a workspace), and counts it as a use. Hyprland is asked to open it there; a window it
+    // cannot recognise as the app's (`launchPlacement.js`) is moved there once it appears.
+    function launchOn(id: string, workspaceId: int): void {
+        const start = startCommand(id, -1)
+        if (start === null) {
+            return
+        }
+
+        if (launches.length === 0) {
+            seenWindows = Workspaces.windows.map(window => window.address)
+        }
+
+        launches = LaunchPlacement.addLaunch(launches, id, workspaceId, Date.now())
+        Workspaces.startOn(start.command, start.workingDirectory, workspaceId)
+        countUse(id)
+    }
+
+    // Sends each window that appeared since the last look to the workspace its app was dropped on.
+    function placeNewWindows(): void {
+        const now = Date.now()
+        let pending = LaunchPlacement.liveLaunches(launches, now)
+        const seen = seenWindows.slice()
+        for (const window of Workspaces.windows) {
+            if (window.address === '' || seen.includes(window.address)) {
+                continue
+            }
+
+            seen.push(window.address)
+            const placed = LaunchPlacement.placeWindow(pending, appFor(window.appId), now)
+            pending = placed.launches
+            if (placed.workspaceId > 0 && placed.workspaceId !== window.workspaceId) {
+                Workspaces.moveWindow(window.address, placed.workspaceId)
+            }
+        }
+
+        seenWindows = seen
+        launches = pending
     }
 
     // The desktop entry id of a window's app id, '' when there is none (or entries are still loading).
@@ -214,6 +276,15 @@ Singleton {
 
         interval: 1000
         onTriggered: stateFile.setText(AppUsage.serializeState(root.featured, root.usage))
+    }
+
+    Connections {
+        target: Workspaces
+        enabled: root.launches.length > 0
+
+        function onWindowsChanged(): void {
+            root.placeNewWindows()
+        }
     }
 
     // Desktop entries load after startup; until then no window can be matched to its app.

@@ -4,10 +4,11 @@ import QtQuick
 import qs.design
 import qs.services
 
-// Covers the whole screen, bar included, only while a window or a workspace is dragged out of a bar. It
-// draws the dragged card or button under the pointer, held at the point where it was grabbed, and takes
+// Covers the whole screen, bar included, only while a window or a workspace is dragged out of a bar, or an
+// app out of its start menu. It draws the dragged card, button or row under the pointer, held at the point where it was grabbed, and takes
 // the drop anywhere on the screen; the bar decides what a drop at the pointer means. Where the drag was
-// taken from, a glass ghost stays; it lights up under the pointer, and a drop there changes nothing.
+// taken from, a glass ghost stays; it lights up while a drop would put it back (the pointer on it, or
+// anywhere on the start menu an app came from), and such a drop changes nothing.
 //
 // The picture is drawn here instead of as the compositor's drag icon because Hyprland 0.56 pins the icon's
 // top-left corner to the pointer: Qt sends the grab point as a surface offset and Hyprland's attach
@@ -33,13 +34,20 @@ PanelWindow {
         BarDrag.originRect.width,
         BarDrag.originRect.height,
     )
-    // The pointer is on the ghost: a drop now puts it back, as if it was never taken.
-    readonly property bool overOrigin: hovered
+    // Where a drop puts it back: the ghost, or more around it (the whole start menu for an app).
+    readonly property rect returnRect: Qt.rect(
+        BarDrag.returnRect.x,
+        BarDrag.returnRect.y + height - barHeight,
+        BarDrag.returnRect.width,
+        BarDrag.returnRect.height,
+    )
+    // The pointer is there: a drop now puts it back, as if it was never taken.
+    readonly property bool puttingBack: hovered
         && hasOrigin
-        && pointer.x >= originRect.x
-        && pointer.x <= originRect.x + originRect.width
-        && pointer.y >= originRect.y
-        && pointer.y <= originRect.y + originRect.height
+        && pointer.x >= returnRect.x
+        && pointer.x <= returnRect.x + returnRect.width
+        && pointer.y >= returnRect.y
+        && pointer.y <= returnRect.y + returnRect.height
 
     // Something was dropped on this screen; what it is stays in `BarDrag`.
     signal dropped()
@@ -77,6 +85,7 @@ PanelWindow {
         keys: [
             Workspaces.windowDragFormat,
             Workspaces.workspaceDragFormat,
+            Apps.appDragFormat,
         ]
         onEntered: drag => {
             root.pointer = Qt.point(drag.x, drag.y)
@@ -95,14 +104,14 @@ PanelWindow {
         }
     }
 
-    // The ghost: a glass slot where it was taken from, lit while the pointer is on it.
+    // The ghost: a glass slot where it was taken from, lit while a drop would put it back.
     DropZone {
         x: root.originRect.x
         y: root.originRect.y
         width: root.originRect.width
         height: root.originRect.height
         visible: root.hasOrigin
-        lit: root.overOrigin
+        lit: root.puttingBack
         text: qsTr('Put back')
         Accessible.name: qsTr('Put back')
     }

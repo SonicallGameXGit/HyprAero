@@ -12,11 +12,25 @@ import '../../services/startMenu.js' as StartMenuList
 // used first, then A to Z); on the right, on the glass, the user's places and the shut down button.
 //
 // It takes the keyboard while open (typing goes to the search) and closes on Escape, on a click outside,
-// and once something was started.
+// and once something was started. An app can also be dragged out of it and dropped on a workspace, to
+// start it there; where a drop goes is the bar's decision, as for windows (`Bar.dropTarget`).
 PopupWindow {
     id: root
 
     property bool shown: false
+    // The bar's screen, and where this window's top-left is in the bar's coordinates (its bottom-left
+    // corner sits on the anchor), for the ghost a dragged app leaves behind.
+    property var barScreen: null
+    readonly property point barOffset: Qt.point(anchor.rect.x, anchor.rect.y - height)
+    // Hyprland draws the bar's popups above every layer, the drop layer too, so over the menu the drop
+    // layer's picture of a dragged app and its ghost would be hidden. The menu draws them itself, in the same
+    // places: the bar gives where the pointer is (bar coordinates), whether it is known yet, and whether a
+    // drop now would put the app back.
+    property point dragPointer: Qt.point(0, 0)
+    property bool dragPointerShown: false
+    property bool puttingBack: false
+    // An app is being dragged out of this menu.
+    readonly property bool dragFromHere: BarDrag.appId !== '' && BarDrag.originScreen === barScreen
 
     readonly property int menuWidth: 440
     readonly property int menuHeight: 560
@@ -42,6 +56,24 @@ PopupWindow {
     color: 'transparent'
     grabFocus: true
     visible: false
+    // While an app is dragged out the menu stays open, with a ghost where the app was, and lets the pointer
+    // through so the drop layer gets the drop: anywhere on the menu puts the app back. It closes only once
+    // the app was started somewhere (the bar closes it then).
+    mask: Region {
+        item: BarDrag.active ? null : content
+    }
+    // Hyprland dismisses the popup (its focus grab) when a drag out of it ends, a put back included. A
+    // dismissal during a drag from here, or within `regrabWindow` after one, shows the menu again as it was:
+    // no reset, no fade.
+    property real dragEndedAt: 0
+    readonly property int regrabWindow: 500
+    property bool reshowing: false
+
+    onDragFromHereChanged: {
+        if (dragFromHere === false) {
+            dragEndedAt = Date.now()
+        }
+    }
 
     // `visible` is set here and not bound: the popup also hides itself on a click outside.
     onShownChanged: {
@@ -56,12 +88,21 @@ PopupWindow {
 
     onVisibleChanged: {
         if (visible) {
-            content.opacity = 1
             search.input.forceActiveFocus()
+            reshowing = false
             return
         }
 
-        content.opacity = 0
+        if (shown && (dragFromHere || Date.now() - dragEndedAt < regrabWindow)) {
+            reshowing = true
+            Qt.callLater(() => {
+                if (root.shown) {
+                    root.visible = true
+                }
+            })
+            return
+        }
+
         StartMenuState.close()
     }
 
@@ -220,9 +261,11 @@ PopupWindow {
         id: content
 
         anchors.fill: parent
-        opacity: 0
+        opacity: root.visible || root.reshowing ? 1 : 0
 
         Behavior on opacity {
+            enabled: root.reshowing === false
+
             NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
         }
 
@@ -252,6 +295,10 @@ PopupWindow {
                 anchors.bottomMargin: 1
                 rows: root.rows
                 tooltip: menuTooltip
+                screen: root.barScreen
+                windowOffset: root.barOffset
+                returnArea: content
+                touchControls: Config.startMenu.touchControls
                 onLaunched: app => root.launch(app, -1)
                 onMenuRequested: (app, at) => root.openAppMenu(app, list.mapToItem(content, at))
             }
@@ -339,6 +386,31 @@ PopupWindow {
 
         Tooltip {
             id: menuTooltip
+        }
+
+        // The ghost over the dragged app's empty row, as the drop layer draws it elsewhere.
+        DropZone {
+            x: BarDrag.originRect.x - root.barOffset.x
+            y: BarDrag.originRect.y - root.barOffset.y
+            width: BarDrag.originRect.width
+            height: BarDrag.originRect.height
+            visible: root.dragFromHere
+            lit: root.puttingBack
+            text: qsTr('Put back')
+            Accessible.name: qsTr('Put back')
+        }
+
+        // The dragged app under the pointer while it is over the menu; past the menu's edge the drop
+        // layer's copy goes on in the same place.
+        Image {
+            x: root.dragPointer.x - root.barOffset.x - BarDrag.hotSpot.x
+            y: root.dragPointer.y - root.barOffset.y - BarDrag.hotSpot.y
+            width: BarDrag.pictureSize.width
+            height: BarDrag.pictureSize.height
+            source: root.dragFromHere && BarDrag.picture !== null ? BarDrag.picture.url : ''
+            visible: root.dragFromHere && root.dragPointerShown
+            opacity: Theme.dragImageOpacity
+            smooth: true
         }
     }
 }
