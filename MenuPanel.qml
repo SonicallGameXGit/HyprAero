@@ -4,8 +4,10 @@ import QtQuick
 import QtQuick.Effects
 
 // A context menu drawn inside a window: a white panel (menu-*) with rows that light up like list rows.
-// `items` is a list of `{ text, enabled }`, or `{ separator: true }`. Place it in an item that covers
-// the window: a press anywhere outside the panel closes it.
+// `items` is a list of `{ text, enabled, bold, indent }` (only `text` is needed), or `{ separator: true }`;
+// other fields are kept for the owner. `bold` marks what a click on the thing itself does, as in Windows 7;
+// `indent` rows hang under the row above on a tree line, as the actions of an app. Place it in an item
+// that covers the window: a press anywhere outside the panel closes it.
 Item {
     id: root
 
@@ -17,6 +19,9 @@ Item {
     property bool above: false
     // The row the keyboard is on (-1: none).
     property int current: -1
+    // The panel's size, for a window made to fit around it.
+    readonly property alias panelWidth: panel.width
+    readonly property alias panelHeight: panel.height
 
     signal chosen(int index)
 
@@ -97,9 +102,16 @@ Item {
                     readonly property bool separator: modelData.separator === true
                     readonly property bool enabled: separator === false && modelData.enabled !== false
                     readonly property bool lit: enabled && root.current === index
+                    readonly property bool indent: modelData.indent === true
+                    // The tree line goes on down to the next row when that one hangs under the same row.
+                    readonly property bool lastIndent: {
+                        const next = root.items[index + 1]
+                        return next === undefined || next.indent !== true
+                    }
+                    readonly property int textX: indent ? Theme.space5 + Theme.space3 : Theme.space5
 
                     width: column.width
-                    implicitWidth: separator ? 0 : label.implicitWidth + Theme.space5 * 2
+                    implicitWidth: separator ? 0 : label.implicitWidth + textX + Theme.space5
                     height: separator ? Theme.space2 : 24
 
                     Rectangle {
@@ -124,16 +136,35 @@ Item {
                         }
                     }
 
+                    // The tree line: down from the row above, and a short branch to the text.
+                    Rectangle {
+                        visible: row.indent
+                        x: Theme.space5 + 2
+                        width: 1
+                        height: row.lastIndent ? row.height / 2 : row.height
+                        color: Theme.surfaceBorder
+                    }
+
+                    Rectangle {
+                        visible: row.indent
+                        x: Theme.space5 + 2
+                        y: row.height / 2
+                        width: row.textX - x - Theme.space1
+                        height: 1
+                        color: Theme.surfaceBorder
+                    }
+
                     Text {
                         id: label
 
                         visible: row.separator === false
                         anchors.verticalCenter: parent.verticalCenter
-                        x: Theme.space5
+                        x: row.textX
                         text: row.separator ? '' : row.modelData.text
                         color: row.enabled ? Theme.text : Theme.textMuted
                         font.family: Theme.fontUi
                         font.pixelSize: Theme.fontSizeBody
+                        font.bold: row.modelData.bold === true
                     }
 
                     HoverHandler {

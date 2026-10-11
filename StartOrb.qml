@@ -42,6 +42,15 @@ Item {
         }
     }
 
+    // Its shadow on what is under it, so it stands on the bar instead of looking set into it.
+    RectangularShadow {
+        anchors.fill: parent
+        radius: width / 2
+        offset.y: 1
+        blur: Theme.orbGlowBlur / 2
+        color: Theme.iconShadow
+    }
+
     // The glow sits outside the orb, so it is drawn first.
     RectangularShadow {
         anchors.fill: parent
