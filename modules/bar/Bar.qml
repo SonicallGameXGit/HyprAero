@@ -276,14 +276,17 @@ PanelWindow {
         }
     }
 
-    // The orb's popup has its bottom-left corner on the bar's.
+    // The orb's popup starts at the bar's left end, centred on the bar's height, so its lower part lies past
+    // the screen's bottom edge. Hyprland must not slide it back up: that would lift the orb off the bar's
+    // middle and show the popup's bottom edge cutting it.
     StartButton {
         id: startButton
 
         anchor.window: root
-        anchor.rect: Qt.rect(0, root.height - height, width, height)
+        anchor.rect: Qt.rect(0, (root.height - height) / 2, width, height)
         anchor.edges: Edges.Top | Edges.Left
         anchor.gravity: Edges.Bottom | Edges.Right
+        anchor.adjustment: PopupAdjustment.None
         barHeight: root.height
         onClicked: StartMenuState.toggle(root.screen.name)
     }

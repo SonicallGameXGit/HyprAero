@@ -6,6 +6,8 @@ import qs.design
 // top edge, which the bar cannot draw (a window cannot draw outside itself), so the orb is its own popup of
 // the bar, always above it. Only the orb and the bar's corner under it take the pointer: the rest of the
 // popup lets clicks through, and throwing the pointer into the screen's corner still hits the button.
+// The popup runs past the screen's bottom edge as far as it rises above the bar, so the orb is cut by the
+// screen itself (it reads as going on out of sight) and never by the popup's own edge.
 PopupWindow {
     id: root
 
@@ -26,7 +28,7 @@ PopupWindow {
     signal clicked()
 
     implicitWidth: orb.x + orbDiameter + glowRoom
-    implicitHeight: glowRoom + rise + barHeight
+    implicitHeight: glowRoom + orbDiameter + glowRoom
     color: 'transparent'
     visible: true
     mask: Region {
@@ -42,7 +44,7 @@ PopupWindow {
     Item {
         id: corner
 
-        y: root.height - root.barHeight
+        y: root.glowRoom - root.rise
         width: orb.x + root.orbDiameter + Theme.space1
         height: root.barHeight
     }
@@ -51,7 +53,7 @@ PopupWindow {
         id: orb
 
         x: Theme.space2
-        y: root.height - root.barHeight / 2 - root.orbDiameter / 2
+        y: root.glowRoom
         diameter: root.orbDiameter
         hovered: root.hovered
         pressed: root.pressed
