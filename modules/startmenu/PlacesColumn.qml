@@ -67,12 +67,50 @@ Item {
         }
     }
 
+    // Shows or hides the menu's tooltip for one of the controls here.
+    function showTooltip(control: Item, hovered: bool): void {
+        if (root.tooltip === null) {
+            return
+        }
+
+        if (hovered) {
+            root.tooltip.target = control
+            root.tooltip.text = control.Accessible.name
+        }
+
+        root.tooltip.shown = hovered
+    }
+
+    function changePicture(): void {
+        if (Session.canChoosePicture === false) {
+            return
+        }
+
+        Session.choosePicture()
+        root.opened()
+    }
+
+    // A click on the picture changes it, as in Windows 7; the chooser is a window of its own, so the menu
+    // closes. Without a chooser the tooltip says how to change it by hand.
     UserPicture {
         id: picture
 
         anchors.horizontalCenter: parent.horizontalCenter
         y: 0
         iconPath: AppIcons.forName(root.pointedIcon)
+        Accessible.role: Accessible.Button
+        Accessible.name: Session.canChoosePicture
+            ? qsTr('Change your picture')
+            : qsTr('To change your picture, save it as ~/.face (or install zenity to choose one here)')
+        Accessible.onPressAction: root.changePicture()
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Session.canChoosePicture ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onContainsMouseChanged: root.showTooltip(picture, containsMouse)
+            onClicked: root.changePicture()
+        }
     }
 
     Column {
@@ -166,18 +204,7 @@ Item {
             width: 24
             Accessible.name: qsTr('More ways to leave')
             onClicked: root.powerMenuRequested(arrow.mapToItem(root, arrow.width, 0))
-            onHoveredChanged: {
-                if (root.tooltip === null) {
-                    return
-                }
-
-                if (hovered) {
-                    root.tooltip.target = arrow
-                    root.tooltip.text = arrow.Accessible.name
-                }
-
-                root.tooltip.shown = hovered
-            }
+            onHoveredChanged: root.showTooltip(arrow, hovered)
 
             ChevronGlyph {
                 anchors.centerIn: parent

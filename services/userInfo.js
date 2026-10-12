@@ -55,6 +55,61 @@ function fullName(passwd, user) {
     return ''
 }
 
+// The kinds of picture the chooser offers: what Qt shows without extra plugins, and WebP.
+const pictureExtensions = [
+    'png',
+    'jpg',
+    'jpeg',
+    'gif',
+    'bmp',
+    'webp',
+]
+
+// zenity's `--file-filter` for pictures: `label | *.png *.PNG ...` (its patterns are case-sensitive).
+function pictureFilter(label) {
+    const patterns = []
+    for (const extension of pictureExtensions) {
+        patterns.push('*.' + extension, '*.' + extension.toUpperCase())
+    }
+
+    return label + ' | ' + patterns.join(' ')
+}
+
+// The picture the chooser printed (zenity: the path and a newline), '' when nothing was chosen or it is
+// not a picture: not an absolute path, or not one of `pictureExtensions`. Only the last newline is cut,
+// a name may start or end with spaces.
+function chosenPicture(output) {
+    const path = output.endsWith('\n') ? output.slice(0, -1) : output
+    if (path.startsWith('/') === false || path.includes('\n')) {
+        return ''
+    }
+
+    const name = path.slice(path.lastIndexOf('/') + 1)
+    const dot = name.lastIndexOf('.')
+    if (dot <= 0) {
+        return ''
+    }
+
+    return pictureExtensions.includes(name.slice(dot + 1).toLowerCase()) ? path : ''
+}
+
+// Saves `source` as the profile picture `target` (`~/.face`): `tool` (`tools/shrinkPicture.qml`, run by
+// Quickshell offscreen) cuts its middle to a square and shrinks it into `target.new.png`, which is then
+// renamed over `target`; on a failure the old picture stays and nothing is left beside it. The paths are
+// handed to `sh` as parameters, never put into its text.
+function savePictureCommand(tool, source, target) {
+    return [
+        'sh',
+        '-c',
+        'HYPRAERO_PICTURE_SOURCE="$2" HYPRAERO_PICTURE_TARGET="$3.new.png" QT_QPA_PLATFORM=offscreen qs -p "$1" >/dev/null 2>&1'
+            + ' && mv -f -- "$3.new.png" "$3" || { rm -f -- "$3.new.png"; exit 1; }',
+        'sh',
+        tool,
+        source,
+        target,
+    ]
+}
+
 // The letter on a drawn avatar.
 function initial(name) {
     const trimmed = name.trim()

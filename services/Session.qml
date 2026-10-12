@@ -31,11 +31,43 @@ Singleton {
     // The picture desktops share for the user, '' while there is none (the menu draws an avatar then).
     // Looked for again with `findPicture`, so a picture set while the shell runs shows up.
     property string picturePath: ''
+    // When the picture last changed and its size ('' without one), part of the picture's address: an
+    // unchanged picture comes from Qt's cache at once, a new one at the same path is read again.
+    property string pictureStamp: ''
+    // Whether the picture can be changed from the start menu: zenity (GTK's file chooser) is installed.
+    // Without it, a picture saved as `~/.face` by hand still shows.
+    property bool canChoosePicture: false
     // `[{ key, path }]`: documents, pictures, music, videos, downloads, those the user did not turn off.
     readonly property var folders: UserInfo.userFolders(userDirs.text(), home)
 
+    // Also looks again for zenity, so installing it while the shell runs is noticed.
     function findPicture(): void {
         pictureCheck.running = true
+        chooserCheck.running = true
+    }
+
+    // Asks for a picture in a file chooser, then saves its middle, cut square and shrunk, as `~/.face`, the
+    // picture desktops share for the user; cancelling changes nothing.
+    function choosePicture(): void {
+        if (canChoosePicture === false || pictureChooser.running || pictureSave.running) {
+            return
+        }
+
+        pictureChooser.running = true
+    }
+
+    function pictureChosen(output: string): void {
+        const path = UserInfo.chosenPicture(output)
+        if (path === '') {
+            if (output.trim() !== '') {
+                console.warn('Session: not a picture, the old one stays: ' + output.trim())
+            }
+
+            return
+        }
+
+        pictureSave.command = UserInfo.savePictureCommand(Quickshell.shellPath('tools/shrinkPicture.qml'), path, pictureCheck.path)
+        pictureSave.running = true
     }
 
     function openFolder(path: string): void {
@@ -77,10 +109,58 @@ Singleton {
 
         readonly property string path: root.home + '/.face'
 
-        command: ['test', '-f', path]
+        // Nothing printed when there is none. The stamp is set first, so the picture's address is never
+        // the new path with the old stamp.
+        command: ['stat', '-L', '-c', '%Y-%s', '--', path]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const stamp = text.trim()
+                root.pictureStamp = stamp
+                root.picturePath = stamp === '' ? '' : pictureCheck.path
+            }
+        }
+    }
+
+    Process {
+        id: chooserCheck
+
+        command: ['sh', '-c', 'command -v zenity']
         running: true
         onExited: code => {
-            root.picturePath = code === 0 ? path : ''
+            root.canChoosePicture = code === 0
+        }
+    }
+
+    // Opens in the pictures folder. zenity prints the chosen path, and nothing when cancelled.
+    Process {
+        id: pictureChooser
+
+        command: {
+            const pictures = root.folders.find(folder => folder.key === 'pictures')
+            return [
+                'zenity',
+                '--file-selection',
+                '--title=' + qsTr('Choose your picture'),
+                '--filename=' + (pictures === undefined ? root.home : pictures.path) + '/',
+                '--file-filter=' + UserInfo.pictureFilter(qsTr('Pictures')),
+            ]
+        }
+        stdout: StdioCollector {
+            onStreamFinished: root.pictureChosen(text)
+        }
+    }
+
+    Process {
+        id: pictureSave
+
+        onExited: code => {
+            if (code !== 0) {
+                console.warn(`Session: cannot save the picture as ${pictureCheck.path} (exit code ${code}), the old one stays`)
+                return
+            }
+
+            pictureCheck.running = true
         }
     }
 

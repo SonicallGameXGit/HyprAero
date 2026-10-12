@@ -288,6 +288,7 @@ PanelWindow {
         anchor.gravity: Edges.Bottom | Edges.Right
         anchor.adjustment: PopupAdjustment.None
         barHeight: root.height
+        menuOpen: StartMenuState.openScreen === root.screen.name
         onClicked: StartMenuState.toggle(root.screen.name)
     }
 
@@ -339,6 +340,9 @@ PanelWindow {
             onMenuRequested: (app, at) => root.openPinMenu(app, pinBar.mapToItem(null, at))
             onPinHovered: (pin, hovered) => {
                 if (hovered) {
+                    // Straight from the pin next to it, the tooltip still shown: through none, so it starts
+                    // over (fades out, waits, is placed again) instead of naming this pin over the other.
+                    root.hoveredPin = null
                     root.hoveredPin = pin
                 } else if (root.hoveredPin === pin) {
                     root.hoveredPin = null

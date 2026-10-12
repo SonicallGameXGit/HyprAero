@@ -6,13 +6,18 @@ import QtQuick.Shapes
 
 // The start orb, after the Windows 7 one (.aero/STYLE.md "Start orb"): a dark glass sphere lit from
 // below, the Hyprland mark glowing in it, a shine over its upper half. Drawn, never a picture, so it is
-// sharp at any size. Hover makes it glow, press darkens it.
+// sharp at any size. Hover makes it glow, press darkens it; `highlighted` glows as hover does without
+// the pointer on it (the bar lights it while its menu is open).
 Item {
     id: root
 
     property real diameter: 40
     property bool hovered: false
     property bool pressed: false
+    // Looks hovered without the pointer on it, as `ControlButton.highlighted`.
+    property bool highlighted: false
+
+    readonly property bool lit: hovered || highlighted
 
     implicitWidth: diameter
     implicitHeight: diameter
@@ -57,7 +62,7 @@ Item {
         radius: width / 2
         blur: Theme.orbGlowBlur
         color: Theme.orbGlow
-        opacity: root.hovered && root.pressed === false ? 1 : 0
+        opacity: root.lit && root.pressed === false ? 1 : 0
 
         Behavior on opacity {
             NumberAnimation { duration: Theme.motionSoft; easing.type: Easing.OutCubic }
@@ -91,7 +96,7 @@ Item {
         anchors.fill: parent
         anchors.margins: 1
         fillColor: root.pressed ? Theme.orbPressedTint : Theme.orbHoverTint
-        opacity: root.hovered || root.pressed ? 1 : 0
+        opacity: root.lit || root.pressed ? 1 : 0
 
         Behavior on opacity {
             NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
@@ -110,7 +115,7 @@ Item {
             shadowBlur: 0.6
             shadowHorizontalOffset: 0
             shadowVerticalOffset: 0
-            brightness: root.hovered && root.pressed === false ? 0.15 : 0
+            brightness: root.lit && root.pressed === false ? 0.15 : 0
         }
     }
 

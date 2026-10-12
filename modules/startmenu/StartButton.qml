@@ -12,6 +12,9 @@ PopupWindow {
     id: root
 
     property int barHeight: 48
+    // Its menu is open, however it was opened (a click, or a key binding through IPC): the orb stays lit
+    // as under the pointer, as in Windows 7.
+    property bool menuOpen: false
 
     readonly property int orbDiameter: 54
     // How far the orb rises above the bar's top edge: it is centred on the bar, so as much of it hangs
@@ -57,6 +60,7 @@ PopupWindow {
         diameter: root.orbDiameter
         hovered: root.hovered
         pressed: root.pressed
+        highlighted: root.menuOpen
     }
 
     Item {
