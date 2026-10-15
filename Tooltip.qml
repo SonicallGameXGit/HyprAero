@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Effects
 
-// A short text naming a control, shown a moment after the pointer rests on it. Place it inside a parent
+// A short text naming a control, shown a moment after the pointer rests on it, in Windows 7's tooltip: a
+// white to grey-blue face (tooltip-*) and the small menu shadow. Place it inside a parent
 // that is big enough to hold it; `target` is the control, `shown` usually its hover.
 Item {
     id: root
@@ -57,17 +58,22 @@ Item {
     RectangularShadow {
         anchors.fill: parent
         radius: Theme.radiusControl
-        offset.y: Theme.menuShadowOffset / 2
-        blur: Theme.menuShadowBlur / 2
+        offset.x: Theme.menuShadowOffset
+        offset.y: Theme.menuShadowOffset
+        blur: Theme.menuShadowBlur
         color: Theme.menuShadowColor
     }
 
     Rectangle {
         anchors.fill: parent
         radius: Theme.radiusControl
-        color: Theme.menuBackground
         border.width: 1
-        border.color: Theme.menuBorder
+        border.color: Theme.tooltipBorder
+
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: Theme.tooltipFace[0] }
+            GradientStop { position: 1.0; color: Theme.tooltipFace[1] }
+        }
     }
 
     Text {
@@ -75,7 +81,7 @@ Item {
 
         anchors.centerIn: parent
         text: root.text
-        color: Theme.text
+        color: Theme.tooltipText
         font.family: Theme.fontUi
         font.pixelSize: Theme.fontSizeSmall
     }

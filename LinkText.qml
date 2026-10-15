@@ -2,12 +2,14 @@ import QtQuick
 import QtQuick.Effects
 
 // A link, as Windows 7 puts at the bottom of a flyout or beside a list ("Customize...", "Restore default
-// icon behaviors"): text-link coloured words, underlined under the pointer. With keyboard focus it glows
-// (focus-glow) and Enter or Space follow it.
+// icon behaviors"): text-link coloured words, underlined under the pointer; on the shell's taskbar glass
+// (`onGlass`) light words (taskbar-glass-link). With keyboard focus it glows (focus-glow) and Enter or Space
+// follow it.
 Item {
     id: root
 
     property string text: ''
+    property bool onGlass: false
 
     signal clicked()
 
@@ -30,13 +32,11 @@ Item {
         visible: root.activeFocus
     }
 
-    Text {
+    GlassText {
         id: label
 
         text: root.text
-        color: Theme.textLink
-        font.family: Theme.fontUi
-        font.pixelSize: Theme.fontSizeBody
+        color: root.onGlass ? Theme.taskbarGlassLink : Theme.textLink
         font.underline: hoverHandler.hovered
     }
 

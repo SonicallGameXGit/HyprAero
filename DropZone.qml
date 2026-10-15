@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Effects
 
-// A place to drop something on: a glass slot with a glyph and, when it fits, a short text saying what a
+// A place to drop something on: a slot of the shell's taskbar glass with a glyph and, when it fits, a short text saying what a
 // drop there does. While what is dragged is over it (`lit`) its edge glows like a focused control.
 // Behind it the compositor's blur shows when the user's layer rule asks for it (README.md).
 Item {
@@ -27,6 +27,7 @@ Item {
     GlassPanel {
         anchors.fill: parent
         cornerRadius: Theme.radiusControl
+        kind: 'taskbar'
     }
 
     Rectangle {
@@ -58,15 +59,12 @@ Item {
             size: 14
         }
 
-        Text {
+        GlassText {
             id: label
 
             anchors.verticalCenter: parent.verticalCenter
             visible: content.textFits && root.text !== ''
             text: root.text
-            color: Theme.glassText
-            font.family: Theme.fontUi
-            font.pixelSize: Theme.fontSizeBody
         }
     }
 }
