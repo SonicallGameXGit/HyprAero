@@ -3,6 +3,7 @@ import Quickshell.Wayland
 import QtQuick
 import qs.design
 import qs.modules.startmenu
+import qs.modules.tray
 import qs.services
 import '../../services/workspaceList.js' as WorkspaceList
 
@@ -50,15 +51,28 @@ PanelWindow {
         : -1
     // The workspace a window (or a workspace's windows, or an app) dragged over this screen would go to if
     // dropped now (0: none); its button lights up so the drop is never a surprise. Where it would be put
-    // back, or over the pins, no button lights up.
-    readonly property int dropTarget: dropLayer.hovered && dropLayer.puttingBack === false && onPins(dropLayer.pointer) === false
+    // back, or over the pins, no button lights up; a tray icon never goes to a workspace.
+    readonly property int dropTarget: dropLayer.hovered && dropLayer.puttingBack === false && BarDrag.trayKey === '' && onPins(dropLayer.pointer) === false
         ? dropWorkspaceAt(dropLayer.pointer)
         : 0
+    // The drop layer's pointer in bar coordinates: the bar runs along the layer's bottom edge.
+    readonly property point dragPointer: Qt.point(dropLayer.pointer.x, dropLayer.pointer.y - dropLayer.height + root.height)
+    // Where among the tray's icons on the bar a tray icon dragged over this screen would go if dropped now
+    // (-1: not over them); the tray shows a mark there.
+    readonly property int trayGap: dropLayer.hovered && dropLayer.puttingBack === false && BarDrag.trayKey !== '' && onTrayIcons(dragPointer)
+        ? trayArea.gapAt(dragPointer.x)
+        : -1
+    // A tray icon dragged over the arrow opens the flyout, to be dropped in it.
+    readonly property bool trayDragOverArrow: dropLayer.hovered && BarDrag.trayKey !== '' && overTrayArrow(dragPointer)
     // The window or the pinned app whose right-click menu is open (null: none).
     property var menuWindow: null
     property var menuApp: null
-    // The pin the pointer rests on, for its tooltip.
-    property Item hoveredPin: null
+    // The tray icon whose app menu is open.
+    property string trayMenuKey: ''
+    // The icon-only control the pointer rests on (a pin, a tray icon, the tray's arrow), for its tooltip;
+    // the same in the tray's flyout. Each has a `tooltipText`.
+    property Item hoveredTip: null
+    property Item hoveredFlyoutTip: null
     // How many workspace buttons there are. It holds still during a drag: rebuilding the buttons would
     // destroy the one a workspace drag started from.
     property int buttonCount: 0
@@ -78,6 +92,12 @@ PanelWindow {
 
     implicitHeight: 48
     color: 'transparent'
+
+    onTrayDragOverArrowChanged: {
+        if (trayDragOverArrow) {
+            Tray.openFlyout(root.screen.name, true)
+        }
+    }
 
     // The drop layer covers the whole screen with the bar along its bottom edge, both as wide as the
     // screen, so its x is the bar's x and the bar's top is the layer's height minus the bar's.
@@ -124,6 +144,69 @@ PanelWindow {
         return pinBar.gapAt(point.x)
     }
 
+    // Whether a point in bar coordinates is on the bar over the tray's arrow, or over its icons (and the gap
+    // right of them).
+    function overTrayArrow(point: point): bool {
+        if (trayArea.arrowShown === false || point.y < 0) {
+            return false
+        }
+
+        const left = trayArea.mapToItem(null, 0, 0).x
+        return point.x >= left && point.x <= left + trayArea.arrow.width
+    }
+
+    function onTrayIcons(point: point): bool {
+        if (point.y < 0) {
+            return false
+        }
+
+        const left = trayArea.mapToItem(null, 0, 0).x + (trayArea.arrowShown ? trayArea.arrow.width : 0)
+        return point.x > left && point.x <= trayArea.mapToItem(null, 0, 0).x + trayArea.width + Theme.space2
+    }
+
+    // A tray icon let go of at `point` (bar coordinates): into the flyout (hidden there), on the arrow (hidden,
+    // last), on the bar's icons (always shown there); anywhere else nothing changes.
+    function dropTrayIcon(point: point): void {
+        const key = BarDrag.trayKey
+        if (trayFlyout.contains(point)) {
+            const mark = trayFlyout.gapAt(point)
+            Tray.place(key, false, trayFlyout.keys, mark === null ? 0 : mark.gap)
+        } else if (overTrayArrow(point)) {
+            Tray.place(key, false, trayFlyout.keys, trayFlyout.keys.length)
+        } else if (onTrayIcons(point)) {
+            Tray.place(key, true, trayArea.keys, trayArea.gapAt(point.x))
+        }
+    }
+
+    function openTrayMenu(item: var, at: point): void {
+        if (item === null || item.hasMenu === false) {
+            return
+        }
+
+        trayMenuKey = Tray.keyOf(item)
+        trayMenu.show(item.menu, at)
+    }
+
+    // Straight from one control to the next, the tooltip still shown: through none, so it starts over
+    // (fades out, waits, is placed again) instead of naming this control over the other.
+    function tipHovered(control: Item, hovered: bool): void {
+        if (hovered) {
+            hoveredTip = null
+            hoveredTip = control
+        } else if (hoveredTip === control) {
+            hoveredTip = null
+        }
+    }
+
+    function flyoutTipHovered(control: Item, hovered: bool): void {
+        if (hovered) {
+            hoveredFlyoutTip = null
+            hoveredFlyoutTip = control
+        } else if (hoveredFlyoutTip === control) {
+            hoveredFlyoutTip = null
+        }
+    }
+
     // A preview card's menu, `at` in the bar's coordinates. Windows 7 bolds what a click does.
     function openWindowMenu(window: var, at: point): void {
         const app = Apps.appFor(window.appId)
@@ -138,6 +221,16 @@ PanelWindow {
             { text: pinned ? qsTr('Unpin from bar') : qsTr('Pin to bar'), enabled: app !== '', action: pinned ? 'unpin' : 'pin', app: app },
             { separator: true },
             { text: qsTr('Close'), action: 'close' },
+        ], at)
+    }
+
+    // The bar's own menu, from a right click on its empty glass. For now only the way to the tray's
+    // "Customize" page, a second way besides the flyout's link.
+    function openBarOwnMenu(at: point): void {
+        menuWindow = null
+        menuApp = null
+        barMenu.show([
+            { text: qsTr('Customize notification icons...'), action: 'customizeTray' },
         ], at)
     }
 
@@ -172,6 +265,8 @@ PanelWindow {
             Apps.launch(menuApp.id, -1)
         } else if (item.action === 'action') {
             Apps.launch(menuApp.id, item.index)
+        } else if (item.action === 'customizeTray') {
+            Tray.openCustomize()
         }
     }
 
@@ -230,6 +325,11 @@ PanelWindow {
         onDropped: {
             // Back where it was taken from: as if it was never taken.
             if (dropLayer.puttingBack) {
+                return
+            }
+
+            if (BarDrag.trayKey !== '') {
+                root.dropTrayIcon(root.dragPointer)
                 return
             }
 
@@ -330,9 +430,45 @@ PanelWindow {
 
     BarTooltip {
         anchor.window: root
-        target: root.hoveredPin
-        shown: root.hoveredPin !== null && BarDrag.active === false && barMenu.visible === false
-        text: root.hoveredPin === null ? '' : root.hoveredPin.app.name
+        target: root.hoveredTip
+        // The arrow's "Show hidden icons" is not said while they are shown.
+        shown: root.hoveredTip !== null
+            && BarDrag.active === false
+            && barMenu.visible === false
+            && trayMenu.visible === false
+            && (root.hoveredTip !== trayArea.arrow || trayFlyout.visible === false)
+        text: root.hoveredTip === null ? '' : root.hoveredTip.tooltipText
+    }
+
+    TrayMenu {
+        id: trayMenu
+
+        anchor.window: root
+    }
+
+    TrayFlyout {
+        id: trayFlyout
+
+        anchor.window: root
+        // It closes once nothing is left in it, unless a tray icon is being dragged (it can be dropped in).
+        shown: Tray.flyoutScreen === root.screen.name && (Tray.hidden.length > 0 || BarDrag.trayKey !== '')
+        byDrag: Tray.flyoutByDrag
+        barScreen: root.screen
+        barWidth: root.width
+        // The bar's glass panel starts 2px left of the bar.
+        arrowX: trayArea.x - 2 + trayArea.arrow.x + trayArea.arrow.width / 2
+        dragPointer: root.dragPointer
+        dragPointerShown: dropLayer.hovered && dropLayer.pointerKnown
+        puttingBack: dropLayer.puttingBack
+        onTipHovered: (control, hovered) => root.flyoutTipHovered(control, hovered)
+    }
+
+    BarTooltip {
+        anchor.window: trayFlyout
+        overTarget: true
+        target: root.hoveredFlyoutTip
+        shown: root.hoveredFlyoutTip !== null && trayFlyout.visible && BarDrag.active === false
+        text: root.hoveredFlyoutTip === null ? '' : root.hoveredFlyoutTip.tooltipText
     }
 
     // Grows up and to the right from the bar's left end, its bottom on the top of the orb, as in Vista.
@@ -343,8 +479,7 @@ PanelWindow {
         anchor.gravity: Edges.Top | Edges.Right
         shown: StartMenuState.openScreen === root.screen.name
         barScreen: root.screen
-        // The drop layer's pointer in bar coordinates: the bar runs along the layer's bottom edge.
-        dragPointer: Qt.point(dropLayer.pointer.x, dropLayer.pointer.y - dropLayer.height + root.height)
+        dragPointer: root.dragPointer
         dragPointerShown: dropLayer.hovered && dropLayer.pointerKnown
         puttingBack: dropLayer.puttingBack
     }
@@ -354,6 +489,19 @@ PanelWindow {
         x: -2
         width: parent.width + 4
         height: parent.height
+
+        // Under everything on the bar, so it only gets right clicks on the empty glass (the controls keep
+        // theirs). Not on the workspace buttons either: there it would read as a menu of the workspace.
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.RightButton
+            onClicked: mouse => {
+                const onWorkspaces = strip.contains(mapToItem(strip, mouse.x, mouse.y))
+                if (onWorkspaces === false) {
+                    root.openBarOwnMenu(mapToItem(null, mouse.x, mouse.y))
+                }
+            }
+        }
 
         // Right of the orb's corner (the orb takes the pointer there).
         PinBar {
@@ -365,21 +513,32 @@ PanelWindow {
             gap: root.pinGap
             menuApp: barMenu.visible && root.menuApp !== null ? root.menuApp.id : ''
             onMenuRequested: (app, at) => root.openPinMenu(app, pinBar.mapToItem(null, at))
-            onPinHovered: (pin, hovered) => {
-                if (hovered) {
-                    // Straight from the pin next to it, the tooltip still shown: through none, so it starts
-                    // over (fades out, waits, is placed again) instead of naming this pin over the other.
-                    root.hoveredPin = null
-                    root.hoveredPin = pin
-                } else if (root.hoveredPin === pin) {
-                    root.hoveredPin = null
-                }
-            }
+            onPinHovered: (pin, hovered) => root.tipHovered(pin, hovered)
+        }
+
+        // Left of the "Show desktop" strip, as on Windows 7 (the clock will go between them).
+        TrayArea {
+            id: trayArea
+
+            anchors.right: emptyButton.left
+            anchors.rightMargin: Theme.space2
+            anchors.verticalCenter: parent.verticalCenter
+            width: implicitWidth
+            screen: root.screen
+            gap: root.trayGap
+            flyoutOpen: trayFlyout.visible
+            menuKey: trayMenu.visible ? root.trayMenuKey : ''
+            onArrowClicked: Tray.toggleFlyout(root.screen.name)
+            onCustomizeClicked: Tray.openCustomize()
+            onMenuRequested: (item, at) => root.openTrayMenu(item, trayArea.mapToItem(null, at))
+            onTipHovered: (control, hovered) => root.tipHovered(control, hovered)
         }
 
         // Inside the top and bottom glass borders and flush with the screen's right edge (the panel's right
         // border is off the screen), like Windows 7's "Show desktop".
         EmptyWorkspaceButton {
+            id: emptyButton
+
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             anchors.right: parent.right

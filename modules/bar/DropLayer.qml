@@ -4,8 +4,8 @@ import QtQuick
 import qs.design
 import qs.services
 
-// Covers the whole screen, bar included, only while a window or a workspace is dragged out of a bar, or an
-// app out of its start menu. It draws the dragged card, button or row under the pointer, held at the point where it was grabbed, and takes
+// Covers the whole screen, bar included, only while a window, a workspace or a tray icon is dragged out of
+// a bar, or an app out of its start menu. It draws the dragged card, button or row under the pointer, held at the point where it was grabbed, and takes
 // the drop anywhere on the screen; the bar decides what a drop at the pointer means. Where the drag was
 // taken from, a glass ghost stays; it lights up while a drop would put it back (the pointer on it, or
 // anywhere on the start menu an app came from), and such a drop changes nothing.
@@ -86,6 +86,7 @@ PanelWindow {
             Workspaces.windowDragFormat,
             Workspaces.workspaceDragFormat,
             Apps.appDragFormat,
+            Tray.trayDragFormat,
         ]
         onEntered: drag => {
             root.pointer = Qt.point(drag.x, drag.y)

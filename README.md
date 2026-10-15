@@ -22,13 +22,17 @@ git clone https://github.com/SonicallGameXGit/HyprAero.git ~/HyprAero
 qs --path ~/HyprAero     # qs log --path ~/HyprAero reads its log, qs kill --path ~/HyprAero stops it
 ```
 
-To start it with Hyprland, add it to the autostart. If you used another bar (Waybar, an AGS shell, ...), take that one out, or both will show:
+To start it with Hyprland, add it to the autostart. Start the tray's watcher with it, and let **the apps that put an icon in the tray** (Discord, Telegram, Steam, ...) wait for that watcher: autostart commands all start at once, and an Electron app (Discord) that starts before the watcher never shows its tray icon (see the tray in "What works"). `gdbus wait` returns as soon as the watcher is there, at most 10 seconds later. If you used another bar (Waybar, an AGS shell, ...), take that one out, or both will show:
 
 ```lua
 local hyprAero = "~/HyprAero"   -- where you cloned it; the examples below use this too
+local afterTray = "gdbus wait --session --timeout 10 org.kde.StatusNotifierWatcher; "
 
 hl.on("hyprland.start", function()
+    hl.exec_cmd("qs -n -p " .. hyprAero .. "/tools/trayWatcher.qml")
     hl.exec_cmd("qs --path " .. hyprAero)
+    hl.exec_cmd(afterTray .. "discord")
+    hl.exec_cmd(afterTray .. "Telegram -startintray")
 end)
 ```
 
@@ -49,8 +53,8 @@ hl.config({
     },
 })
 
--- The bar and everything that opens from it: the start button, the start menu, the window previews,
--- right-click menus and tooltips.
+-- The bar and everything that opens from it: the start button, the start menu, the window previews, the
+-- tray's flyout, right-click menus and tooltips.
 hl.layer_rule({ match = { namespace = "hypraero-bar" }, blur = true, blur_popups = true, ignore_alpha = 0.5 })
 -- What you carry while dragging a window, a workspace or an app, and its "Put back" slot.
 hl.layer_rule({ match = { namespace = "hypraero-drop" }, blur = true, ignore_alpha = 0.2, no_anim = true })
@@ -156,6 +160,21 @@ hl.bind("ALT + F4", hl.dsp.window.close())
     - **Click a pin** to start the app. **Right-click it** for its menu: the app (bold, starts it), its own actions (such as "New Window") hanging under it on a thin line, and **Unpin from bar**.
     - **Drag a pin** to move it among the pins (the blue mark shows where), or drag it out to a workspace to start the app there, exactly like dragging an app out of the start menu. Its "Put back" slot stays where it was taken from.
     - An app that is uninstalled disappears from the pins and comes back in its place if it is installed again. Pins are kept in `~/.local/state/hypraero/pins.json` (or under `$XDG_STATE_HOME`).
+- **Notification area (tray)**: the apps' icons at the right end of the bar, left of the empty workspace button, as on Windows 7 (Steam, Discord, Telegram, the network applet, ...). Any app that puts an icon in a Linux tray (a StatusNotifierItem, what KDE and most bars use) shows here; old X11-only tray icons need `xembed-sni-proxy` (part of KDE Plasma's workspace package) to appear.
+    - **What the icons do is the app's own**: click one (most apps open their window), right-click it for the app's menu, middle-click it or use the wheel on it if the app does something with those. An app that only has a menu opens it on a click too. Resting the pointer on an icon shows its name (and what the app says about it, such as a status) just above the bar.
+    - **The app's menu** looks like every other menu of the shell: ticks for options that are on, the app's small pictures, and submenus that open beside their entry (point at it, click it, or press Right; Left closes it). Up / Down, Enter and Escape work too.
+    - **Hidden icons**: like Windows 7, the tray keeps the bar tidy. A new icon goes behind the **arrow** ("Show hidden icons") left of the tray; click the arrow to open a small glass flyout with those icons, ready to use the same way. Escape, a click outside or the arrow again closes it, and so does using one of its icons.
+    - **Choose which icons show**: drag an icon out of the flyout onto the bar's icons to keep it always shown, at the place a glowing blue mark shows. Drag an icon from the bar onto the arrow (the flyout opens) and drop it in the flyout to hide it again. Icons can also be dragged along the bar or inside the flyout to change their order. A "Put back" slot stays where you took an icon from; dropping it there, or anywhere else, changes nothing.
+    - **Customize...** at the bottom of the flyout opens the **Notification Area Icons** page, as on Windows 7 (a window of its own; the list's rows light up under the pointer, and its scrollbar can be dragged or clicked): every icon the tray has ever seen (apps that are not running too, greyed), each with what it should do:
+        - **Show icon and notifications**: always on the bar;
+        - **Hide icon and notifications**: always in the flyout;
+        - **Only show notifications** (the default for a new icon): in the flyout, but on the bar while the app asks for your attention (for example a new message), so you do not miss it.
+
+        The names are Windows 7's, where "notifications" meant the speech bubbles a tray icon could pop up. Linux tray icons have no bubbles; what they have instead is "asking for attention", and that is what these choices are about. Your ordinary desktop notifications (the ones apps send to a notification server) are not touched by them.
+
+        **Restore default icon behaviors** puts every icon back to "Only show notifications". **Always show all icons and notifications on the bar** shows every icon on the bar (the same as the `tray.showAll` setting, see Settings; ticking it writes that setting into your `config.json`). Changes apply at once; **Close** (or Escape) closes the page. With no icon hidden (every icon set to show, or "Always show all" on) the arrow stays, turned to point right at the icons instead of up, and a click on it opens this page. You can also **right-click an empty part of the bar** and choose **Customize notification icons...** at any time. (Before any app has put an icon in the tray, there is no arrow.)
+    - The tray remembers every icon, its choice and the order in `~/.local/state/hypraero/tray.json` (or under `$XDG_STATE_HOME`). Icons are told apart by the id their app gives them.
+    - **An app's icon is missing although the app is running?** Apps hand their tray icon to a "tray watcher" on D-Bus. Many apps (Telegram and the network applet, for example) hand it over again whenever a watcher appears, but Electron apps (Discord, VS Code, Slack, ...) try once, when they start, and never again: started before the shell, they never show an icon. The shell cannot bring such an icon back: the app has given up on it. Restart the app once the shell runs, and let it wait for the watcher at login (`gdbus wait`, see the autostart above). The shell keeps the watcher in a small process of its own (`qs -n -p <shell folder>/tools/trayWatcher.qml`, started by the shell when there is no watcher yet, or by your autostart), so restarting the shell does not lose those icons.
 - **Empty workspace button**: the narrow strip at the right end of the bar, where Windows 7 has "Show desktop". Click it to go to the first workspace without windows (the lowest-numbered one; when all have windows, the next new one).
 
 - **Start button and menu**: the round glass orb at the left end of the bar. Like Windows Vista's, it is a bit bigger than the bar, centred on it: it rises a little above the bar's top edge and its bottom runs off the screen. The bar's corner under it counts too, so you can throw the pointer into the corner and click. Click it to open the start menu, which sits on top of the orb; click it again, click anywhere outside, or press Escape to close it. The orb stays lit while its menu is open, also when a key binding opened it. Only one start menu is open at a time.
@@ -189,6 +208,7 @@ Settings live in `~/.config/hypraero/config.json` (or under `$XDG_CONFIG_HOME`; 
 | --- | --- | --- |
 | `startMenu.touchControls` | `false` | Phone-style controls for the start menu's app list: drag the list to scroll it, and hold an app for a moment to pick it up and drag it to a workspace. Off: dragging an app picks it up at once, and the list scrolls with the wheel or the scrollbar. |
 | `startMenu.countFocus` | `true` | Keeping a window of an app focused for 10 seconds counts as using the app, for "Most used". Off: only starting an app from the menu counts. Nothing leaves your computer either way. |
+| `tray.showAll` | `false` | Every tray icon is on the bar (the "Show hidden icons" arrow then points right, at them), whatever each icon's own choice says. The tray's **Customize...** page has the same switch; using it there rewrites `config.json` (keeping everything else you wrote in it, but not its layout or spacing). When the file is not valid JSON the page leaves it alone, and the switch lasts until the shell restarts. |
 
 ## Theme
 

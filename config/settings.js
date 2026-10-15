@@ -16,6 +16,11 @@ const defaults = {
         // A window of an app keeping focus for a while counts as using it, for "Most used".
         countFocus: true,
     },
+    tray: {
+        // Windows 7's "Always show all icons and notifications on the taskbar": no icon waits behind the
+        // arrow.
+        showAll: false,
+    },
 }
 
 function kindOf(value) {
@@ -86,4 +91,43 @@ function parseConfig(text) {
     }
 
     return { values: values, problems: problems }
+}
+
+// The file's text with one setting changed, for a setting changed from the shell itself (the tray's
+// "Customize" page). Everything else in the file stays, unknown names too; a setting back at its default
+// is taken out (and its group when that leaves it empty), so the file keeps holding only what differs.
+// null when the file cannot be changed safely (not JSON, not an object, the group not an object): the
+// user's file is never overwritten with something they did not write.
+function setSetting(text, group, name, value) {
+    if (defaults[group] === undefined || defaults[group][name] === undefined) {
+        return null
+    }
+
+    let data = {}
+    if (text.trim() !== '') {
+        try {
+            data = JSON.parse(text)
+        } catch (error) {
+            return null
+        }
+    }
+
+    if (kindOf(data) !== 'object' || (data[group] !== undefined && kindOf(data[group]) !== 'object')) {
+        return null
+    }
+
+    const values = Object.assign({}, data[group])
+    if (value === defaults[group][name]) {
+        delete values[name]
+    } else {
+        values[name] = value
+    }
+
+    if (Object.keys(values).length === 0) {
+        delete data[group]
+    } else {
+        data[group] = values
+    }
+
+    return JSON.stringify(data, null, 4) + '\n'
 }

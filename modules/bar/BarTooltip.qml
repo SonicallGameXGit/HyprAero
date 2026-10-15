@@ -2,8 +2,10 @@ import Quickshell
 import QtQuick
 import qs.design
 
-// The tooltip of an icon-only control on the bar (a pin). The bar is too low to hold one, so it is a small
-// popup of the bar standing on the bar's top edge over the control, drawn by the family `Tooltip`. It is
+// The tooltip of an icon-only control on the bar (a pin, a tray icon). The bar is too low to hold one, so it
+// is a small popup of the bar standing on the bar's top edge over the control, drawn by the family
+// `Tooltip`. With `overTarget` it stands over the control itself instead, for a control in a popup of the
+// bar (the tray's flyout), the popup then being its window. It is
 // placed only once the pointer has rested (`Tooltip.waited`): by then the last one has faded out, so it
 // never jumps while shown.
 PopupWindow {
@@ -13,8 +15,12 @@ PopupWindow {
     property Item target: null
     property bool shown: false
     property string text: ''
-    // The middle of the control across the bar, taken when the tooltip is placed.
+    // Over the control's top edge instead of the window's.
+    property bool overTarget: false
+    // The middle of the control across its window, and the edge the tooltip stands on, taken when the
+    // tooltip is placed.
     property real centerX: 0
+    property real topY: 0
     // Placed over the control the pointer rests on and about to fade in.
     property bool placed: false
     // Room around the tooltip for its shadow.
@@ -22,7 +28,7 @@ PopupWindow {
 
     // The popup's bottom hangs into the bar, so the tooltip itself stands `space1` over the bar's top edge
     // with only its shadow on the glass.
-    anchor.rect: Qt.rect(centerX, shadowRoom - Theme.space1, 1, 1)
+    anchor.rect: Qt.rect(centerX, topY + shadowRoom - Theme.space1, 1, 1)
     anchor.edges: Edges.Top
     anchor.gravity: Edges.Top
     implicitWidth: tip.width + shadowRoom * 2
@@ -47,7 +53,9 @@ PopupWindow {
         text: root.text
         onWaitedChanged: {
             if (waited && root.target !== null && root.text !== '') {
-                root.centerX = root.target.mapToItem(null, root.target.width / 2, 0).x
+                const place = root.target.mapToItem(null, root.target.width / 2, 0)
+                root.centerX = place.x
+                root.topY = root.overTarget ? place.y : 0
                 root.placed = true
                 return
             }

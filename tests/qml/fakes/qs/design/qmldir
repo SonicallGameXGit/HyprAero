@@ -8,3 +8,13 @@ SearchGlyph 1.0 ../../../../../design/SearchGlyph.qml
 SortGlyph 1.0 ../../../../../design/SortGlyph.qml
 StarGlyph 1.0 ../../../../../design/StarGlyph.qml
 Tooltip 1.0 ../../../../../design/Tooltip.qml
+CheckGlyph 1.0 ../../../../../design/CheckGlyph.qml
+ControlButton 1.0 ../../../../../design/ControlButton.qml
+CheckBox 1.0 ../../../../../design/CheckBox.qml
+ChoiceBox 1.0 ../../../../../design/ChoiceBox.qml
+LinkText 1.0 ../../../../../design/LinkText.qml
+MenuPanel 1.0 ../../../../../design/MenuPanel.qml
+DropZone 1.0 ../../../../../design/DropZone.qml
+GlassPanel 1.0 ../../../../../design/GlassPanel.qml
+ReturnGlyph 1.0 ../../../../../design/ReturnGlyph.qml
+ScrollBar 1.0 ../../../../../design/ScrollBar.qml

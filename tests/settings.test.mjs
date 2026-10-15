@@ -54,3 +54,24 @@ test('reading never changes the defaults themselves', () => {
     parseConfig('{ "startMenu": { "touchControls": true } }')
     assert.equal(defaults.startMenu.touchControls, false)
 })
+
+const setSetting = new Function(source + '\nreturn setSetting')()
+
+test('changing a setting keeps everything else in the file', () => {
+    const text = setSetting('{ "startMenu": { "touchControls": true, "typo": 1 } }', 'tray', 'showAll', true)
+    assert.deepEqual(JSON.parse(text), { startMenu: { touchControls: true, typo: 1 }, tray: { showAll: true } })
+    assert.deepEqual(JSON.parse(setSetting('', 'tray', 'showAll', true)), { tray: { showAll: true } })
+})
+
+test('a setting set back to its default leaves the file, with its group when that is empty', () => {
+    assert.deepEqual(JSON.parse(setSetting('{ "tray": { "showAll": true } }', 'tray', 'showAll', false)), {})
+    const text = setSetting('{ "startMenu": { "touchControls": true, "countFocus": false } }', 'startMenu', 'countFocus', true)
+    assert.deepEqual(JSON.parse(text), { startMenu: { touchControls: true } })
+})
+
+test('a file that cannot be changed safely, or an unknown setting, is refused', () => {
+    assert.equal(setSetting('{ broken', 'tray', 'showAll', true), null)
+    assert.equal(setSetting('[]', 'tray', 'showAll', true), null)
+    assert.equal(setSetting('{ "tray": 3 }', 'tray', 'showAll', true), null)
+    assert.equal(setSetting('', 'tray', 'nope', true), null)
+})

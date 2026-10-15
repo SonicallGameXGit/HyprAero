@@ -1,6 +1,7 @@
 import Quickshell
 import QtQuick
 import qs.modules.bar
+import qs.modules.tray
 
 ShellRoot {
     Variants {
@@ -11,5 +12,9 @@ ShellRoot {
 
             screen: modelData
         }
+    }
+
+    // One for the whole shell, opened from any screen's tray.
+    TrayCustomize {
     }
 }

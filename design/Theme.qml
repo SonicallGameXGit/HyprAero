@@ -44,6 +44,7 @@ Singleton {
 
     readonly property int radiusControl: 3
     readonly property int radiusPanel: 6
+    readonly property int radiusWindow: 8
 
     readonly property int motionFast: 120
 
@@ -59,6 +60,7 @@ Singleton {
     readonly property color surfaceBorder: slate ? '#0d1013' : '#a9b9cc'
     readonly property color text: slate ? '#e6eaee' : '#1b1f24'
     readonly property color textMuted: slate ? '#a3adb8' : '#55616f'
+    readonly property color textLink: slate ? '#7cc0f5' : '#0b5cad'
     readonly property color headingText: slate ? '#8cc4f0' : '#1a4a9c'
 
     readonly property color fieldBackground: slate ? '#171b1f' : '#ffffff'
@@ -74,6 +76,10 @@ Singleton {
     readonly property var rowSelectedFace: slate ? ['#34526e', '#2a4560'] : ['#dcebfc', '#c1dbfc']
     readonly property color rowSelectedBorder: slate ? '#4d86b8' : '#7da2ce'
     readonly property color rowSeparator: slate ? '#2c3239' : '#e6ecf3'
+
+    // toolbar-face is a top -> bottom gradient; also the face of a list's column headings.
+    readonly property var toolbarFace: slate ? ['#343b43', '#2a3037'] : ['#fbfdff', '#e4edf8']
+    readonly property color toolbarBorder: slate ? '#14181c' : '#c3d0de'
 
     readonly property color menuBackground: slate ? '#2a3037' : '#ffffff'
     readonly property color menuBorder: slate ? '#07090b' : '#7c8794'
@@ -97,6 +103,36 @@ Singleton {
     readonly property color controlBorderHover: slate ? '#5aa3d8' : '#3c7fb1'
     readonly property color controlInner: slate ? '#29ffffff' : '#d9ffffff'
     readonly property color controlText: slate ? '#eef1f4' : '#1b1f24'
+    readonly property color controlFaceDisabled: slate ? '#2a2f35' : '#f4f4f4'
+    readonly property color controlBorderDisabled: slate ? '#1b1f23' : '#adb2b5'
+    readonly property color controlTextDisabled: slate ? '#6b737c' : '#838383'
+
+    // A check box's sunken square: its face runs from the top-left corner to the bottom-right.
+    readonly property color checkBoxBorder: slate ? '#0b0d10' : '#8e8f8f'
+    readonly property color checkBoxBorderHover: slate ? '#5aa3d8' : '#5586a3'
+    readonly property color checkBoxGap: slate ? '#3a4148' : '#f4f4f4'
+    readonly property color checkBoxGapHover: slate ? '#3d5a72' : '#def9fa'
+    readonly property color checkBoxRing: slate ? '#4d000000' : '#14000000'
+    readonly property color checkBoxRingHover: slate ? '#4f8fbf' : '#89d1f9'
+    readonly property color checkBoxRingActive: slate ? '#4d86b8' : '#56a6d6'
+    readonly property var checkBoxFace: slate ? ['#1b2025', '#2a3037', '#363c43'] : ['#cdcdcd', '#e8e8e8', '#f5f5f5']
+    readonly property var checkBoxFaceHover: slate ? ['#24435c', '#2f5878', '#3b6a8c'] : ['#aecede', '#c4eafd', '#e9f5fb']
+    readonly property var checkBoxFaceActive: slate ? ['#173a55', '#22506f', '#2a5d80'] : ['#7ebce3', '#96cbeb', '#9ed0ec']
+
+    // A scrollbar thumb's face runs from left to right: left, 49%, 50%, right.
+    readonly property var scrollThumbFace: slate
+        ? ['#5a626b', '#474e56', '#363c43', '#2f343a']
+        : ['#f5f5f5', '#e9e9eb', '#d9dadc', '#c0c0c4']
+    readonly property var scrollThumbFaceHover: slate
+        ? ['#6b7885', '#55626f', '#3f4c59', '#384552']
+        : ['#f5f5f5', '#d6eefb', '#a9dbf6', '#a9dbf6']
+    readonly property var scrollThumbFaceActive: slate
+        ? ['#3b6a8c', '#3b6a8c', '#2a5d80', '#2a5d80']
+        : ['#b5e4f7', '#b5e4f7', '#6fcaf0', '#6fcaf0']
+    readonly property color scrollThumbBorder: slate ? '#0b0d10' : '#979797'
+    readonly property color scrollThumbBorderHover: slate ? '#5aa3d8' : '#356f9b'
+    readonly property color scrollThumbBorderActive: slate ? '#4d86b8' : '#18598a'
+    readonly property color scrollThumbInner: slate ? '#29ffffff' : '#99ffffff'
 
     readonly property var accentFace: slate
         ? ['#5f9fcf', '#3a7fb5', '#1f629b', '#2a73ad']

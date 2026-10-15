@@ -4,10 +4,13 @@ import QtQuick
 import QtQuick.Effects
 
 // A context menu drawn inside a window: a white panel (menu-*) with rows that light up like list rows.
-// `items` is a list of `{ text, enabled, bold, indent }` (only `text` is needed), or `{ separator: true }`;
-// other fields are kept for the owner. `bold` marks what a click on the thing itself does, as in Windows 7;
-// `indent` rows hang under the row above on a tree line, as the actions of an app. Place it in an item
-// that covers the window: a press anywhere outside the panel closes it.
+// `items` is a list of `{ text, enabled, bold, indent, check, checked, icon, submenu }` (only `text` is
+// needed), or `{ separator: true }`; other fields are kept for the owner. `bold` marks what a click on the
+// thing itself does, as in Windows 7; `indent` rows hang under the row above on a tree line, as the actions
+// of an app. In the margin left of the text a row shows its `icon` (an image source), or a tick when
+// `checked` (`check`: 'box' a check mark, 'radio' a dot). A `submenu` row has an arrow at its end and
+// choosing it asks for its submenu (`submenuRequested`) instead of closing. Place it in an item that covers
+// the window: a press anywhere outside the panel closes it.
 Item {
     id: root
 
@@ -24,6 +27,7 @@ Item {
     readonly property alias panelHeight: panel.height
 
     signal chosen(int index)
+    signal submenuRequested(int index)
 
     function close(): void {
         open = false
@@ -48,8 +52,25 @@ Item {
             return
         }
 
+        if (item.submenu === true) {
+            current = index
+            submenuRequested(index)
+            return
+        }
+
         close()
         chosen(index)
+    }
+
+    // A row's place in this item, for a submenu opening beside it.
+    function rowRect(index: int): rect {
+        const row = rows.itemAt(index)
+        if (row === null) {
+            return Qt.rect(0, 0, 0, 0)
+        }
+
+        const place = row.mapToItem(root, 0, 0)
+        return Qt.rect(place.x, place.y, row.width, row.height)
     }
 
     visible: open
@@ -64,9 +85,22 @@ Item {
     Item {
         id: panel
 
+        readonly property real widestRow: {
+            let widest = 0
+            for (let index = 0; index < rows.count; index++) {
+                const row = rows.itemAt(index)
+                if (row !== null) {
+                    widest = Math.max(widest, row.implicitWidth)
+                }
+            }
+
+            return widest
+        }
+
         x: Math.max(0, Math.min(root.above ? root.at.x - width : root.at.x, root.width - width))
         y: Math.max(0, Math.min(root.above ? root.at.y - height : root.at.y, root.height - height))
-        width: Math.max(160, column.implicitWidth + 4)
+        // From the rows' own widths: the column only knows the width it gives them, the panel's.
+        width: Math.max(160, widestRow + 4)
         height: column.implicitHeight + 4
 
         RectangularShadow {
@@ -91,6 +125,8 @@ Item {
             width: parent.width - 4
 
             Repeater {
+                id: rows
+
                 model: root.items
 
                 Item {
@@ -109,9 +145,11 @@ Item {
                         return next === undefined || next.indent !== true
                     }
                     readonly property int textX: indent ? Theme.space5 + Theme.space3 : Theme.space5
+                    readonly property bool submenu: modelData.submenu === true
+                    readonly property string icon: typeof modelData.icon === 'string' ? modelData.icon : ''
 
                     width: column.width
-                    implicitWidth: separator ? 0 : label.implicitWidth + textX + Theme.space5
+                    implicitWidth: separator ? 0 : label.implicitWidth + textX + Theme.space5 + (submenu ? Theme.space3 : 0)
                     height: separator ? Theme.space2 : 24
 
                     Rectangle {
@@ -152,6 +190,44 @@ Item {
                         width: row.textX - x - Theme.space1
                         height: 1
                         color: Theme.surfaceBorder
+                    }
+
+                    // The margin left of the text: the row's icon, or its tick.
+                    Image {
+                        visible: row.icon !== '' && row.separator === false
+                        x: (Theme.space5 - width) / 2
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 16
+                        height: 16
+                        sourceSize: Qt.size(32, 32)
+                        source: row.icon
+                        smooth: true
+                        mipmap: true
+                    }
+
+                    CheckGlyph {
+                        visible: row.icon === '' && row.modelData.check === 'box' && row.modelData.checked === true
+                        x: (Theme.space5 - width) / 2
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: row.enabled ? Theme.text : Theme.textMuted
+                    }
+
+                    Rectangle {
+                        visible: row.icon === '' && row.modelData.check === 'radio' && row.modelData.checked === true
+                        x: (Theme.space5 - width) / 2
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 6
+                        height: 6
+                        radius: 3
+                        color: row.enabled ? Theme.text : Theme.textMuted
+                    }
+
+                    ChevronGlyph {
+                        visible: row.submenu
+                        anchors.right: parent.right
+                        anchors.rightMargin: Theme.space2
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: row.enabled ? Theme.text : Theme.textMuted
                     }
 
                     Text {

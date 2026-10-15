@@ -13,6 +13,7 @@ Singleton {
 
     // One object per group, every setting filled in.
     property var startMenu: Settings.parseConfig('').values.startMenu
+    property var tray: Settings.parseConfig('').values.tray
 
     readonly property string folder: {
         const xdg = Quickshell.env('XDG_CONFIG_HOME')
@@ -30,12 +31,32 @@ Singleton {
         }
 
         startMenu = config.values.startMenu
+        tray = config.values.tray
+    }
+
+    // Changes one setting from the shell itself (the tray's "Customize" page) and writes the file, keeping
+    // whatever else the user wrote in it. A file that is not valid JSON is left alone and the change only
+    // lasts until the next start; the log says so.
+    function set(group: string, name: string, value: var): void {
+        const text = Settings.setSetting(file.text(), group, name, value)
+        if (text === null) {
+            console.warn(`Config: config.json cannot be changed safely (fix it first), ${group}.${name} applies until the shell restarts`)
+            const values = Object.assign({}, root[group])
+            values[name] = value
+            root[group] = values
+            return
+        }
+
+        file.setText(text)
+        apply(text)
     }
 
     // The file is only noticed when it appears in a folder that already exists.
     Component.onCompleted: Quickshell.execDetached(['mkdir', '-p', folder])
 
     FileView {
+        id: file
+
         path: root.folder + '/config.json'
         printErrors: false
         watchChanges: true

@@ -2,7 +2,7 @@ import QtQuick
 import qs.services
 
 // Makes its parent draggable out of the bar or the start menu: a window (`address`), a whole workspace
-// (`workspaceId`) or an app to start (`appId`). It is a real Wayland drag, so it can be dropped anywhere on
+// (`workspaceId`), an app to start (`appId`) or a tray icon (`trayKey`). It is a real Wayland drag, so it can be dropped anywhere on
 // the screen (`modules/bar/DropLayer.qml`, another surface). Once the pointer has moved far enough
 // `picture` is grabbed, and the drag starts when that is ready; the drop layer draws it, held where the
 // pointer took it.
@@ -17,11 +17,13 @@ import qs.services
 Item {
     id: root
 
-    // What is dragged: set one of the three. Nothing set: no drag.
+    // What is dragged: set one of the four. Nothing set: no drag.
     property string address: ''
     property int workspaceId: 0
     property string appId: ''
-    // What it is taken out of, for the drop to know (`BarDrag.from`): 'pins', 'startMenu' or ''.
+    property string trayKey: ''
+    // What it is taken out of, for the drop to know (`BarDrag.from`): 'pins', 'startMenu', 'tray',
+    // 'trayFlyout' or ''.
     property string from: ''
     property Item picture: parent
     property bool holdToDrag: false
@@ -34,7 +36,7 @@ Item {
     property Item returnArea: null
 
     readonly property bool dragging: Drag.active
-    readonly property bool hasSubject: address !== '' || workspaceId > 0 || appId !== ''
+    readonly property bool hasSubject: address !== '' || workspaceId > 0 || appId !== '' || trayKey !== ''
 
     z: -1
     anchors.fill: parent
@@ -47,6 +49,10 @@ Item {
 
         if (appId !== '') {
             return { [Apps.appDragFormat]: appId }
+        }
+
+        if (trayKey !== '') {
+            return { [Tray.trayDragFormat]: trayKey }
         }
 
         return { [Workspaces.workspaceDragFormat]: String(workspaceId) }
@@ -77,7 +83,7 @@ Item {
             }
 
             const origin = barRect(picture)
-            BarDrag.begin(address, workspaceId, appId, from, result, Qt.size(picture.width, picture.height), hotSpot, screen, origin, returnArea === null ? origin : barRect(returnArea))
+            BarDrag.begin(address, workspaceId, appId, trayKey, from, result, Qt.size(picture.width, picture.height), hotSpot, screen, origin, returnArea === null ? origin : barRect(returnArea))
             root.Drag.active = true
         })
     }

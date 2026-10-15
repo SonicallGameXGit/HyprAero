@@ -14,6 +14,18 @@ The look of every Aero family project. **Style** here means colours, shades, gra
 
 Frutiger Aero imagery must never sit under long text and never be busy enough to compete with content.
 
+### The owner's design file
+
+**Longhorn Mockups** (Figma): https://www.figma.com/design/5WXM0xTlbQpyPGAOIj2LNF/Longhorn-Mockups?node-id=1201-171&p=f
+
+The owner's mockups of the family's buttons, fonts, icons and other components. Before drawing a component or changing how one looks, check it there: it is the picture this file's words and tokens describe. A value taken from it still becomes a token (section 4) before any component uses it, and a difference between the mockups and this file is raised with the owner, not settled silently.
+
+The original belongs to someone else; the owner's own copy, which the owner's account can open and edit, is **Longhorn Mockups (Copy)**: https://www.figma.com/design/nOfW0PdsVhl3x9zBRS3PkA/Longhorn-Mockups--Copy-?node-id=2-14
+
+The file needs a Figma login: its API, page and thumbnails answer "log in" to a client without one. Ways in that work: Figma's MCP server (only on a file the account can edit, a `use_figma` call returns at most 20KB, and the owner's Starter plan allows only a few calls a month, so it suits one look at one node, not an export), or Figma's REST API with a personal access token of the owner's (read-only "file content" scope), passed in the request header and nothing else (`GET /v1/files/<key>?geometry=paths` for every page, component, style and vector; `GET /v1/images/<key>?ids=...&format=svg` to export many nodes in one request). An agent that cannot open it says so and asks the owner for screenshots, an export or a token, instead of guessing. A token is never written into the repository, a config file or a log.
+
+Many of its pieces are Microsoft's own Windows 7 bitmaps (sprite strips cut from Windows' resources) next to the author's vector redraws. Both are for looking at and measuring; none of it is shipped (see "Start orb": drawn from values, never from a picture of the original).
+
 ## 2. What "Windows Aero" means concretely
 
 - **Glass**: translucent, blurred, lightly tinted surfaces for chrome (title area, bars, toolbars, sidebars, popups). A thin bright inner border and a darker outer border give each glass panel an edge.
@@ -112,6 +124,7 @@ Aero (light) is the base; Slate overrides only what differs. Values not listed f
 | `danger-face-active` | `#d0685b #b84032 #9c2417 #aa3123` | same |
 | `danger-control-border` | `#7a1810` | `#2a0704` |
 | `focus-glow` | `0 0 0 1px #3c9be6, 0 0 6px 1px rgba(60,155,230,0.75)` | same |
+| `control-face-disabled` (flat) / `control-border-disabled` / `control-text-disabled` | `#f4f4f4` / `#adb2b5` / `#838383` | `#2a2f35` / `#1b1f23` / `#6b737c` |
 
 ### Fields, rows, toolbars, menus, badges
 
@@ -133,6 +146,24 @@ Aero (light) is the base; Slate overrides only what differs. Values not listed f
 | `overlay` | `rgba(10,30,60,0.35)` | `rgba(0,0,0,0.55)` |
 | `splitter-hover` | `rgba(60,155,230,0.75)` | same |
 | `unread-mark` / `flag-mark` | `#1f86d4` / `#e08a00` | `#5fb0ee` / `#f0a030` |
+
+### Check boxes and scrollbars
+
+A check box is a box (`check-box-border`), a 1px light gap (`check-box-gap`) and a sunken square inside: a 1px edge (`check-box-ring`) around a face shaded from the top-left corner (dark) to the bottom-right (light). Pressed takes the hover border and gap. A scrollbar's thumb is the button's gloss turned on its side: its gradient runs from left to right, the horizon at 49% / 50%, with a 1px inner highlight (`scroll-thumb-inner`).
+
+| Token | Aero | Slate |
+| --- | --- | --- |
+| `check-box-border` / `-hover` | `#8e8f8f` / `#5586a3` | `#0b0d10` / `#5aa3d8` |
+| `check-box-gap` / `-hover` | `#f4f4f4` / `#def9fa` | `#3a4148` / `#3d5a72` |
+| `check-box-ring` / `-hover` / `-active` | `rgba(0,0,0,0.08)` / `#89d1f9` / `#56a6d6` | `rgba(0,0,0,0.3)` / `#4f8fbf` / `#4d86b8` |
+| `check-box-face` (top-left -> middle -> bottom-right) | `#cdcdcd #e8e8e8 #f5f5f5` | `#1b2025 #2a3037 #363c43` |
+| `check-box-face-hover` | `#aecede #c4eafd #e9f5fb` | `#24435c #2f5878 #3b6a8c` |
+| `check-box-face-active` | `#7ebce3 #96cbeb #9ed0ec` | `#173a55 #22506f #2a5d80` |
+| `scroll-thumb-face` (left -> 49% -> 50% -> right) | `#f5f5f5 #e9e9eb #d9dadc #c0c0c4` | `#5a626b #474e56 #363c43 #2f343a` |
+| `scroll-thumb-face-hover` | `#f5f5f5 #d6eefb #a9dbf6 #a9dbf6` | `#6b7885 #55626f #3f4c59 #384552` |
+| `scroll-thumb-face-active` | `#b5e4f7 #b5e4f7 #6fcaf0 #6fcaf0` | `#3b6a8c #3b6a8c #2a5d80 #2a5d80` |
+| `scroll-thumb-border` / `-hover` / `-active` | `#979797` / `#356f9b` / `#18598a` | `#0b0d10` / `#5aa3d8` / `#4d86b8` |
+| `scroll-thumb-inner` | `rgba(255,255,255,0.6)` | `rgba(255,255,255,0.16)` |
 
 ### Status
 

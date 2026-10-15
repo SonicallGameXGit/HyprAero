@@ -8,22 +8,26 @@ QtObject {
     property string address: ''
     property int workspaceId: 0
     property string appId: ''
+    property string trayKey: ''
     property string from: ''
     property int begins: 0
     property int begunWorkspaceId: 0
     property string begunAppId: ''
+    property string begunTrayKey: ''
     property rect begunOrigin: Qt.rect(0, 0, 0, 0)
     property rect begunReturn: Qt.rect(0, 0, 0, 0)
 
-    readonly property bool active: address !== '' || workspaceId !== 0 || appId !== ''
+    readonly property bool active: address !== '' || workspaceId !== 0 || appId !== '' || trayKey !== ''
 
-    function begin(windowAddress: string, workspace: int, app: string, source: string, grab: var, size: size, point: point, screen: var, rect: rect, returnArea: rect): void {
+    function begin(windowAddress: string, workspace: int, app: string, tray: string, source: string, grab: var, size: size, point: point, screen: var, rect: rect, returnArea: rect): void {
         from = source
         address = windowAddress
         workspaceId = workspace
         appId = app
+        trayKey = tray
         begunWorkspaceId = workspace
         begunAppId = app
+        begunTrayKey = tray
         begunOrigin = rect
         begunReturn = returnArea
         begins++
@@ -33,6 +37,7 @@ QtObject {
         address = ''
         workspaceId = 0
         appId = ''
+        trayKey = ''
         from = ''
     }
 }

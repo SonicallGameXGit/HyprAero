@@ -4,7 +4,7 @@ import Quickshell
 import QtQuick
 
 // What is being dragged out of a bar or its start menu, shared by every screen: one window (a preview
-// card), a whole workspace (its button) or an app to start (a start menu row). The drop layer of each
+// card), a whole workspace (its button), an app to start (a start menu row) or a tray icon. The drop layer of each
 // screen shows the picture under the pointer and takes the drop. Nothing here talks to Hyprland.
 Singleton {
     id: root
@@ -14,8 +14,11 @@ Singleton {
     property string address: ''
     property int workspaceId: 0
     property string appId: ''
-    // What it was taken out of when that matters: 'pins' (a pin, which a drop on the pins moves) or
-    // 'startMenu' (an app row); '' otherwise.
+    // The dragged tray icon's key (`Tray.keyOf`, '' when it is not a tray icon).
+    property string trayKey: ''
+    // What it was taken out of when that matters: 'pins' (a pin, which a drop on the pins moves),
+    // 'startMenu' (an app row), 'tray' or 'trayFlyout' (a tray icon on the bar or in the flyout); ''
+    // otherwise.
     property string from: ''
     // The dragged item's picture (a grab result, kept here so its image stays alive), its size, and the
     // point of it the pointer holds.
@@ -30,9 +33,9 @@ Singleton {
     // whole start menu for an app).
     property rect returnRect: Qt.rect(0, 0, 0, 0)
 
-    readonly property bool active: address !== '' || workspaceId !== 0 || appId !== ''
+    readonly property bool active: address !== '' || workspaceId !== 0 || appId !== '' || trayKey !== ''
 
-    function begin(windowAddress: string, workspace: int, app: string, source: string, grab: var, size: size, point: point, screen: var, rect: rect, returnArea: rect): void {
+    function begin(windowAddress: string, workspace: int, app: string, tray: string, source: string, grab: var, size: size, point: point, screen: var, rect: rect, returnArea: rect): void {
         from = source
         picture = grab
         pictureSize = size
@@ -43,12 +46,14 @@ Singleton {
         address = windowAddress
         workspaceId = workspace
         appId = app
+        trayKey = tray
     }
 
     function end(): void {
         address = ''
         workspaceId = 0
         appId = ''
+        trayKey = ''
         from = ''
         picture = null
         originScreen = null

@@ -12,6 +12,8 @@ ControlButton {
     property var screen: null
 
     readonly property string iconPath: AppIcons.forName(app.icon)
+    // What the bar's tooltip says over it.
+    readonly property string tooltipText: app.name
     readonly property int iconSize: 24
     // Out on a drag: its place stays empty (the ghost is drawn there), so nothing moves under the pointer.
     // The same pin on the other screens' bars stays.

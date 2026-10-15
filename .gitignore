@@ -1,1 +1,3 @@
 .claude/settings.local.json
+# Reference exports of the owner's Figma mockups; they hold Windows 7 bitmaps, which must not be committed.
+assets/aero/
