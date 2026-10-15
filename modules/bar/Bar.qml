@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Wayland
 import QtQuick
 import qs.design
+import qs.modules.clock
 import qs.modules.startmenu
 import qs.modules.tray
 import qs.services
@@ -437,6 +438,7 @@ PanelWindow {
             && barMenu.visible === false
             && trayMenu.visible === false
             && (root.hoveredTip !== trayArea.arrow || trayFlyout.visible === false)
+            && (root.hoveredTip !== clock || clockFlyout.visible === false)
         text: root.hoveredTip === null ? '' : root.hoveredTip.tooltipText
     }
 
@@ -461,6 +463,16 @@ PanelWindow {
         dragPointerShown: dropLayer.hovered && dropLayer.pointerKnown
         puttingBack: dropLayer.puttingBack
         onTipHovered: (control, hovered) => root.flyoutTipHovered(control, hovered)
+    }
+
+    ClockFlyout {
+        id: clockFlyout
+
+        anchor.window: root
+        shown: Clock.flyoutScreen === root.screen.name
+        barWidth: root.width
+        // The bar's glass panel starts 2px left of the bar.
+        clockX: clock.x - 2 + clock.width / 2
     }
 
     BarTooltip {
@@ -517,11 +529,22 @@ PanelWindow {
             onPinHovered: (pin, hovered) => root.tipHovered(pin, hovered)
         }
 
-        // Left of the "Show desktop" strip, as on Windows 7 (the clock will go between them).
+        // Left of the "Show desktop" strip, as on Windows 7.
+        ClockButton {
+            id: clock
+
+            anchors.right: emptyButton.left
+            anchors.verticalCenter: parent.verticalCenter
+            current: clockFlyout.visible
+            onClicked: Clock.toggleFlyout(root.screen.name)
+            onHoveredChanged: root.tipHovered(clock, hovered)
+        }
+
+        // Left of the clock.
         TrayArea {
             id: trayArea
 
-            anchors.right: emptyButton.left
+            anchors.right: clock.left
             anchors.rightMargin: Theme.space2
             anchors.verticalCenter: parent.verticalCenter
             width: implicitWidth

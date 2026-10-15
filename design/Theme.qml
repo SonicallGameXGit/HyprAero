@@ -234,6 +234,17 @@ Singleton {
     readonly property color orbMarkBottom: '#00a8f4'
     readonly property color orbMarkGlow: '#a600e5d0'
 
+    // The analog clock (.aero/STYLE.md "Analog clock"), the same in both themes.
+    readonly property color clockEdge: '#04101c'
+    readonly property color clockFaceTop: '#2e6fae'
+    readonly property color clockFaceBottom: '#0b2542'
+    readonly property color clockRim: '#66ffffff'
+    readonly property color clockShineTop: '#8cffffff'
+    readonly property color clockShineBottom: '#0dffffff'
+    readonly property color clockTick: '#d9ffffff'
+    readonly property color clockHand: '#ffffff'
+    readonly property color clockSecondHand: '#ff6a55'
+
     readonly property int motionSoft: 220
 
     readonly property real dragImageOpacity: 0.75

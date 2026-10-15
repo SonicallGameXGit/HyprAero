@@ -225,6 +225,19 @@ The round glass button that opens a start menu, after the Windows 7 orb: a dark 
 | `orb-mark` | `#00e5d0` -> `#00a8f4` (top -> bottom; Hyprland's colours, for a Hyprland member) |
 | `orb-mark-glow` | `rgba(0,229,208,0.65)` |
 
+### Analog clock (the same in both themes)
+
+The round clock of a time flyout, after Windows 7's: a dark blue glass disc with light tick marks and hands, a thin red second hand, a glossy shine on its upper half. Drawn from these values, like the orb.
+
+| Token | Value |
+| --- | --- |
+| `clock-edge` | `#04101c` |
+| `clock-face` (vertical) | `#2e6fae` at 0% -> `#0b2542` at 100% |
+| `clock-rim` (inner ring) | `rgba(255,255,255,0.4)` |
+| `clock-shine` | vertical gradient white 0.55 -> 0.05 over the upper half |
+| `clock-tick` / `clock-hand` | `rgba(255,255,255,0.85)` / `#ffffff` |
+| `clock-second-hand` | `#ff6a55` |
+
 ### Avatars
 
 `avatar-1..6`: `#2f8fd8 #3fa56a #d9822b #c2507f #7a62c9 #2aa3a8`, chosen by a stable hash of the identity. All sit under one glass overlay: `avatar-shine` (white 0.45 -> 0.08 at 49% -> 0 at 50%), `avatar-glass` (`inset 0 0 0 1px rgba(255,255,255,0.4), inset 0 -4px 6px -2px rgba(0,0,0,0.28)`), `avatar-text` `#ffffff`.
