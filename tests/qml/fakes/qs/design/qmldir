@@ -18,3 +18,5 @@ DropZone 1.0 ../../../../../design/DropZone.qml
 GlassPanel 1.0 ../../../../../design/GlassPanel.qml
 ReturnGlyph 1.0 ../../../../../design/ReturnGlyph.qml
 ScrollBar 1.0 ../../../../../design/ScrollBar.qml
+EtchedLine 1.0 ../../../../../design/EtchedLine.qml
+GlassText 1.0 ../../../../../design/GlassText.qml

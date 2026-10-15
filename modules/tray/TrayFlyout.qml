@@ -176,6 +176,7 @@ PopupWindow {
         GlassPanel {
             anchors.fill: parent
             cornerRadius: Theme.radiusPanel
+            kind: 'taskbar'
         }
 
         Grid {
@@ -201,7 +202,7 @@ PopupWindow {
                     windowOffset: root.barOffset
                     width: root.cell
                     height: root.cell
-                    highlighted: menu.visible && root.menuKey === icon.key
+                    current: menu.visible && root.menuKey === icon.key
                     onActivated: Tray.closeFlyout()
                     onMenuRequested: at => root.openMenu(icon.modelData, icon.mapToItem(null, at))
                     onHoveredChanged: root.tipHovered(icon, icon.hovered)
@@ -209,24 +210,20 @@ PopupWindow {
             }
         }
 
-        // Solid under the link, so its words read on any backdrop.
-        Rectangle {
+        // On the glass under the icons, as on Windows 7: light words on the dark glass read on any backdrop.
+        Item {
             id: strip
 
-            x: Theme.space1
             y: parent.height - height - Theme.space1
-            width: parent.width - Theme.space1 * 2
+            width: parent.width
             height: link.implicitHeight + Theme.space2 * 2
-            radius: Theme.radiusControl
-            color: Theme.surfaceSunken
-            border.width: 1
-            border.color: Theme.surfaceBorder
 
             LinkText {
                 id: link
 
                 anchors.centerIn: parent
                 text: qsTr('Customize...')
+                onGlass: true
                 activeFocusOnTab: true
                 onClicked: Tray.openCustomize()
             }

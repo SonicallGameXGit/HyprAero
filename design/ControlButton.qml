@@ -2,8 +2,10 @@ import QtQuick
 import QtQuick.Effects
 
 // The family button. kind: 'normal', 'accent' (the one main action), 'tool' (flat until hovered) or
-// 'danger' (red, for what destroys something). With keyboard focus it glows (focus-glow) and Enter or
-// Space press it. Disabled, it is flat and grey (control-*-disabled).
+// 'danger' (red, for what destroys something); standing on the shell's glass, 'glass' (a button of glass,
+// white words) or 'glassTool' (flat until hovered), which light up as glass (glass-button-*). `current` marks
+// the selected one on glass (a button whose flyout is open). With keyboard focus it glows (focus-glow) and
+// Enter or Space press it. Disabled, it is flat and grey (control-*-disabled).
 Item {
     id: root
 
@@ -11,12 +13,15 @@ Item {
     property string text: ''
     // Looks hovered without the pointer on it, e.g. while something dragged is over it.
     property bool highlighted: false
+    // On glass: the selected one, brighter than under the pointer.
+    property bool current: false
 
     // Hover counts over the button's own children too (a button inside a button keeps both lit).
     readonly property bool hovered: hoverHandler.hovered
     readonly property bool pressed: mouseArea.pressed
     readonly property bool lit: hovered || highlighted
-    readonly property bool flat: kind === 'tool' && !lit && !pressed
+    readonly property bool glassy: kind === 'glass' || kind === 'glassTool'
+    readonly property bool flat: (kind === 'tool' || kind === 'glassTool') && !lit && !pressed && !current
     readonly property bool accent: kind === 'accent'
     readonly property bool danger: kind === 'danger'
     readonly property var face: {
@@ -30,6 +35,18 @@ Item {
 
         if (danger) {
             return pressed ? Theme.dangerFaceActive : (lit ? Theme.dangerFaceHover : Theme.dangerFace)
+        }
+
+        if (glassy) {
+            if (pressed) {
+                return Theme.glassButtonFaceActive
+            }
+
+            if (current) {
+                return Theme.glassButtonFaceCurrent
+            }
+
+            return lit ? Theme.glassButtonFaceHover : Theme.glassButtonFace
         }
 
         return pressed ? Theme.controlFaceActive : (lit ? Theme.controlFaceHover : Theme.controlFace)
@@ -51,6 +68,10 @@ Item {
 
         if (danger) {
             return Theme.dangerControlBorder
+        }
+
+        if (glassy) {
+            return Theme.glassButtonBorder
         }
 
         return lit ? Theme.controlBorderHover : Theme.controlBorder
@@ -107,7 +128,7 @@ Item {
             radius: Math.max(Theme.radiusControl - 1, 0)
             color: 'transparent'
             border.width: 1
-            border.color: Theme.controlInner
+            border.color: root.glassy ? Theme.glassButtonInner : Theme.controlInner
             opacity: root.pressed ? 0 : 1
 
             Behavior on opacity {
@@ -116,7 +137,7 @@ Item {
         }
     }
 
-    Text {
+    GlassText {
         id: label
 
         anchors.centerIn: parent
@@ -126,10 +147,12 @@ Item {
                 return Theme.controlTextDisabled
             }
 
+            if (root.glassy) {
+                return Theme.taskbarGlassText
+            }
+
             return root.accent || root.danger ? Theme.accentText : Theme.controlText
         }
-        font.family: Theme.fontUi
-        font.pixelSize: Theme.fontSizeBody
     }
 
     HoverHandler {

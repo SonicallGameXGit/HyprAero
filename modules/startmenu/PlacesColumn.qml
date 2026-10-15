@@ -13,6 +13,8 @@ Item {
     property Tooltip tooltip: null
     // The icon of the place under the pointer ('' shows the user's picture).
     property string pointedIcon: ''
+    // The picture, which rises over the glass: the menu's window takes the pointer there too.
+    readonly property Item pictureItem: picture
 
     // Something was opened; the menu closes.
     signal opened()
@@ -35,7 +37,7 @@ Item {
         downloads: 'folder-download',
     })
 
-    // A place: a tool button with its name on the left.
+    // A place: a glass tool button with its name on the left.
     component Place: ControlButton {
         id: place
 
@@ -44,7 +46,7 @@ Item {
         property bool bold: false
 
         width: parent.width
-        kind: 'tool'
+        kind: 'glassTool'
         Accessible.name: label
         onHoveredChanged: {
             if (hovered) {
@@ -54,15 +56,12 @@ Item {
             }
         }
 
-        Text {
+        GlassText {
             anchors.verticalCenter: parent.verticalCenter
             x: Theme.space2
             width: parent.width - Theme.space2 * 2
             text: place.label
             elide: Text.ElideRight
-            color: Theme.glassText
-            font.family: Theme.fontUi
-            font.pixelSize: Theme.fontSizeBody
             font.bold: place.bold
         }
     }
@@ -144,26 +143,17 @@ Item {
             }
         }
 
-        // A thin etched line, like the glass edge.
+        // A thin etched line, like the glass edge, fading out at both ends.
         Item {
             width: parent.width
             height: Theme.space3
 
-            Rectangle {
+            EtchedLine {
                 anchors.verticalCenter: parent.verticalCenter
                 x: Theme.space2
                 width: parent.width - Theme.space2 * 2
-                height: 1
-                color: Theme.glassBorderOuter
-            }
-
-            Rectangle {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: 1
-                x: Theme.space2
-                width: parent.width - Theme.space2 * 2
-                height: 1
-                color: Theme.glassBorderInner
+                dark: Theme.taskbarGlassBorderOuter
+                light: Theme.taskbarGlassBorderInner
             }
         }
 
@@ -186,13 +176,15 @@ Item {
         }
     }
 
-    // Shut down, and the arrow for the other ways of leaving; joined like one split button.
+    // Shut down, and the arrow for the other ways of leaving; joined like one split button of glass, as in
+    // Windows 7.
     Row {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         spacing: -1
 
         ControlButton {
+            kind: 'glass'
             width: Math.max(implicitWidth, 84)
             text: qsTr('Shut down')
             onClicked: root.powerRequested('powerOff')
@@ -201,6 +193,7 @@ Item {
         ControlButton {
             id: arrow
 
+            kind: 'glass'
             width: 24
             Accessible.name: qsTr('More ways to leave')
             onClicked: root.powerMenuRequested(arrow.mapToItem(root, arrow.width, 0))
@@ -209,6 +202,7 @@ Item {
             ChevronGlyph {
                 anchors.centerIn: parent
                 size: 8
+                color: Theme.taskbarGlassText
             }
         }
     }

@@ -17,7 +17,7 @@ PopupWindow {
     id: root
 
     // Room around the menu for its shadow.
-    readonly property int shadowRoom: Theme.menuShadowBlur
+    readonly property int shadowRoom: Theme.menuShadowBlur + Theme.menuShadowOffset
     // The point the menu opens from, in its window's coordinates.
     property point at: Qt.point(0, 0)
     // A submenu opens right of its row (`beside`, in the parent menu's window), going down.
@@ -121,11 +121,11 @@ PopupWindow {
     // corner beside its row's top-right, the panels just overlapping.
     anchor.rect: isSubmenu
         ? Qt.rect(beside.x + beside.width + 2 - shadowRoom, beside.y - 2 - shadowRoom, 1, 1)
-        : Qt.rect(at.x - shadowRoom, at.y + shadowRoom + Theme.menuShadowOffset, 1, 1)
+        : Qt.rect(at.x - shadowRoom, at.y + shadowRoom, 1, 1)
     anchor.edges: Edges.Top | Edges.Left
     anchor.gravity: isSubmenu ? Edges.Bottom | Edges.Right : Edges.Top | Edges.Right
     implicitWidth: menu.panelWidth + shadowRoom * 2
-    implicitHeight: menu.panelHeight + shadowRoom * 2 + Theme.menuShadowOffset
+    implicitHeight: menu.panelHeight + shadowRoom * 2
     color: 'transparent'
     grabFocus: true
     visible: false

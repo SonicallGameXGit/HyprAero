@@ -31,13 +31,13 @@ Item {
                 y: 1
                 width: 2
                 height: 2
-                color: Theme.glassBorderInner
+                color: Theme.taskbarGlassBorderInner
             }
 
             Rectangle {
                 width: 2
                 height: 2
-                color: Theme.glassBorderOuter
+                color: Theme.taskbarGlassBorderOuter
             }
         }
     }

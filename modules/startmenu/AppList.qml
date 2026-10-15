@@ -232,19 +232,17 @@ Item {
                 }
             }
 
-            // The dark line between the sections.
+            // The dark line between the sections, fading out at both ends as Windows 7's.
             Component {
                 id: separatorRow
 
                 Item {
                     implicitHeight: Theme.space3
 
-                    Rectangle {
+                    EtchedLine {
                         anchors.verticalCenter: parent.verticalCenter
                         x: Theme.space2
                         width: parent.width - Theme.space2 * 2
-                        height: 1
-                        color: Theme.surfaceBorder
                     }
                 }
             }

@@ -36,7 +36,7 @@ Many of its pieces are Microsoft's own Windows 7 bitmaps (sprite strips cut from
 - **Colour**: cool blue-led palette with green / aqua accents; saturated but airy. Slate: charcoal / graphite glass with the same accents, less saturation.
 - **Icons**: detailed, glossy, slightly dimensional, drawn from a few glossy materials (`icon-*` tokens). Not thin monochrome line icons, and no icon library with that look. Only small structural glyphs (chevron, close, check) are flat.
 - **Pictures before words**: an action or a place is recognised by its icon first. A button keeps its text only when it is the main action of its group; every icon-only control has a tooltip and an accessible name.
-- **Buttons say what they are**: accent (the one main action), normal, tool (flat until hovered, for toolbars), danger (red, for what destroys something).
+- **Buttons say what they are**: accent (the one main action), normal, tool (flat until hovered, for toolbars), danger (red, for what destroys something). On glass a tool button lights up as glass (`glass-button-*`), not with the control face.
 - **Dialogs** are laid out like Windows 7 task dialogs: narrow window, a large glossy picture at the top left, one blue line saying what it is about with the explanation under it, buttons on a grey strip along the bottom, the first button focused, Escape gives the safe answer.
 - **Type**: a humanist sans in the Segoe UI / Frutiger spirit (`Segoe UI`, `Selawik`, `Noto Sans`, `Open Sans`, then the system), bundled with the project when possible so it looks the same on every system. Sizes: small 12, body 13, heading 16, title 20.
 - **Motion**: short, soft fades and glows (fast 120ms, soft 220ms, ease-out). Nothing bouncy.
@@ -91,6 +91,34 @@ Aero (light) is the base; Slate overrides only what differs. Values not listed f
 | `glass-text` | `#0d2238` | `#e9eef3` |
 | `glass-text-shadow` | `0 0 8px rgba(255,255,255,0.9)` | `0 0 8px rgba(0,0,0,0.9)` |
 
+### Taskbar glass (a desktop shell's own chrome)
+
+Windows 7 and Vista give the taskbar, the start menu and the flyouts over the taskbar a glass of their own: darker than a window's, with plain white words. Its tint is dark enough that white body text keeps WCAG AA contrast even over a white backdrop without compositor blur. A member that draws a desktop shell uses it for that chrome; a window's chrome keeps the glass above. Something meant to stand out of it (the user's picture tile) still uses the window glass, which reads as a lighter, frosted frame on it.
+
+| Token | Aero | Slate |
+| --- | --- | --- |
+| `taskbar-glass-tint` | `rgba(22,52,86,0.68)` | `rgba(10,13,18,0.72)` |
+| `taskbar-glass-border-outer` | `rgba(0,8,20,0.85)` | `rgba(0,0,0,0.9)` |
+| `taskbar-glass-border-inner` | `rgba(255,255,255,0.38)` | `rgba(255,255,255,0.14)` |
+| `taskbar-glass-shine` | vertical gradient white 0.18 at 0% -> 0.05 at 42% -> 0 at 43% | same shape, white 0.08 -> 0.02 -> 0 |
+| `taskbar-glass-text` | `#ffffff` | `#e9eef3` |
+| `taskbar-glass-link` | `#cfe8ff` | `#9fd0f7` |
+
+A solid pane set into the taskbar glass (the start menu's list) is edged like Windows 7's: a `taskbar-glass-border-outer` line around it and a `taskbar-glass-border-inner` line outside that one.
+
+### Glass buttons (controls standing on glass)
+
+A tool button standing on glass (a taskbar button, a tray icon, a place in the start menu) does not take the opaque control face: it lights up as glass, a see-through white gloss with the horizon at 49% / 50%, a dark edge and a bright inner line, as Windows 7's taskbar buttons do. Flat until hovered; one that must always look like a button (the start menu's Shut down) shows the rest face. `current` is the one that is selected (the current workspace, a button whose menu is open); `active` is pressed, as for controls.
+
+| Token | Aero | Slate |
+| --- | --- | --- |
+| `glass-button-face` (top -> 49% -> 50% -> bottom) | white 0.16 / 0.06 / 0 / 0.08 | white 0.10 / 0.04 / 0 / 0.05 |
+| `glass-button-face-hover` | white 0.34 / 0.16 / 0.06 / 0.18 | white 0.20 / 0.10 / 0.03 / 0.10 |
+| `glass-button-face-current` | white 0.48 / 0.26 / 0.14 / 0.30 | white 0.28 / 0.15 / 0.07 / 0.16 |
+| `glass-button-face-active` | `rgba(0,10,25,a)`, a = 0.34 / 0.24 / 0.20 / 0.10 | black 0.40 / 0.30 / 0.26 / 0.14 |
+| `glass-button-border` | `rgba(0,8,20,0.70)` | `rgba(0,0,0,0.85)` |
+| `glass-button-inner` | `rgba(255,255,255,0.5)` | `rgba(255,255,255,0.2)` |
+
 ### Solid surfaces (content)
 
 | Token | Aero | Slate |
@@ -140,7 +168,10 @@ Aero (light) is the base; Slate overrides only what differs. Values not listed f
 | `row-separator` | `#e6ecf3` | `#2c3239` |
 | `toolbar-face` / `toolbar-border` | `#fbfdff -> #e4edf8` / `#c3d0de` | `#343b43 -> #2a3037` / `#14181c` |
 | `menu-background` / `menu-border` | `#ffffff` / `#7c8794` | `#2a3037` / `#07090b` |
-| `menu-shadow` | `0 6px 18px rgba(8,35,70,0.35)` | `0 6px 18px rgba(0,0,0,0.7)` |
+| `menu-shadow` (Windows 7's: small, down and to the right; tooltips too) | `2px 2px 5px rgba(8,35,70,0.35)` | `2px 2px 5px rgba(0,0,0,0.7)` |
+| `menu-gutter-line` / `menu-gutter-light` (the etched line right of a menu's icon margin, and its separators, which start after the margin) | `#e2e3e3` / `#ffffff` | `#1d2228` / `#363d45` |
+| `tooltip-face` | `#ffffff -> #e4e5f0` | `#3a424b -> #2a3037` |
+| `tooltip-border` / `tooltip-text` | `#767676` / `#575757` | `#07090b` / `#d5dbe1` |
 | `badge-face` | `#5db4f0 -> #1f86d4` | same |
 | `badge-border` / `badge-text` | `#134e86` / `#ffffff` | `#06121d` / `#ffffff` |
 | `overlay` | `rgba(10,30,60,0.35)` | `rgba(0,0,0,0.55)` |

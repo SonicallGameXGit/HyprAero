@@ -24,7 +24,7 @@ PopupWindow {
     // Placed over the control the pointer rests on and about to fade in.
     property bool placed: false
     // Room around the tooltip for its shadow.
-    readonly property int shadowRoom: Theme.menuShadowBlur / 2 + Theme.menuShadowOffset
+    readonly property int shadowRoom: Theme.menuShadowBlur + Theme.menuShadowOffset
 
     // The popup's bottom hangs into the bar, so the tooltip itself stands `space1` over the bar's top edge
     // with only its shadow on the glass.

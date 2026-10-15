@@ -105,8 +105,8 @@ Grid {
                 // Its window was asked to close: no more frames are asked for (`Workspaces.closingAddresses`).
                 readonly property bool closing: Workspaces.closingAddresses.includes(window.address)
 
-                kind: 'tool'
-                highlighted: root.menuAddress !== '' && root.menuAddress === window.address
+                kind: 'glassTool'
+                current: root.menuAddress !== '' && root.menuAddress === window.address
                 width: Math.max(root.minCardWidth, Math.min(Math.round(aspect * root.previewHeight) + 2, root.maxCardWidth)) + root.cardPadding * 2
                 height: body.implicitHeight + root.cardPadding * 2
                 Accessible.role: Accessible.Button
@@ -231,7 +231,7 @@ Grid {
                             source: card.iconPath
                         }
 
-                        Text {
+                        GlassText {
                             id: title
 
                             width: parent.width - root.iconSize - root.captionSize * 2 - Theme.space1 * 3
@@ -239,9 +239,6 @@ Grid {
                             verticalAlignment: Text.AlignVCenter
                             // An untitled window still needs a name in the card.
                             text: card.window.title === '' ? card.window.appId : card.window.title
-                            color: Theme.glassText
-                            font.family: Theme.fontUi
-                            font.pixelSize: Theme.fontSizeBody
                             elide: Text.ElideRight
                         }
 
@@ -249,6 +246,7 @@ Grid {
                         // window fills its place like a maximized one, so it shows "restore" and floats the
                         // window; a floating one shows "maximize" and fits it back into the layout.
                         ControlButton {
+                            kind: 'glass'
                             width: root.captionSize
                             height: root.captionSize
                             opacity: card.hovered ? 1 : 0
@@ -263,6 +261,7 @@ Grid {
                             MaximizeGlyph {
                                 anchors.centerIn: parent
                                 size: 8
+                                color: Theme.taskbarGlassText
                                 restore: card.window.floating === false
                             }
                         }
@@ -309,7 +308,7 @@ Grid {
                             radius: Theme.radiusControl
                             color: card.pictureReady ? 'transparent' : Theme.surfaceSunken
                             border.width: 1
-                            border.color: Theme.surfaceBorder
+                            border.color: Theme.taskbarGlassBorderOuter
 
                             // Shown until the compositor delivers a picture, and kept when it never does.
                             GenericAppIcon {

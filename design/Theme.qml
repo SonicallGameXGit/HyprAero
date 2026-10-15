@@ -54,6 +54,30 @@ Singleton {
     readonly property color glassShineTop: slate ? '#29ffffff' : '#99ffffff'
     readonly property color glassShineMiddle: slate ? '#08ffffff' : '#1fffffff'
     readonly property color glassText: slate ? '#e9eef3' : '#0d2238'
+    // The shell's own chrome (bar, start menu, flyouts): Windows 7's darker taskbar glass.
+    readonly property color taskbarGlassTint: slate ? '#b80a0d12' : '#ad163456'
+    readonly property color taskbarGlassBorderOuter: slate ? '#e6000000' : '#d9000814'
+    readonly property color taskbarGlassBorderInner: slate ? '#24ffffff' : '#61ffffff'
+    readonly property color taskbarGlassShineTop: slate ? '#14ffffff' : '#2effffff'
+    readonly property color taskbarGlassShineMiddle: slate ? '#05ffffff' : '#0dffffff'
+    readonly property color taskbarGlassText: slate ? '#e9eef3' : '#ffffff'
+    readonly property color taskbarGlassLink: slate ? '#9fd0f7' : '#cfe8ff'
+
+    // Gradient stops of a glass button's face: top, 49%, 50%, bottom.
+    readonly property var glassButtonFace: slate
+        ? ['#1affffff', '#0affffff', '#00ffffff', '#0dffffff']
+        : ['#29ffffff', '#0fffffff', '#00ffffff', '#14ffffff']
+    readonly property var glassButtonFaceHover: slate
+        ? ['#33ffffff', '#1affffff', '#08ffffff', '#1affffff']
+        : ['#57ffffff', '#29ffffff', '#0fffffff', '#2effffff']
+    readonly property var glassButtonFaceCurrent: slate
+        ? ['#47ffffff', '#26ffffff', '#12ffffff', '#29ffffff']
+        : ['#7affffff', '#42ffffff', '#24ffffff', '#4dffffff']
+    readonly property var glassButtonFaceActive: slate
+        ? ['#66000000', '#4d000000', '#42000000', '#24000000']
+        : ['#57000a19', '#3d000a19', '#33000a19', '#1a000a19']
+    readonly property color glassButtonBorder: slate ? '#d9000000' : '#b3000814'
+    readonly property color glassButtonInner: slate ? '#33ffffff' : '#80ffffff'
 
     readonly property color surface: slate ? '#23282e' : '#ffffff'
     readonly property color surfaceSunken: slate ? '#1b2025' : '#f2f6fb'
@@ -83,10 +107,17 @@ Singleton {
 
     readonly property color menuBackground: slate ? '#2a3037' : '#ffffff'
     readonly property color menuBorder: slate ? '#07090b' : '#7c8794'
-    // menu-shadow: offset down, blur and colour.
-    readonly property int menuShadowOffset: 6
-    readonly property int menuShadowBlur: 18
+    // menu-shadow: offset (the same to the right and down), blur and colour; tooltips too.
+    readonly property int menuShadowOffset: 2
+    readonly property int menuShadowBlur: 5
     readonly property color menuShadowColor: slate ? '#b3000000' : '#59082346'
+    readonly property color menuGutterLine: slate ? '#1d2228' : '#e2e3e3'
+    readonly property color menuGutterLight: slate ? '#363d45' : '#ffffff'
+
+    // tooltip-face is a top -> bottom gradient.
+    readonly property var tooltipFace: slate ? ['#3a424b', '#2a3037'] : ['#ffffff', '#e4e5f0']
+    readonly property color tooltipBorder: slate ? '#07090b' : '#767676'
+    readonly property color tooltipText: slate ? '#d5dbe1' : '#575757'
     readonly property color overlay: slate ? '#8c000000' : '#590a1e3c'
 
     // Gradient stops of a control face: top, 49%, 50%, bottom.

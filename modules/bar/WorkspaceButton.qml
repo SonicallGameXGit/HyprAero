@@ -19,7 +19,7 @@ ControlButton {
     readonly property int iconSize: 28
     readonly property int badgeSize: 16
 
-    kind: 'tool'
+    kind: 'glassTool'
     implicitWidth: 44
     implicitHeight: 40
 

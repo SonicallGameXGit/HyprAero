@@ -3,7 +3,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 
-// A context menu drawn inside a window: a white panel (menu-*) with rows that light up like list rows.
+// A context menu drawn inside a window: a white panel (menu-*) with rows that light up like list rows, and
+// Windows 7's icon margin down its left side, closed by an etched line (menu-gutter-*).
 // `items` is a list of `{ text, enabled, bold, indent, check, checked, icon, submenu }` (only `text` is
 // needed), or `{ separator: true }`; other fields are kept for the owner. `bold` marks what a click on the
 // thing itself does, as in Windows 7; `indent` rows hang under the row above on a tree line, as the actions
@@ -25,6 +26,9 @@ Item {
     // The panel's size, for a window made to fit around it.
     readonly property alias panelWidth: panel.width
     readonly property alias panelHeight: panel.height
+    // The margin left of the text that holds icons and ticks, and where the text starts after its line.
+    readonly property int gutterWidth: Theme.space5 + Theme.space1
+    readonly property int textStart: gutterWidth + 2 + Theme.space1
 
     signal chosen(int index)
     signal submenuRequested(int index)
@@ -105,6 +109,7 @@ Item {
 
         RectangularShadow {
             anchors.fill: parent
+            offset.x: Theme.menuShadowOffset
             offset.y: Theme.menuShadowOffset
             blur: Theme.menuShadowBlur
             color: Theme.menuShadowColor
@@ -115,6 +120,23 @@ Item {
             color: Theme.menuBackground
             border.width: 1
             border.color: Theme.menuBorder
+        }
+
+        // The etched line closing the icon margin, from top to bottom; a lit row covers it.
+        Rectangle {
+            x: 2 + root.gutterWidth
+            y: 2
+            width: 1
+            height: column.implicitHeight
+            color: Theme.menuGutterLine
+        }
+
+        Rectangle {
+            x: 3 + root.gutterWidth
+            y: 2
+            width: 1
+            height: column.implicitHeight
+            color: Theme.menuGutterLight
         }
 
         Column {
@@ -144,7 +166,7 @@ Item {
                         const next = root.items[index + 1]
                         return next === undefined || next.indent !== true
                     }
-                    readonly property int textX: indent ? Theme.space5 + Theme.space3 : Theme.space5
+                    readonly property int textX: indent ? root.textStart + Theme.space3 : root.textStart
                     readonly property bool submenu: modelData.submenu === true
                     readonly property string icon: typeof modelData.icon === 'string' ? modelData.icon : ''
 
@@ -152,13 +174,23 @@ Item {
                     implicitWidth: separator ? 0 : label.implicitWidth + textX + Theme.space5 + (submenu ? Theme.space3 : 0)
                     height: separator ? Theme.space2 : 24
 
+                    // Etched like the margin's line, starting after it.
                     Rectangle {
                         visible: row.separator
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: Theme.space1
-                        width: parent.width - Theme.space1 * 2
+                        y: row.height / 2 - 1
+                        x: root.gutterWidth + 2
+                        width: parent.width - x - Theme.space1
                         height: 1
-                        color: Theme.rowSeparator
+                        color: Theme.menuGutterLine
+                    }
+
+                    Rectangle {
+                        visible: row.separator
+                        y: row.height / 2
+                        x: root.gutterWidth + 2
+                        width: parent.width - x - Theme.space1
+                        height: 1
+                        color: Theme.menuGutterLight
                     }
 
                     Rectangle {
@@ -177,7 +209,7 @@ Item {
                     // The tree line: down from the row above, and a short branch to the text.
                     Rectangle {
                         visible: row.indent
-                        x: Theme.space5 + 2
+                        x: root.textStart + 2
                         width: 1
                         height: row.lastIndent ? row.height / 2 : row.height
                         color: Theme.surfaceBorder
@@ -185,7 +217,7 @@ Item {
 
                     Rectangle {
                         visible: row.indent
-                        x: Theme.space5 + 2
+                        x: root.textStart + 2
                         y: row.height / 2
                         width: row.textX - x - Theme.space1
                         height: 1
@@ -195,7 +227,7 @@ Item {
                     // The margin left of the text: the row's icon, or its tick.
                     Image {
                         visible: row.icon !== '' && row.separator === false
-                        x: (Theme.space5 - width) / 2
+                        x: (root.gutterWidth - width) / 2
                         anchors.verticalCenter: parent.verticalCenter
                         width: 16
                         height: 16
@@ -207,14 +239,14 @@ Item {
 
                     CheckGlyph {
                         visible: row.icon === '' && row.modelData.check === 'box' && row.modelData.checked === true
-                        x: (Theme.space5 - width) / 2
+                        x: (root.gutterWidth - width) / 2
                         anchors.verticalCenter: parent.verticalCenter
                         color: row.enabled ? Theme.text : Theme.textMuted
                     }
 
                     Rectangle {
                         visible: row.icon === '' && row.modelData.check === 'radio' && row.modelData.checked === true
-                        x: (Theme.space5 - width) / 2
+                        x: (root.gutterWidth - width) / 2
                         anchors.verticalCenter: parent.verticalCenter
                         width: 6
                         height: 6

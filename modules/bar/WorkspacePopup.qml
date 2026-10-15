@@ -176,6 +176,7 @@ PopupWindow {
         width: root.front.implicitWidth + Theme.space2 * 2
         height: root.front.implicitHeight + Theme.space2 * 2
         cornerRadius: Theme.radiusPanel
+        kind: 'taskbar'
         opacity: root.shown && root.windows.length > 0 && BarDrag.active === false ? 1 : 0
 
         Behavior on x {

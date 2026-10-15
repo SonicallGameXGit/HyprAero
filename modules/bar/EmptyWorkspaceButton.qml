@@ -2,14 +2,14 @@ import QtQuick
 import qs.design
 
 // The narrow strip at the right end of the bar, where Windows 7 has "Show desktop". Here it goes to the
-// first workspace without windows. Plain glass behind a separator until hovered, then it lights up like
-// a button.
+// first workspace without windows. Plain glass behind a separator until hovered, then it lights up as
+// glass, like a glass button.
 Item {
     id: root
 
     readonly property bool hovered: hoverHandler.hovered
     readonly property bool pressed: mouseArea.pressed
-    readonly property var face: pressed ? Theme.controlFaceActive : Theme.controlFaceHover
+    readonly property var face: pressed ? Theme.glassButtonFaceActive : Theme.glassButtonFaceHover
 
     signal clicked()
 
@@ -21,14 +21,14 @@ Item {
     Rectangle {
         width: 1
         height: parent.height
-        color: Theme.glassBorderOuter
+        color: Theme.taskbarGlassBorderOuter
     }
 
     Rectangle {
         x: 1
         width: 1
         height: parent.height
-        color: Theme.glassBorderInner
+        color: Theme.taskbarGlassBorderInner
     }
 
     Rectangle {
@@ -52,7 +52,7 @@ Item {
             anchors.fill: parent
             color: 'transparent'
             border.width: 1
-            border.color: Theme.controlInner
+            border.color: Theme.glassButtonInner
             opacity: root.pressed ? 0 : 1
         }
     }

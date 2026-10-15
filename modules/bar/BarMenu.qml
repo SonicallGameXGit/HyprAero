@@ -13,7 +13,7 @@ PopupWindow {
     id: root
 
     // Room around the menu for its shadow.
-    readonly property int shadowRoom: Theme.menuShadowBlur
+    readonly property int shadowRoom: Theme.menuShadowBlur + Theme.menuShadowOffset
     // The point the menu opens from, in the bar's coordinates.
     property point at: Qt.point(0, 0)
 
@@ -36,11 +36,11 @@ PopupWindow {
     }
 
     // Its bottom-left corner (the panel's, past the shadow room) on the point.
-    anchor.rect: Qt.rect(at.x - shadowRoom, at.y + shadowRoom + Theme.menuShadowOffset, 1, 1)
+    anchor.rect: Qt.rect(at.x - shadowRoom, at.y + shadowRoom, 1, 1)
     anchor.edges: Edges.Top | Edges.Left
     anchor.gravity: Edges.Top | Edges.Right
     implicitWidth: menu.panelWidth + shadowRoom * 2
-    implicitHeight: menu.panelHeight + shadowRoom * 2 + Theme.menuShadowOffset
+    implicitHeight: menu.panelHeight + shadowRoom * 2
     color: 'transparent'
     grabFocus: true
     visible: false

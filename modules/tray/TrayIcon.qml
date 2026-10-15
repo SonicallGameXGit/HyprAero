@@ -4,7 +4,7 @@ import qs.design
 import qs.services
 
 // One app's icon in the notification area, on the bar or in the flyout: a tool button with the app's
-// 16px icon, as on Windows 7. A click does what the app says (most open their window), a right click asks
+// 16px icon, lit as glass, as on Windows 7. A click does what the app says (most open their window), a right click asks
 // for the app's menu, a middle click and the wheel go to the app too. An app that only has a menu opens it
 // on a click as well. A drag takes it along the bar's icons, into the flyout or out of it.
 ControlButton {
@@ -28,7 +28,7 @@ ControlButton {
     // The app was asked to do something (a click or a middle click).
     signal activated()
 
-    kind: 'tool'
+    kind: 'glassTool'
     opacity: takenOut ? 0 : 1
     Accessible.name: tooltipText
     onClicked: {

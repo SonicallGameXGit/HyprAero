@@ -489,6 +489,7 @@ PanelWindow {
         x: -2
         width: parent.width + 4
         height: parent.height
+        kind: 'taskbar'
 
         // Under everything on the bar, so it only gets right clicks on the empty glass (the controls keep
         // theirs). Not on the workspace buttons either: there it would read as a menu of the workspace.

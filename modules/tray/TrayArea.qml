@@ -70,11 +70,11 @@ Item {
 
         readonly property string tooltipText: root.anyHidden ? qsTr('Show hidden icons') : qsTr('Customize notification icons')
 
-        kind: 'tool'
+        kind: 'glassTool'
         visible: root.arrowShown
         width: 18
         height: root.iconHeight
-        highlighted: root.flyoutOpen
+        current: root.flyoutOpen
         Accessible.name: tooltipText
         onClicked: {
             if (root.anyHidden) {
@@ -88,7 +88,7 @@ Item {
         ChevronGlyph {
             anchors.centerIn: parent
             rotation: root.anyHidden ? -90 : 0
-            color: Theme.glassText
+            color: Theme.taskbarGlassText
 
             Behavior on rotation {
                 NumberAnimation {
@@ -122,7 +122,7 @@ Item {
                 from: 'tray'
                 width: root.iconWidth
                 height: root.iconHeight
-                highlighted: root.menuKey !== '' && root.menuKey === icon.key
+                current: root.menuKey !== '' && root.menuKey === icon.key
                 onMenuRequested: at => root.menuRequested(icon.modelData, icon.mapToItem(root, at))
                 onHoveredChanged: root.tipHovered(icon, icon.hovered)
             }

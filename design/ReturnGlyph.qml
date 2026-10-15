@@ -7,7 +7,7 @@ Item {
     id: root
 
     property int size: 14
-    property color color: Theme.glassText
+    property color color: Theme.taskbarGlassText
 
     implicitWidth: size
     implicitHeight: size

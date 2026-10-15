@@ -9,8 +9,8 @@ import '../../services/startMenu.js' as StartMenuList
 // The start menu, opened by the orb at the bar's left end. Laid out like the Windows 7 one: on the left a
 // white pane read from the top, "Featured" and the featured apps, the dark line, "Most used" and the apps
 // used lately, another line and every app left (A to Z), with the search field under it; on the right, on
-// the glass, the user's places and the shut down button. An app with actions of its own opens them under
-// it like a tree branch.
+// the glass, the user's places and the shut down button, the user's picture rising over the menu's top
+// edge. An app with actions of its own opens them under it like a tree branch.
 //
 // It takes the keyboard while open (typing goes to the search) and closes on Escape, on a click outside,
 // and once something was started. An app can also be dragged out of it and dropped on a workspace, to
@@ -36,6 +36,9 @@ PopupWindow {
     readonly property int menuWidth: 440
     readonly property int menuHeight: 560
     readonly property int leftWidth: 272
+    // How far the user's picture rises over the glass's top edge, as in Windows 7; the window is that much
+    // taller than the glass.
+    readonly property int pictureRise: Theme.space5
     readonly property var rows: {
         if (search.text.trim() !== '') {
             return StartMenuList.searchRows(StartMenuList.searchApps(Apps.list, search.text, Apps.scores))
@@ -53,7 +56,7 @@ PopupWindow {
     readonly property var powerActions: ['reboot', 'suspend', 'lock', 'logOut']
 
     implicitWidth: menuWidth
-    implicitHeight: menuHeight
+    implicitHeight: menuHeight + pictureRise
     color: 'transparent'
     grabFocus: true
     visible: false
@@ -61,7 +64,11 @@ PopupWindow {
     // through so the drop layer gets the drop: anywhere on the menu puts the app back. It closes only once
     // the app was started somewhere (the bar closes it then).
     mask: Region {
-        item: BarDrag.active ? null : content
+        item: BarDrag.active ? null : glass
+
+        Region {
+            item: BarDrag.active ? null : places.pictureItem
+        }
     }
     // Hyprland dismisses the popup (its focus grab) when a drag out of it ends, a put back included. A
     // dismissal during a drag from here, or within `regrabWindow` after one, shows the menu again as it was:
@@ -279,8 +286,25 @@ PopupWindow {
         }
 
         GlassPanel {
-            anchors.fill: parent
+            id: glass
+
+            y: root.pictureRise
+            width: parent.width
+            height: parent.height - y
             cornerRadius: Theme.radiusPanel
+            kind: 'taskbar'
+        }
+
+        // The pane's etched edge, as Windows 7's: a light line around its dark border.
+        Rectangle {
+            x: pane.x - 1
+            y: pane.y - 1
+            width: pane.width + 2
+            height: pane.height + 2
+            radius: pane.radius + 1
+            color: 'transparent'
+            border.width: 1
+            border.color: Theme.taskbarGlassBorderInner
         }
 
         // The white pane with the apps.
@@ -288,13 +312,13 @@ PopupWindow {
             id: pane
 
             x: Theme.space2
-            y: Theme.space2
+            y: glass.y + Theme.space2
             width: root.leftWidth
             height: search.y - Theme.space2 - y
             radius: Theme.radiusControl
             color: Theme.surface
             border.width: 1
-            border.color: Theme.surfaceBorder
+            border.color: Theme.taskbarGlassBorderOuter
 
             AppList {
                 id: list
@@ -309,7 +333,7 @@ PopupWindow {
                 returnArea: content
                 touchControls: Config.startMenu.touchControls
                 onLaunched: (app, actionIndex) => root.launch(app, actionIndex)
-                onMenuRequested: (app, at) => root.openAppMenu(app, list.mapToItem(content, at))
+                onMenuRequested: (app, at) => root.openAppMenu(app, list.mapToItem(glass, at))
             }
         }
 
@@ -323,21 +347,25 @@ PopupWindow {
             onKeyPressed: event => root.handleKey(event)
         }
 
+        // Its picture's top is the window's top, rising over the glass.
         PlacesColumn {
+            id: places
+
             x: pane.x + pane.width + Theme.space2
-            y: Theme.space3
+            y: 0
             width: parent.width - x - Theme.space2
             height: parent.height - y - Theme.space2
             tooltip: menuTooltip
             onOpened: StartMenuState.close()
             onPowerRequested: action => root.requestPower(action)
-            onPowerMenuRequested: at => root.openPowerMenu(mapToItem(content, at))
+            onPowerMenuRequested: at => root.openPowerMenu(mapToItem(glass, at))
         }
 
+        // Kept on the glass: above it the window lets the pointer through.
         MenuPanel {
             id: contextMenu
 
-            anchors.fill: parent
+            anchors.fill: glass
             onChosen: index => {
                 if (root.menuKind === 'app') {
                     root.appMenuChosen(index)
@@ -356,7 +384,7 @@ PopupWindow {
         TaskDialog {
             id: dialog
 
-            anchors.fill: parent
+            anchors.fill: glass
             heading: {
                 if (root.pendingPower === 'reboot') {
                     return qsTr('Restart the computer?')

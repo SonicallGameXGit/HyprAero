@@ -1,7 +1,8 @@
 import QtQuick
 import qs.design
 
-// The marker of the current workspace. It slides to the new button and stretches while it travels:
+// The marker of the current workspace, lit as the selected glass button (glass-button-face-current), like
+// the running app's button on the Windows 7 taskbar. It slides to the new button and stretches while it travels:
 // the edge in the direction of travel moves faster than the one behind it, then both settle.
 Item {
     id: root
@@ -62,13 +63,13 @@ Item {
         anchors.fill: parent
         radius: Theme.radiusControl
         border.width: 1
-        border.color: Theme.controlBorderHover
+        border.color: Theme.glassButtonBorder
 
         gradient: Gradient {
-            GradientStop { position: 0.0; color: Theme.controlFaceActive[0] }
-            GradientStop { position: 0.49; color: Theme.controlFaceActive[1] }
-            GradientStop { position: 0.5; color: Theme.controlFaceActive[2] }
-            GradientStop { position: 1.0; color: Theme.controlFaceActive[3] }
+            GradientStop { position: 0.0; color: Theme.glassButtonFaceCurrent[0] }
+            GradientStop { position: 0.49; color: Theme.glassButtonFaceCurrent[1] }
+            GradientStop { position: 0.5; color: Theme.glassButtonFaceCurrent[2] }
+            GradientStop { position: 1.0; color: Theme.glassButtonFaceCurrent[3] }
         }
 
         Rectangle {
@@ -77,7 +78,7 @@ Item {
             radius: Math.max(Theme.radiusControl - 1, 0)
             color: 'transparent'
             border.width: 1
-            border.color: Theme.controlInner
+            border.color: Theme.glassButtonInner
         }
     }
 }

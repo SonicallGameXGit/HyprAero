@@ -79,7 +79,7 @@ Item {
 
                 app: modelData
                 screen: root.screen
-                highlighted: root.menuApp === modelData.id
+                current: root.menuApp === modelData.id
                 onMenuRequested: at => root.menuRequested(pin.modelData, pin.mapToItem(root, at))
                 onHoveredChanged: root.pinHovered(pin, pin.hovered)
             }
