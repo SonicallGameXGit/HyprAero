@@ -3,7 +3,7 @@ import QtQuick.Effects
 
 // The family button. kind: 'normal', 'accent' (the one main action), 'tool' (flat until hovered) or
 // 'danger' (red, for what destroys something). With keyboard focus it glows (focus-glow) and Enter or
-// Space press it.
+// Space press it. Disabled, it is flat and grey (control-*-disabled).
 Item {
     id: root
 
@@ -20,6 +20,10 @@ Item {
     readonly property bool accent: kind === 'accent'
     readonly property bool danger: kind === 'danger'
     readonly property var face: {
+        if (enabled === false) {
+            return [Theme.controlFaceDisabled, Theme.controlFaceDisabled, Theme.controlFaceDisabled, Theme.controlFaceDisabled]
+        }
+
         if (accent) {
             return pressed ? Theme.accentFaceActive : (lit ? Theme.accentFaceHover : Theme.accentFace)
         }
@@ -37,6 +41,10 @@ Item {
     property color faceLower: face[2]
     property color faceBottom: face[3]
     property color borderColor: {
+        if (enabled === false) {
+            return Theme.controlBorderDisabled
+        }
+
         if (accent) {
             return Theme.accentBorder
         }
@@ -113,7 +121,13 @@ Item {
 
         anchors.centerIn: parent
         text: root.text
-        color: root.accent || root.danger ? Theme.accentText : Theme.controlText
+        color: {
+            if (root.enabled === false) {
+                return Theme.controlTextDisabled
+            }
+
+            return root.accent || root.danger ? Theme.accentText : Theme.controlText
+        }
         font.family: Theme.fontUi
         font.pixelSize: Theme.fontSizeBody
     }
