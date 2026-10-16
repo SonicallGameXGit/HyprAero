@@ -295,6 +295,16 @@ PanelWindow {
         onTriggered: root.takingKeyboard = false
     }
 
+    // A start menu opening on any screen: these grab too, so they would become its parent (`StartMenuState`).
+    Connections {
+        target: StartMenuState
+
+        function onOpening(): void {
+            barMenu.close()
+            trayMenu.close()
+        }
+    }
+
     Item {
         Window.onActiveChanged: {
             if (Window.active && root.takingKeyboard) {

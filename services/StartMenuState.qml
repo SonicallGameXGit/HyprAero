@@ -16,7 +16,20 @@ Singleton {
     property real closedAt: 0
     readonly property int reopenGuard: 300
 
+    // Sent just before the menu opens, for the bars to close their own menus first (see `open`).
+    signal opening()
+
+    // Every other popup that takes the keyboard is closed first. Qt makes a new grabbing popup a child of
+    // the topmost one still open (xdg-shell wants grabs nested), so with the calendar open the menu was
+    // placed from the flyout's corner instead of the bar's. A key binding opens it with no click outside to
+    // close them. A tray flyout opened by a drag does not grab, and closing it would end the drag.
     function open(screenName: string): void {
+        Clock.closeFlyout()
+        if (Tray.flyoutByDrag === false) {
+            Tray.closeFlyout()
+        }
+
+        opening()
         Apps.refreshScores()
         Session.findPicture()
         openScreen = screenName
