@@ -62,6 +62,10 @@ Singleton {
     readonly property color taskbarGlassShineMiddle: slate ? '#05ffffff' : '#0dffffff'
     readonly property color taskbarGlassText: slate ? '#e9eef3' : '#ffffff'
     readonly property color taskbarGlassLink: slate ? '#9fd0f7' : '#cfe8ff'
+    // The taskbar strip itself: Windows 7's taskbar, lighter and more see-through than the menus over it.
+    readonly property color taskbarBarTint: slate ? '#9e10141a' : '#80465c7c'
+    readonly property color taskbarBarEdge: slate ? '#d9000000' : '#cc0c1e34'
+    readonly property color taskbarBarShineTop: slate ? '#05ffffff' : '#08ffffff'
 
     // Gradient stops of a glass button's face: top, 49%, 50%, bottom.
     readonly property var glassButtonFace: slate
