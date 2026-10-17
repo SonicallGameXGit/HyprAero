@@ -106,6 +106,14 @@ Windows 7 and Vista give the taskbar, the start menu and the flyouts over the ta
 
 A solid pane set into the taskbar glass (the start menu's list) is edged like Windows 7's: a `taskbar-glass-border-outer` line around it and a `taskbar-glass-border-inner` line outside that one.
 
+The taskbar strip itself (the bar along the screen's edge, not the menus and flyouts over it) is Windows 7's taskbar, measured on the screenshots of the owner's mockups: a lighter, more see-through glass than the menus over it (the wallpaper shows through, mostly darkened), a dark line along its top with a `taskbar-glass-border-inner` line under it, a faint sheen fading out by the middle, no horizon, and no line along the bottom or the ends. Over a very bright wallpaper white words on it fall below WCAG AA (about 2.3:1 over white without compositor blur), as on Windows 7; this is the one exception to the taskbar glass's contrast rule above, kept for the look.
+
+| Token | Aero | Slate |
+| --- | --- | --- |
+| `taskbar-bar-tint` | `rgba(70,92,124,0.5)` | `rgba(16,20,26,0.62)` |
+| `taskbar-bar-edge` (1px, along the top edge) | `rgba(12,30,52,0.8)` | `rgba(0,0,0,0.85)` |
+| `taskbar-bar-shine` | vertical gradient white 0.03 at 0% -> 0 at 50% | same shape, white 0.02 -> 0 |
+
 ### Glass buttons (controls standing on glass)
 
 A tool button standing on glass (a taskbar button, a tray icon, a place in the start menu) does not take the opaque control face: it lights up as glass, a see-through white gloss with the horizon at 49% / 50%, a dark edge and a bright inner line, as Windows 7's taskbar buttons do. Flat until hovered; one that must always look like a button (the start menu's Shut down) shows the rest face. `current` is the one that is selected (the current workspace, a button whose menu is open); `active` is pressed, as for controls.

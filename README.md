@@ -55,7 +55,7 @@ hl.config({
 
 -- The bar and everything that opens from it: the start button, the start menu, the window previews, the
 -- tray's flyout, right-click menus and tooltips.
-hl.layer_rule({ match = { namespace = "hypraero-bar" }, blur = true, blur_popups = true, ignore_alpha = 0.5 })
+hl.layer_rule({ match = { namespace = "hypraero-bar" }, blur = true, blur_popups = true, ignore_alpha = 0.4 })
 -- What you carry while dragging a window, a workspace or an app, and its "Put back" slot.
 hl.layer_rule({ match = { namespace = "hypraero-drop" }, blur = true, ignore_alpha = 0.2, no_anim = true })
 ```
@@ -63,7 +63,7 @@ hl.layer_rule({ match = { namespace = "hypraero-drop" }, blur = true, ignore_alp
 Why each part is there:
 
 - **`blur_popups = true`**: the start menu, the window previews and the menus are popups of the bar. Hyprland blurs a layer's popups only when its rule says so; without it only the bar itself is frosted, and the menu's glass shows what is behind it sharp.
-- **`ignore_alpha = 0.5`**: blur only where the shell draws glass. The window previews' popup is much bigger than the panel you see (so it never has to move), and menus and the start button have soft shadows; without this, Hyprland blurs those see-through parts too, and you get a frosted rectangle around them. The glass itself is more opaque than 0.5 in both themes, the shadows are lighter, so only the glass is kept.
+- **`ignore_alpha = 0.4`**: blur only where the shell draws glass. The window previews' popup is much bigger than the panel you see (so it never has to move), and menus and the start button have soft shadows; without this, Hyprland blurs those see-through parts too, and you get a frosted rectangle around them. The glass itself is more opaque than 0.4 in both themes (the bar, the most see-through, is 0.5), the shadows lighter (Aero's 0.35; Slate's darker menu shadow is frosted right at the menu's edge), so only the glass is kept. If you wrote this rule with 0.5 before, change it: at 0.5 the bar is not frosted.
 - **`hypraero-drop`**: while something is dragged out of the bar, a transparent layer covers the screen to draw it and take the drop. With blur, the "Put back" slot is frosted glass; the rest of the layer is fully transparent and stays clear. `no_anim` makes it appear at once if your config animates layers.
 
 ### 4. Windows: floating and rounded, as on Windows

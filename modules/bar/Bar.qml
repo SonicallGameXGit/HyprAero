@@ -506,12 +506,11 @@ PanelWindow {
         puttingBack: dropLayer.puttingBack
     }
 
-    // Its left and right borders lie just off the screen, so the bar reads as running on past both edges.
-    GlassPanel {
+    // A little wider than the screen, so nothing of its ends ever shows at the screen's edges.
+    BarGlass {
         x: -2
         width: parent.width + 4
         height: parent.height
-        kind: 'taskbar'
 
         // Under everything on the bar, so it only gets right clicks on the empty glass (the controls keep
         // theirs). Not on the workspace buttons either: there it would read as a menu of the workspace.
