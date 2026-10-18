@@ -21,6 +21,9 @@ return {
     restoreDefaults,
     gridColumns,
     gridGapAt,
+    isSystemKey,
+    defaultBehaviorOf,
+    hiddenApps,
 }`)()
 
 const icon = (key, behavior) => ({ key: key, behavior: behavior, name: key, icon: '' })
@@ -207,4 +210,55 @@ test('grid gap: the row under the pointer, the gap before the first icon right o
     assert.deepEqual(tray.gridGapAt(35, -20, slots).gap, 1)
     assert.deepEqual(tray.gridGapAt(5, 200, slots).gap, 4)
     assert.equal(tray.gridGapAt(0, 0, []), null)
+})
+
+test('system icons: their own keys and Windows 7\'s defaults', () => {
+    assert.equal(tray.isSystemKey('system:network'), true)
+    assert.equal(tray.isSystemKey('nm-applet'), false)
+    assert.equal(tray.defaultBehaviorOf('system:volume'), 'show')
+    assert.equal(tray.defaultBehaviorOf('system:network'), 'show')
+    assert.equal(tray.defaultBehaviorOf('system:power'), 'show')
+    assert.equal(tray.defaultBehaviorOf('system:drives'), 'notify')
+    assert.equal(tray.defaultBehaviorOf('system:bluetooth'), 'notify')
+    assert.equal(tray.defaultBehaviorOf('steam'), 'notify')
+})
+
+test('system icons: a new app goes before the system icons', () => {
+    const present = [
+        { key: 'steam', name: 'Steam', icon: '' },
+        { key: 'system:volume', name: 'Volume', icon: '' },
+    ]
+    const first = tray.remember([], present)
+    assert.deepEqual(keys(first), ['steam:notify', 'system:volume:show'])
+    const second = tray.remember(first, present.concat([
+        { key: 'system:network', name: 'Network', icon: '' },
+        { key: 'discord', name: 'Discord', icon: '' },
+    ]))
+    assert.deepEqual(keys(second), ['steam:notify', 'discord:notify', 'system:network:show', 'system:volume:show'])
+})
+
+test('system icons: shown by default, and restored to that', () => {
+    const present = [{ key: 'system:volume' }, { key: 'system:drives' }, { key: 'steam' }]
+    assert.deepEqual(tray.arrange([], present, false), { shown: ['system:volume'], hidden: ['system:drives', 'steam'] })
+    const restored = tray.restoreDefaults([icon('system:volume', 'hide'), icon('steam', 'show')])
+    assert.deepEqual(keys(restored), ['system:volume:show', 'steam:notify'])
+})
+
+test('system icons: a wrong behavior in the file falls back to the icon\'s own default', () => {
+    const parsed = tray.parseTray(JSON.stringify({ icons: [{ key: 'system:volume', behavior: 'loud' }] }))
+    assert.deepEqual(keys(parsed.icons), ['system:volume:show'])
+    assert.equal(parsed.problems.length, 1)
+})
+
+test('system icons: the applets they replace, only for the ones that are on', () => {
+    assert.deepEqual(tray.hiddenApps([]), [])
+    assert.equal(tray.hiddenApps(['system:network']).includes('nm-applet'), true)
+    assert.equal(tray.hiddenApps(['system:volume']).includes('nm-applet'), false)
+    assert.equal(tray.hiddenApps(['system:bluetooth', 'system:drives']).includes('udiskie'), true)
+})
+
+test('system icons: new ones keep Windows 7\'s order whatever order they appear in', () => {
+    const first = tray.remember([], [{ key: 'system:network', name: 'Network', icon: '' }, { key: 'steam', name: 'Steam', icon: '' }])
+    const second = tray.remember(first, [{ key: 'system:volume', name: 'Volume', icon: '' }, { key: 'system:bluetooth', name: 'Bluetooth', icon: '' }])
+    assert.deepEqual(keys(second), ['steam:notify', 'system:bluetooth:notify', 'system:network:show', 'system:volume:show'])
 })

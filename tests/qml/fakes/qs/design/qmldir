@@ -20,3 +20,11 @@ ReturnGlyph 1.0 ../../../../../design/ReturnGlyph.qml
 ScrollBar 1.0 ../../../../../design/ScrollBar.qml
 EtchedLine 1.0 ../../../../../design/EtchedLine.qml
 GlassText 1.0 ../../../../../design/GlassText.qml
+StatusBadge 1.0 ../../../../../design/StatusBadge.qml
+VolumeGlyph 1.0 ../../../../../design/VolumeGlyph.qml
+BatteryGlyph 1.0 ../../../../../design/BatteryGlyph.qml
+DriveGlyph 1.0 ../../../../../design/DriveGlyph.qml
+BluetoothGlyph 1.0 ../../../../../design/BluetoothGlyph.qml
+Slider 1.0 ../../../../../design/Slider.qml
+WindowsIcon 1.0 ../../../../../design/WindowsIcon.qml
+GroupFrame 1.0 ../../../../../design/GroupFrame.qml

@@ -25,6 +25,7 @@ Singleton {
     // close them. A tray flyout opened by a drag does not grab, and closing it would end the drag.
     function open(screenName: string): void {
         Clock.closeFlyout()
+        SystemIcons.closeFlyout()
         if (Tray.flyoutByDrag === false) {
             Tray.closeFlyout()
         }

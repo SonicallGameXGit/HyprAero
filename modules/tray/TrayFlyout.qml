@@ -8,8 +8,8 @@ import qs.services
 import '../../services/tray.js' as TrayList
 
 // The flyout of the "Show hidden icons" arrow, after Windows 7's: the icons that wait behind the arrow in a
-// grid as square as it can be, on glass, and "Customize..." under them (the "Notification Area Icons"
-// page). It sits above the arrow and takes the keyboard; Escape, a click outside or the arrow close it, and
+// grid as square as it can be, on the white body of Windows 7's flyout frame (`FlyoutFrame`), and
+// "Customize..." in its band (the "Notification Area Icons" page). It sits above the arrow and takes the keyboard; Escape, a click outside or the arrow close it, and
 // so does using an icon (its app takes over, as on Windows).
 //
 // An icon can be dragged out of it onto the bar's icons (always shown from then on), and a tray icon
@@ -53,6 +53,9 @@ PopupWindow {
     property string menuKey: ''
 
     signal tipHovered(Item control, bool hovered)
+    // One of the shell's own icons in here asks for its flyout; `barX` is the middle of its icon in the
+    // bar's coordinates.
+    signal flyoutRequested(string name, real barX)
 
     // Whether a point in the bar's coordinates is on this flyout.
     function contains(barPoint: point): bool {
@@ -86,6 +89,11 @@ PopupWindow {
         }
 
         menuKey = Tray.keyOf(item)
+        if (item.system !== undefined) {
+            systemMenu.show(SystemIcons.menuFor(item.system), at)
+            return
+        }
+
         menu.show(item.menu, at)
     }
 
@@ -101,8 +109,8 @@ PopupWindow {
     anchor.edges: Edges.Top | Edges.Left
     anchor.gravity: Edges.Top | Edges.Right
     anchor.adjustment: PopupAdjustment.None
-    implicitWidth: Math.max(columns * cell, link.implicitWidth + Theme.space3 * 2) + Theme.space2 * 2
-    implicitHeight: rows * cell + Theme.space2 * 2 + strip.height + Theme.space1
+    implicitWidth: Math.max(columns * cell, link.implicitWidth + Theme.space3 * 2) + Theme.space2 * 2 + frame.frameWidth * 2
+    implicitHeight: rows * cell + Theme.space2 * 2 + frame.bandHeight + frame.frameWidth * 2
     color: 'transparent'
     grabFocus: byDrag === false
     visible: false
@@ -130,6 +138,7 @@ PopupWindow {
         }
 
         menu.close()
+        systemMenu.close()
         visible = false
     }
 
@@ -173,17 +182,26 @@ PopupWindow {
             Keys.onEscapePressed: Tray.closeFlyout()
         }
 
-        GlassPanel {
+        FlyoutFrame {
+            id: frame
+
             anchors.fill: parent
-            cornerRadius: Theme.radiusPanel
-            kind: 'taskbar'
+            bandHeight: link.implicitHeight + Theme.space3 * 2
+            band: LinkText {
+                id: link
+
+                anchors.centerIn: parent
+                text: qsTr('Customize...')
+                activeFocusOnTab: true
+                onClicked: Tray.openCustomize()
+            }
         }
 
         Grid {
             id: grid
 
             x: (parent.width - width) / 2
-            y: Theme.space2
+            y: frame.frameWidth + Theme.space2
             columns: root.columns
 
             Repeater {
@@ -202,30 +220,12 @@ PopupWindow {
                     windowOffset: root.barOffset
                     width: root.cell
                     height: root.cell
-                    current: menu.visible && root.menuKey === icon.key
+                    current: (menu.visible || systemMenu.visible) && root.menuKey === icon.key
                     onActivated: Tray.closeFlyout()
+                    onFlyoutRequested: root.flyoutRequested(icon.modelData.system, icon.mapToItem(null, icon.width / 2, 0).x + root.barOffset.x)
                     onMenuRequested: at => root.openMenu(icon.modelData, icon.mapToItem(null, at))
                     onHoveredChanged: root.tipHovered(icon, icon.hovered)
                 }
-            }
-        }
-
-        // On the glass under the icons, as on Windows 7: light words on the dark glass read on any backdrop.
-        Item {
-            id: strip
-
-            y: parent.height - height - Theme.space1
-            width: parent.width
-            height: link.implicitHeight + Theme.space2 * 2
-
-            LinkText {
-                id: link
-
-                anchors.centerIn: parent
-                text: qsTr('Customize...')
-                onGlass: true
-                activeFocusOnTab: true
-                onClicked: Tray.openCustomize()
             }
         }
 
@@ -283,5 +283,16 @@ PopupWindow {
         anchor.window: root
         // Something was done: the app takes over, as after a click.
         onChosen: Tray.closeFlyout()
+    }
+
+    // The menu of one of the shell's own icons in here.
+    PopupMenu {
+        id: systemMenu
+
+        anchor.window: root
+        onChosen: item => {
+            Tray.closeFlyout()
+            SystemIcons.choose(item)
+        }
     }
 }

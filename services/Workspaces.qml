@@ -93,6 +93,9 @@ Singleton {
     // `closingHold` only: an app may ask to save or refuse, and its preview then goes live again. Long, as
     // some apps take seconds to go.
     property var closingAddresses: []
+    property string cornerTitle: ''
+    property string cornerAddress: ''
+    property int cornerTries: 0
     readonly property int closingHold: 10000
 
     // Hyprland only tells us about opened / closed / moved windows; resizes arrive as raw events.
@@ -113,6 +116,16 @@ Singleton {
                 Hyprland.refreshToplevels()
             }
 
+            if (event.name === 'openwindow' && cornerTitle !== '') {
+                const opened = WorkspaceList.parseOpenWindow(event.data)
+                if (opened !== null && opened.title.startsWith(cornerTitle)) {
+                    cornerTitle = ''
+                    cornerAddress = opened.address
+                    cornerTries = 0
+                    cornerTimer.restart()
+                }
+            }
+
             refreshTimer.restart()
         }
     }
@@ -122,6 +135,23 @@ Singleton {
 
         interval: 200
         onTriggered: Hyprland.refreshToplevels()
+    }
+
+    // The window to put in the corner of the work area once it is known to Hyprland (`placeNextInCorner`).
+    // Its record arrives a moment after the `openwindow` event, and a window that opens tiled is floated
+    // first and placed on the next tick, once its own size is known.
+    Timer {
+        id: cornerTimer
+
+        interval: 100
+        repeat: true
+        onTriggered: {
+            root.cornerTries++
+            Hyprland.refreshToplevels()
+            if (root.cornerTries > 1 && (root.placeInCorner(root.cornerAddress) !== 'waiting' || root.cornerTries >= 12)) {
+                stop()
+            }
+        }
     }
 
     Timer {
@@ -250,6 +280,46 @@ Singleton {
                 moveWindow(window.address, toId)
             }
         }
+    }
+
+    // The next window whose title starts with `titleStart` opens against the bottom right corner of the work
+    // area (the screen without what the bars keep free) of its monitor, as Windows 7's Volume Mixer does.
+    // Floating windows only: a tiled one is floated first.
+    function placeNextInCorner(titleStart: string): void {
+        cornerTitle = titleStart
+    }
+
+    // Moves the floating window there; 'waiting' when it has to be floated first (the caller tries again
+    // once Hyprland has re-read it), 'failed' when it is not known or its numbers are not usable.
+    function placeInCorner(address: string): string {
+        const toplevel = toplevelAt(address)
+        if (toplevel === null || WorkspaceList.isWindowAddress(address) === false) {
+            return 'waiting'
+        }
+
+        const info = toplevel.lastIpcObject
+        const rect = monitorRect(toplevel.monitor)
+        if (info === null || info === undefined || rect === null || info.size === undefined || info.size === null || info.size.length < 2) {
+            return 'failed'
+        }
+
+        if (info.floating !== true) {
+            setFloating(address, true)
+            return 'waiting'
+        }
+
+        const monitorInfo = toplevel.monitor.lastIpcObject
+        const reserved = monitorInfo === null || monitorInfo === undefined ? undefined : monitorInfo.reserved
+        const spot = WorkspaceList.cornerPosition(
+            { x: rect.x, y: rect.y, width: rect.width, height: rect.height, reserved: reserved },
+            { width: info.size[0], height: info.size[1] },
+        )
+        if (spot === null) {
+            return 'failed'
+        }
+
+        Hyprland.dispatch(`hl.dsp.window.move({ x = ${spot.x}, y = ${spot.y}, window = 'address:${address}' })`)
+        return 'done'
     }
 
     // Takes the window out of the tiling layout (`on`), free to move and resize, or puts it back in.

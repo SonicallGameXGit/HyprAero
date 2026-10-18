@@ -41,6 +41,8 @@ Item {
     // `at` is in this item.
     signal menuRequested(var item, point at)
     signal tipHovered(Item control, bool hovered)
+    // One of the shell's own icons asks for its flyout; `x` is the middle of its icon in this item.
+    signal flyoutRequested(string name, real x)
 
     // The gap closest to `x` (in the bar window's coordinates).
     function gapAt(x: real): int {
@@ -124,6 +126,7 @@ Item {
                 height: root.iconHeight
                 current: root.menuKey !== '' && root.menuKey === icon.key
                 onMenuRequested: at => root.menuRequested(icon.modelData, icon.mapToItem(root, at))
+                onFlyoutRequested: root.flyoutRequested(icon.modelData.system, icon.mapToItem(root, icon.width / 2, 0).x)
                 onHoveredChanged: root.tipHovered(icon, icon.hovered)
             }
         }

@@ -5,7 +5,7 @@ import '../../modules/tray'
 
 // The notification area on the bar (the real TrayArea and TrayIcon) against a fake tray: the arrow points
 // up while icons wait in the flyout and stays, turned, while none do, then opening the Customize page; a
-// click asks the app, a right click
+// click asks the app (the shell's own icons ask for their flyout, or their menu), a right click
 // asks for its menu, a middle click and the wheel go to the app, and a dragged icon starts a tray drag that
 // knows where it came from.
 Item {
@@ -18,12 +18,14 @@ Item {
         id: area
 
         property var lastMenu: null
+        property var lastFlyout: null
         property int arrowClicks: 0
         property int customizeClicks: 0
 
         x: 20
         y: 30
         onMenuRequested: (item, at) => area.lastMenu = { id: item.id, at: at }
+        onFlyoutRequested: (name, x) => area.lastFlyout = { name: name, x: x }
         onArrowClicked: area.arrowClicks++
         onCustomizeClicked: area.customizeClicks++
     }
@@ -39,7 +41,7 @@ Item {
         name: 'TrayArea'
         when: windowShown
 
-        readonly property var ids: ['steam', 'menuOnly']
+        readonly property var ids: ['steam', 'menuOnly', 'system:volume', 'system:drives']
 
         function icon(index) {
             const row = area.children.find(child => child.toString().startsWith('QQuickRow'))
@@ -47,13 +49,15 @@ Item {
         }
 
         function initTestCase() {
-            Tray.icons = [{ key: 'steam' }, { key: 'menuOnly' }]
+            Tray.icons = [{ key: 'steam' }, { key: 'menuOnly' }, { key: 'system:volume' }, { key: 'system:drives' }]
             Tray.shown = [
                 { id: 'steam', title: 'Steam', icon: '', onlyMenu: false, hasMenu: true },
                 { id: 'menuOnly', title: 'Only a menu', icon: '', onlyMenu: true, hasMenu: true },
+                { id: 'system:volume', title: 'Volume', icon: '', system: 'volume', onlyMenu: false, hasMenu: true },
+                { id: 'system:drives', title: 'Safely Remove', icon: '', system: 'drives', onlyMenu: true, hasMenu: true },
             ]
             // The row places its icons on the next polish.
-            tryVerify(() => icon(1) !== undefined && icon(1).x > 0)
+            tryVerify(() => icon(3) !== undefined && icon(3).x > 0)
         }
 
         function init() {
@@ -62,6 +66,7 @@ Item {
             Tray.secondary = []
             Tray.scrolled = []
             area.lastMenu = null
+            area.lastFlyout = null
             area.arrowClicks = 0
             area.customizeClicks = 0
             BarDrag.begins = 0
@@ -90,9 +95,10 @@ Item {
         }
 
         function test_with_no_icon_ever_seen_there_is_no_arrow() {
+            const icons = Tray.icons
             Tray.icons = []
             compare(area.arrowShown, false)
-            Tray.icons = [{ key: 'steam' }, { key: 'menuOnly' }]
+            Tray.icons = icons
         }
 
         function test_a_click_asks_the_app_and_a_menu_only_app_opens_its_menu() {
@@ -101,6 +107,17 @@ Item {
             mouseClick(icon(1))
             compare(Tray.activated, ['steam'])
             compare(area.lastMenu.id, 'menuOnly')
+        }
+
+        function test_a_system_icon_asks_for_its_flyout_or_its_menu_never_the_app() {
+            mouseClick(icon(2))
+            compare(area.lastFlyout.name, 'volume')
+            compare(area.lastFlyout.x, icon(2).mapToItem(area, icon(2).width / 2, 0).x)
+            compare(Tray.activated, [])
+            mouseClick(icon(3))
+            compare(area.lastMenu.id, 'system:drives')
+            compare(area.lastFlyout.name, 'volume')
+            compare(Tray.activated, [])
         }
 
         function test_right_click_asks_for_the_menu_where_it_was_pressed() {
@@ -131,7 +148,7 @@ Item {
             const left = icon(0).mapToItem(null, 0, 0).x
             compare(area.gapAt(left + 2), 0)
             compare(area.gapAt(left + area.iconWidth - 2), 1)
-            compare(area.gapAt(left + area.iconWidth * 2 + 30), 2)
+            compare(area.gapAt(left + area.iconWidth * 4 + 30), 4)
         }
 
         function test_dragging_an_icon_starts_a_tray_drag_from_the_bar() {

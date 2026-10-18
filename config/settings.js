@@ -20,6 +20,17 @@ const defaults = {
         // Windows 7's "Always show all icons and notifications on the taskbar": no icon waits behind the
         // arrow.
         showAll: false,
+        // Windows 7's "Turn system icons on or off": the clock and each of the shell's own icons in the
+        // notification area.
+        clock: true,
+        volumeIcon: true,
+        networkIcon: true,
+        powerIcon: true,
+        bluetoothIcon: true,
+        drivesIcon: true,
+        // While one of those is on, the icon of an applet that only does the same thing (nm-applet,
+        // blueman, pasystray, udiskie, ...) is left out of the notification area.
+        hideSystemApps: true,
     },
 }
 

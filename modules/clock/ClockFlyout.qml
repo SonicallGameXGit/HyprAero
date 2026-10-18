@@ -3,8 +3,8 @@ import QtQuick
 import qs.design
 import qs.services
 
-// The flyout of the bar's clock, after Windows 7's: the long date over a calendar on a white pane, the
-// analog clock and the time with its seconds beside it, all on the taskbar glass. It sits above the clock
+// The flyout of the bar's clock, after Windows 7's: the long date over the calendar, the analog clock and the
+// time with its seconds beside it, on the white body of Windows 7's flyout frame (`FlyoutFrame`). It sits above the clock
 // and takes the keyboard; Escape or a click outside closes it. Opening it shows today's month.
 PopupWindow {
     id: root
@@ -21,8 +21,8 @@ PopupWindow {
     anchor.edges: Edges.Top | Edges.Left
     anchor.gravity: Edges.Top | Edges.Right
     anchor.adjustment: PopupAdjustment.None
-    implicitWidth: Theme.space3 * 3 + pane.width + clockSize
-    implicitHeight: Theme.space3 * 2 + dateLine.height + Theme.space2 + pane.height
+    implicitWidth: Theme.space3 * 3 + pane.width + clockSize + frame.frameWidth * 2
+    implicitHeight: Theme.space3 * 2 + dateLine.height + Theme.space2 + pane.height + frame.frameWidth * 2
     color: 'transparent'
     grabFocus: true
     visible: false
@@ -63,66 +63,54 @@ PopupWindow {
             Keys.onEscapePressed: Clock.closeFlyout()
         }
 
-        GlassPanel {
+        FlyoutFrame {
+            id: frame
+
             anchors.fill: parent
-            cornerRadius: Theme.radiusPanel
-            kind: 'taskbar'
-        }
 
-        GlassText {
-            id: dateLine
+            Text {
+                id: dateLine
 
-            x: Theme.space3
-            y: Theme.space3
-            text: Clock.longDateText
-            font.pixelSize: Theme.fontSizeHeading
-        }
-
-        // The pane's etched edge, as the start menu's: a light line around its dark border.
-        Rectangle {
-            x: pane.x - 1
-            y: pane.y - 1
-            width: pane.width + 2
-            height: pane.height + 2
-            radius: pane.radius + 1
-            color: 'transparent'
-            border.width: 1
-            border.color: Theme.taskbarGlassBorderInner
-        }
-
-        Rectangle {
-            id: pane
-
-            x: Theme.space3
-            y: dateLine.y + dateLine.height + Theme.space2
-            width: calendar.implicitWidth
-            height: calendar.implicitHeight
-            radius: Theme.radiusControl
-            color: Theme.surface
-            border.width: 1
-            border.color: Theme.taskbarGlassBorderOuter
-
-            CalendarPane {
-                id: calendar
-
-                anchors.fill: parent
+                x: Theme.space3
+                y: Theme.space3
+                text: Clock.longDateText
+                color: Theme.headingText
+                font.family: Theme.fontUi
+                font.pixelSize: Theme.fontSizeHeading
             }
-        }
 
-        AnalogClock {
-            id: face
+            Item {
+                id: pane
 
-            x: pane.x + pane.width + Theme.space3
-            y: pane.y
-            diameter: root.clockSize
-            date: Clock.now
-        }
+                x: Theme.space3
+                y: dateLine.y + dateLine.height + Theme.space2
+                width: calendar.implicitWidth
+                height: calendar.implicitHeight
 
-        GlassText {
-            anchors.horizontalCenter: face.horizontalCenter
-            y: face.y + face.height + Theme.space2
-            text: Clock.preciseTimeText
-            font.pixelSize: Theme.fontSizeHeading
+                CalendarPane {
+                    id: calendar
+
+                    anchors.fill: parent
+                }
+            }
+
+            AnalogClock {
+                id: face
+
+                x: pane.x + pane.width + Theme.space3
+                y: pane.y
+                diameter: root.clockSize
+                date: Clock.now
+            }
+
+            Text {
+                anchors.horizontalCenter: face.horizontalCenter
+                y: face.y + face.height + Theme.space2
+                text: Clock.preciseTimeText
+                color: Theme.text
+                font.family: Theme.fontUi
+                font.pixelSize: Theme.fontSizeHeading
+            }
         }
     }
 }

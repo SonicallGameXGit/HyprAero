@@ -1,20 +1,19 @@
 import Quickshell
 import QtQuick
-import qs.design
 
-// The right-click menu of what is on the bar or in its previews (a pin, a preview card), like Windows 7's:
-// it opens above-right of the pointer and takes the keyboard. It is its own popup of the bar, made to fit
-// the menu, so it can stand over the previews and past the bar's edge; a click anywhere else closes it
-// (the compositor ends its grab).
+// A family menu (`MenuPanel`) in a popup window of its own, like Windows 7's context menus: it opens
+// above-right of a point and takes the keyboard. Made to fit the menu, so it can stand over other popups
+// and past its window's edge; a click anywhere else closes it (the compositor ends its grab). The bar's
+// right-click menus (a pin, a preview card, a system icon) and the tray flyout's system icons use it.
 //
-// It is a popup of the bar, not of the previews: a popup that takes the keyboard may only sit on the bar
-// itself or on another such popup.
+// A popup that takes the keyboard may only sit on the bar itself or on another such popup, so it is a popup
+// of the bar, or of a grabbing popup of the bar (the tray's flyout).
 PopupWindow {
     id: root
 
     // Room around the menu for its shadow.
     readonly property int shadowRoom: Theme.menuShadowBlur + Theme.menuShadowOffset
-    // The point the menu opens from, in the bar's coordinates.
+    // The point the menu opens from, in its window's coordinates.
     property point at: Qt.point(0, 0)
 
     // `chosen` gets the chosen item itself (`items` are MenuPanel items with whatever the owner needs).
@@ -22,9 +21,9 @@ PopupWindow {
     signal dismissed()
 
     // A popup is placed when it is shown, so one still open is closed first.
-    function show(items: var, barPoint: point): void {
+    function show(items: var, windowPoint: point): void {
         visible = false
-        at = barPoint
+        at = windowPoint
         menu.items = items
         menu.current = -1
         menu.open = true

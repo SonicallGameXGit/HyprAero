@@ -90,6 +90,7 @@ Singleton {
     readonly property color textMuted: slate ? '#a3adb8' : '#55616f'
     readonly property color textLink: slate ? '#7cc0f5' : '#0b5cad'
     readonly property color headingText: slate ? '#8cc4f0' : '#1a4a9c'
+    readonly property color dangerText: slate ? '#ff9d95' : '#a3231b'
 
     readonly property color fieldBackground: slate ? '#171b1f' : '#ffffff'
     readonly property color fieldBorder: slate ? '#07090b' : '#8e9aa8'
@@ -195,6 +196,9 @@ Singleton {
     readonly property color iconGoldLight: '#ffee9a'
     readonly property color iconGoldDark: '#f0a81c'
     readonly property color iconGoldEdge: '#a86a00'
+    readonly property color iconGreenLight: '#baf083'
+    readonly property color iconGreenDark: '#3fa52e'
+    readonly property color iconGreenEdge: '#23701a'
     readonly property color iconRedLight: '#ffa695'
     readonly property color iconRedDark: '#d83a2a'
     readonly property color iconRedEdge: '#8f1a10'
@@ -202,6 +206,7 @@ Singleton {
     readonly property color iconSteelDark: '#7d8b9e'
     readonly property color iconSteelEdge: '#3f4c5e'
     readonly property color iconInk: '#ffffff'
+    readonly property color iconInkDark: '#2b2100'
     readonly property color iconGlossTop: '#e6ffffff'
     readonly property color iconGlossBottom: '#14ffffff'
     readonly property color iconShadow: '#59000000'
@@ -237,6 +242,33 @@ Singleton {
     readonly property color orbMarkTop: '#00e5d0'
     readonly property color orbMarkBottom: '#00a8f4'
     readonly property color orbMarkGlow: '#a600e5d0'
+
+    // The notification area's glyphs (.aero/STYLE.md "Notification area glyphs"), pixel drawings, the same
+    // in both themes.
+    readonly property color trayGlyphInk: '#ffffff'
+    readonly property color trayGlyphShade: '#808080'
+    readonly property color trayGlyphShadeLight: '#c0c0c0'
+    readonly property color trayGlyphEdge: '#80000000'
+    readonly property color trayGlyphScreen: '#4d000000'
+
+    // The trackbar of a slider (.aero/STYLE.md "Sliders").
+    readonly property color trackbarChannel: slate ? '#1b2025' : '#e7eaea'
+    readonly property color trackbarChannelEdge: slate ? '#0b0d10' : '#b0b0b0'
+    readonly property color trackbarChannelLight: slate ? '#363c43' : '#fdfdfd'
+    readonly property color trackbarRamp: slate ? '#2a3037' : '#d5dfe5'
+    readonly property color trackbarTick: slate ? '#4a525b' : '#cfcfcf'
+    readonly property color trackbarThumbBorder: '#3c7fb1'
+    readonly property color trackbarThumbRimTop: '#41f7fd'
+    readonly property color trackbarThumbRimBottom: '#30dafb'
+    readonly property color trackbarThumbFaceTop: '#e7f5fd'
+    readonly property color trackbarThumbFaceBottom: '#aedef8'
+    // The thumb of a slider that does not have the keyboard (the Volume Mixer's other columns).
+    readonly property color trackbarThumbQuietBorder: slate ? '#0b0d10' : '#b0b0b0'
+    readonly property color trackbarThumbQuietFaceTop: slate ? '#5a626b' : '#f7f7f7'
+    readonly property color trackbarThumbQuietFaceBottom: slate ? '#363c43' : '#d5d5d5'
+
+    // The thin frames that group things inside a window (.aero/STYLE.md "Group boxes").
+    readonly property color groupBorder: slate ? '#2c3239' : '#eaeff2'
 
     // The analog clock (.aero/STYLE.md "Analog clock"), the same in both themes.
     readonly property color clockEdge: '#04101c'

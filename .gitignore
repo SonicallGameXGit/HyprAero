@@ -1,3 +1,4 @@
 .claude/settings.local.json
-# Reference exports of the owner's Figma mockups; they hold Windows 7 bitmaps, which must not be committed.
-assets/aero/
+# Reference material only: the export of the owner's Figma mockups and the collection of Windows' own icons,
+# cursors, sounds and wallpapers. What the shell uses is copied into resources/ (AGENTS.md section 4.3).
+assets/

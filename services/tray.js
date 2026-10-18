@@ -9,9 +9,65 @@
 //     'hide'    Hide icon and notifications: always behind the arrow, in the flyout.
 //     'notify'  Only show notifications: in the flyout, but on the bar while it asks for attention.
 // A new icon starts as 'notify', as on Windows 7. Icons are told apart by their key (`itemKey`).
+//
+// The shell's own icons (Windows 7's "system icons": volume, network, power, Safely Remove Hardware,
+// Bluetooth) live in the same list under keys starting with 'system:', which no app's id does, so they
+// are dragged, hidden and customised like any other. Their defaults are Windows 7's: volume, network and
+// power always shown, the other two behind the arrow.
 
 const behaviors = ['show', 'hide', 'notify']
 const defaultBehavior = 'notify'
+const systemPrefix = 'system:'
+const systemDefaults = {
+    'system:drives': 'notify',
+    'system:bluetooth': 'notify',
+    'system:power': 'show',
+    'system:network': 'show',
+    'system:volume': 'show',
+}
+// The apps (by StatusNotifierItem id) whose tray icon only does what a system icon does: while that system
+// icon is on, theirs is left out of the notification area, so the same thing never shows twice. Only ids
+// known to belong to such applets; an app not listed here always keeps its icon.
+const replacedApps = {
+    'system:network': ['nm-applet', 'nm-tray', 'iwgtk', 'connman-gtk', 'cmst'],
+    'system:volume': ['pasystray', 'volumeicon', 'pnmixer', 'pa-applet'],
+    'system:power': ['cbatticon', 'xfce4-power-manager'],
+    'system:bluetooth': ['blueman', 'blueberry'],
+    'system:drives': ['udiskie'],
+}
+
+function isSystemKey(key) {
+    return key.startsWith(systemPrefix)
+}
+
+function defaultBehaviorOf(key) {
+    const behavior = systemDefaults[key]
+    return behavior === undefined ? defaultBehavior : behavior
+}
+
+// Whether the system icon `key` stands after `other` in the notification area when both are new: every
+// app icon before the system icons, which keep Windows 7's order (`systemDefaults`).
+function comesAfter(key, other) {
+    if (isSystemKey(other) === false) {
+        return true
+    }
+
+    const order = Object.keys(systemDefaults)
+    return order.indexOf(key) > order.indexOf(other)
+}
+
+// The app icons to leave out while the system icons with these keys are on.
+function hiddenApps(systemKeys) {
+    const result = []
+    for (const key of systemKeys) {
+        const apps = replacedApps[key]
+        if (apps !== undefined) {
+            result.push(...apps)
+        }
+    }
+
+    return result
+}
 
 // The answer of `gdbus call ... org.freedesktop.DBus.NameHasOwner <name>`: true or false, null when the
 // text is not such an answer (gdbus missing or failing).
@@ -122,8 +178,8 @@ function parseTray(text) {
 
         let behavior = icon.behavior
         if (behaviors.includes(behavior) === false) {
-            result.problems.push(`icons: "${icon.key}" has an unknown behavior ${JSON.stringify(behavior)}, using "${defaultBehavior}"`)
-            behavior = defaultBehavior
+            behavior = defaultBehaviorOf(icon.key)
+            result.problems.push(`icons: "${icon.key}" has an unknown behavior ${JSON.stringify(icon.behavior)}, using "${behavior}"`)
         }
 
         result.icons.push({
@@ -141,16 +197,24 @@ function serializeTray(icons) {
     return JSON.stringify({ version: 1, icons: icons }, null, 4) + '\n'
 }
 
-// The icons with the ones present now (`[{ key, name, icon }]`) remembered: a new one is added at the end
-// as 'notify', a known one takes its current name and icon (an icon of '' keeps the last one, so an icon
-// drawn by the app itself does not wipe a theme icon seen before). The same list when nothing changed.
+// The icons with the ones present now (`[{ key, name, icon }]`) remembered: a new one is added with its
+// default behavior, an app's before the system icons and a system icon among them in Windows 7's order
+// (they sit next to the clock), each after the icons the user placed there; a known one takes its current name and icon (an icon of '' keeps the last one, so an
+// icon drawn by the app itself does not wipe a theme icon seen before). The same list when nothing changed.
 function remember(icons, present) {
     let changed = false
     const result = icons.slice()
     for (const item of present) {
         const index = result.findIndex(icon => icon.key === item.key)
         if (index < 0) {
-            result.push({ key: item.key, behavior: defaultBehavior, name: item.name, icon: item.icon })
+            const added = { key: item.key, behavior: defaultBehaviorOf(item.key), name: item.name, icon: item.icon }
+            const before = result.findIndex(icon => isSystemKey(icon.key) && comesAfter(icon.key, item.key))
+            if (before < 0) {
+                result.push(added)
+            } else {
+                result.splice(before, 0, added)
+            }
+
             changed = true
             continue
         }
@@ -167,14 +231,14 @@ function remember(icons, present) {
 }
 
 // Which present icons (`[{ key, attention }]`) go on the bar and which in the flyout, as two lists of keys
-// in the user's order. An icon not remembered yet counts as new ('notify', after the others). With
+// in the user's order. An icon not remembered yet counts as new (its default behavior, after the others). With
 // `showAll` ("Always show all icons and notifications on the taskbar") every icon is on the bar.
 function arrange(icons, present, showAll) {
     const attention = new Map(present.map(item => [item.key, item.attention === true]))
     const ordered = icons.filter(icon => attention.has(icon.key))
     for (const item of present) {
         if (ordered.some(icon => icon.key === item.key) === false) {
-            ordered.push({ key: item.key, behavior: defaultBehavior })
+            ordered.push({ key: item.key, behavior: defaultBehaviorOf(item.key) })
         }
     }
 
@@ -201,7 +265,7 @@ function arrange(icons, present, showAll) {
 function placeIcon(icons, key, toShown, keys, gap) {
     const known = icons.find(icon => icon.key === key)
     const record = known === undefined
-        ? { key: key, behavior: defaultBehavior, name: key, icon: '' }
+        ? { key: key, behavior: defaultBehaviorOf(key), name: key, icon: '' }
         : known
     let behavior = record.behavior
     if (toShown) {
@@ -240,9 +304,10 @@ function setBehavior(icons, key, behavior) {
         : icon)
 }
 
-// "Restore default icon behaviors": every icon back to 'notify', the order and names kept.
+// "Restore default icon behaviors": every icon back to its default ('notify' for apps), the order and
+// names kept.
 function restoreDefaults(icons) {
-    return icons.map(icon => ({ key: icon.key, behavior: defaultBehavior, name: icon.name, icon: icon.icon }))
+    return icons.map(icon => ({ key: icon.key, behavior: defaultBehaviorOf(icon.key), name: icon.name, icon: icon.icon }))
 }
 
 // How many columns the flyout's grid has: as square as it can be, never empty.

@@ -8,6 +8,7 @@ import { join } from 'node:path'
 // The module is a QML library script; strip the pragma and evaluate it as plain JS.
 const source = readFileSync(new URL('../services/workspaceList.js', import.meta.url), 'utf8').replace('.pragma library', '')
 const buildEntries = new Function(source + '\nreturn buildEntries')()
+const { cornerPosition, parseOpenWindow } = new Function(source + '\nreturn { cornerPosition, parseOpenWindow }')()
 
 const ids = entries => entries.map(entry => entry.id)
 const entryOf = (entries, id) => entries.find(entry => entry.id === id)
@@ -336,4 +337,33 @@ test('the app starts in its working directory, whatever its name', { skip: hasLu
 test('a working directory that is missing starts nothing', { skip: hasLua === false && 'lua is not installed' }, () => {
     const { shellText } = runDispatch(startOnWorkspace(['echo', 'started'], '/nonexistent/hypraero', 1))
     assert.throws(() => execFileSync('sh', ['-c', shellText], { encoding: 'utf8', stdio: 'pipe' }))
+})
+
+test('mixer corner: against the bottom right of what the bars leave free', () => {
+    const monitor = { x: 1920, y: 0, width: 1920, height: 1080, reserved: [0, 0, 0, 48] }
+    assert.deepEqual(cornerPosition(monitor, { width: 480, height: 330 }), { x: 3360, y: 702 })
+    assert.deepEqual(cornerPosition({ ...monitor, reserved: [0, 30, 40, 0] }, { width: 480, height: 330 }), { x: 3320, y: 750 })
+})
+
+test('mixer corner: a window bigger than the work area keeps its top left corner on it', () => {
+    const monitor = { x: 0, y: 0, width: 400, height: 300, reserved: [10, 20, 0, 48] }
+    assert.deepEqual(cornerPosition(monitor, { width: 480, height: 330 }), { x: 10, y: 20 })
+})
+
+test('mixer corner: no position from numbers that are not numbers', () => {
+    assert.equal(cornerPosition({ x: 0, y: 0, width: Number.NaN, height: 10, reserved: [0, 0, 0, 0] }, { width: 1, height: 1 }), null)
+    assert.equal(cornerPosition({ x: 0, y: 0, width: 10, height: 10, reserved: [0, 0] }, { width: 1, height: 1 }), null)
+    assert.deepEqual(cornerPosition({ x: 0, y: 0, width: 10, height: 10 }, { width: 4, height: 4 }), { x: 6, y: 6 })
+})
+
+test('openwindow event: address, workspace, class and a title that may hold commas', () => {
+    assert.deepEqual(parseOpenWindow('5593c0f2a1b0,3,org.quickshell,Volume Mixer - Speakers, Front'), {
+        address: '0x5593c0f2a1b0',
+        workspace: '3',
+        className: 'org.quickshell',
+        title: 'Volume Mixer - Speakers, Front',
+    })
+    assert.equal(parseOpenWindow('not an address,3,a,b'), null)
+    assert.equal(parseOpenWindow('5593c0f2a1b0,3'), null)
+    assert.equal(parseOpenWindow(undefined), null)
 })

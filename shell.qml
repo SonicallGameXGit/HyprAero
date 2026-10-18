@@ -1,6 +1,7 @@
 import Quickshell
 import QtQuick
 import qs.modules.bar
+import qs.modules.system
 import qs.modules.tray
 
 ShellRoot {
@@ -14,7 +15,16 @@ ShellRoot {
         }
     }
 
-    // One for the whole shell, opened from any screen's tray.
+    // One of each for the whole shell, opened from any screen's tray.
     TrayCustomize {
+    }
+
+    VolumeMixer {
+    }
+
+    AddBluetoothDevice {
+    }
+
+    EjectProblem {
     }
 }

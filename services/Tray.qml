@@ -6,8 +6,8 @@ import Quickshell.Services.SystemTray
 import QtQuick
 import 'tray.js' as TrayList
 
-// The notification area (the system tray), after Windows 7: the apps' StatusNotifierItem icons, which of
-// them sit on the bar and which wait behind the arrow in the flyout, and what each should do
+// The notification area (the system tray), after Windows 7: the apps' StatusNotifierItem icons and the
+// shell's own system icons (`SystemIcons`), which of them sit on the bar and which wait behind the arrow in the flyout, and what each should do
 // (`services/tray.js`). Every icon ever seen is remembered in `$XDG_STATE_HOME/hypraero/tray.json`, so the
 // "Customize" page can list it while its app is not running. Also which screen's flyout is open (one at a
 // time) and whether the "Customize" page is.
@@ -32,16 +32,20 @@ Singleton {
     readonly property int watcherWait: 3000
     property real watcherAskedAt: 0
 
-    // The apps' icons now, as Quickshell's items. Quickshell starts its tray (and its own watcher when none
-    // is there) the first time `SystemTray` is read.
-    readonly property var items: hostReady ? SystemTray.items.values : []
+    // The apps' icons now, as Quickshell's items, then the shell's own (`SystemIcons`, items shaped like
+    // them). Quickshell starts its tray (and its own watcher when none is there) the first time `SystemTray`
+    // is read. An applet that only does what one of the shell's icons does (nm-applet) is left out.
+    readonly property var appItems: hostReady
+        ? SystemTray.items.values.filter(item => SystemIcons.hiddenApps.includes(keyOf(item)) === false)
+        : []
+    readonly property var items: appItems.concat(SystemIcons.items)
     readonly property var present: items.map(item => ({
         key: keyOf(item),
         name: nameOf(item),
         // Only a theme icon is worth keeping for when the app is not running; a picture drawn by the app
         // lives only as long as the app.
         icon: item.icon.startsWith('image://icon/') ? item.icon : '',
-        attention: item.status === Status.NeedsAttention,
+        attention: item.system === undefined && item.status === Status.NeedsAttention,
     }))
     readonly property var layout: TrayList.arrange(icons, present, Config.tray.showAll)
     // The items on the bar and in the flyout, in order.
@@ -84,7 +88,21 @@ Singleton {
     }
 
     function tooltipOf(item: var): string {
+        if (item.system !== undefined) {
+            return SystemIcons.tooltipOf(item.system)
+        }
+
         return TrayList.tooltipText(nameOf(item), item.tooltipDescription)
+    }
+
+    // Whether a remembered icon belongs on the "Customize" page now: not an applet the shell's own icons
+    // replace, and a system icon only while it is on and can show.
+    function listed(key: string): bool {
+        if (TrayList.isSystemKey(key)) {
+            return SystemIcons.items.some(item => item.id === key)
+        }
+
+        return SystemIcons.hiddenApps.includes(key) === false
     }
 
     function itemsFor(keys: var): var {
@@ -102,7 +120,7 @@ Singleton {
 
     function behaviorOf(key: string): string {
         const icon = icons.find(item => item.key === key)
-        return icon === undefined ? 'notify' : icon.behavior
+        return icon === undefined ? TrayList.defaultBehaviorOf(key) : icon.behavior
     }
 
     // A dragged icon dropped in `gap` of the bar's icons (`toShown`) or of the flyout's, as shown during the
@@ -134,16 +152,32 @@ Singleton {
         }
     }
 
-    // What a click, a middle click and the wheel do are the app's own.
+    // What a click, a middle click and the wheel do are the app's own; for the shell's own icons,
+    // `SystemIcons` says (a click on one of them opens its flyout or menu instead, see `TrayIcon`).
     function activate(item: var): void {
-        item.activate()
+        if (item.system === undefined) {
+            item.activate()
+        }
     }
 
     function secondaryActivate(item: var): void {
+        if (item.system !== undefined) {
+            SystemIcons.secondary(item.system)
+            return
+        }
+
         item.secondaryActivate()
     }
 
     function scroll(item: var, delta: int, horizontal: bool): void {
+        if (item.system !== undefined) {
+            if (horizontal === false) {
+                SystemIcons.scroll(item.system, delta)
+            }
+
+            return
+        }
+
         item.scroll(delta, horizontal)
     }
 

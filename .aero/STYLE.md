@@ -233,6 +233,49 @@ The round glass button that opens a start menu, after the Windows 7 orb: a dark 
 | `orb-mark` | `#00e5d0` -> `#00a8f4` (top -> bottom; Hyprland's colours, for a Hyprland member) |
 | `orb-mark-glow` | `rgba(0,229,208,0.65)` |
 
+### Notification area glyphs (the same in both themes)
+
+Windows 7's own icons in the notification area (volume, network, power, ...) are not glossy pictures but 16 x 16 pixel drawings: white shapes, grey shading where two shapes meet, a dark see-through edge around them, dark glass where something is empty; a small sign from the icon materials sits on the lower right corner (a red disc with a cross, a gold triangle, ...). They are drawn pixel by pixel, never smoothed. Measured on Windows 7 screenshots.
+
+| Token | Value |
+| --- | --- |
+| `tray-glyph-ink` | `#ffffff` |
+| `tray-glyph-shade` / `-shade-light` | `#808080` / `#c0c0c0` |
+| `tray-glyph-edge` | `rgba(0,0,0,0.5)` |
+| `tray-glyph-screen` | `rgba(0,0,0,0.3)` |
+
+On a solid pane (the volume flyout's mute button) the same shapes are blue, without the edge:
+
+| Token | Aero | Slate |
+| --- | --- | --- |
+| `pane-glyph` / `pane-glyph-shade` | `#0067d0` / `#003d8d` | `#5fb0ee` / `#2a73ad` |
+
+### Flyouts over the notification area
+
+The flyouts of the clock, the volume, the network, the power and the hidden icons are Windows 7's: a frame of window glass (from outside: `glass-border-outer`, `glass-border-inner`, 4px of `glass-tint`, `glass-border-inner`, `glass-border-outer`), a `surface` body, and their links centred in a band along the bottom (`surface-sunken`, its top fading from `toolbar-border` over 5px). Words on the body are `text`, links `text-link`, group headings `text-muted` with a line over them.
+
+### Sliders
+
+A slider (the volume) is Windows 7's trackbar: a narrow sunken channel, a pale ramp beside it widening towards the top, small tick marks, and an aqua thumb pointing at the ramp. Where several sliders stand side by side (the Volume Mixer), only the one with the keyboard has the aqua thumb; the others have a plain grey one.
+
+| Token | Aero | Slate |
+| --- | --- | --- |
+| `trackbar-channel` / `-edge` / `-light` | `#e7eaea` / `#b0b0b0` / `#fdfdfd` | `#1b2025` / `#0b0d10` / `#363c43` |
+| `trackbar-ramp` / `trackbar-tick` | `#d5dfe5` / `#cfcfcf` | `#2a3037` / `#4a525b` |
+| `trackbar-thumb-border` | `#3c7fb1` | same |
+| `trackbar-thumb-rim` (top -> bottom) | `#41f7fd` -> `#30dafb` | same |
+| `trackbar-thumb-face` (top -> bottom) | `#e7f5fd` -> `#aedef8` | same |
+| `trackbar-thumb-quiet-border` | `#b0b0b0` | `#0b0d10` |
+| `trackbar-thumb-quiet-face` (top -> bottom) | `#f7f7f7` -> `#d5d5d5` | `#5a626b` -> `#363c43` |
+
+### Group boxes
+
+A group inside a window (the Volume Mixer's "Device" and "Applications") is Windows 7's: a rounded frame 2px wide in `group-border`, the group's name on the `surface` breaking the frame along its top left, the first letter of the name underlined when it is a keyboard accelerator. Dividers inside a group are the same 2px line.
+
+| Token | Aero | Slate |
+| --- | --- | --- |
+| `group-border` | `#eaeff2` | `#2c3239` |
+
 ### Analog clock (the same in both themes)
 
 The round clock of a time flyout, after Windows 7's: a dark blue glass disc with light tick marks and hands, a thin red second hand, a glossy shine on its upper half. Drawn from these values, like the orb.

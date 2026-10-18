@@ -243,3 +243,44 @@ function workspaceNumber(id, name) {
 
     return -1
 }
+
+// Where a small window of the shell (the Volume Mixer) opens, as Windows 7's does: against the bottom right corner of the work area, the
+// screen without the bars and panels on its edges. `monitor` is `{ x, y, width, height, reserved }` in the
+// layout's own units (`reserved` is `[left, top, right, bottom]`, what layer surfaces keep free) and `size`
+// the window's `{ width, height }`. A window bigger than the work area keeps its top left corner in it.
+// null when the numbers are not numbers.
+function cornerPosition(monitor, size) {
+    const numbers = [monitor.x, monitor.y, monitor.width, monitor.height, size.width, size.height]
+    // Quickshell's lists are not real arrays (`Array.isArray` says no), so only their length is checked.
+    const listed = monitor.reserved !== undefined && monitor.reserved !== null && typeof monitor.reserved.length === 'number'
+    const reserved = listed ? [monitor.reserved[0], monitor.reserved[1], monitor.reserved[2], monitor.reserved[3]] : [0, 0, 0, 0]
+    if (listed && monitor.reserved.length < 4) {
+        return null
+    }
+
+    if (numbers.concat(reserved).some(value => typeof value !== 'number' || Number.isFinite(value) === false)) {
+        return null
+    }
+
+    const left = monitor.x + reserved[0]
+    const top = monitor.y + reserved[1]
+    return {
+        x: Math.round(Math.max(left, monitor.x + monitor.width - reserved[2] - size.width)),
+        y: Math.round(Math.max(top, monitor.y + monitor.height - reserved[3] - size.height)),
+    }
+}
+
+// The pieces of Hyprland's `openwindow` event data, "address,workspace,class,title" (the title may hold
+// commas); null when it is not that.
+function parseOpenWindow(data) {
+    if (typeof data !== 'string') {
+        return null
+    }
+
+    const parts = data.split(',')
+    if (parts.length < 4 || /^[0-9a-fA-F]+$/.test(parts[0]) === false) {
+        return null
+    }
+
+    return { address: '0x' + parts[0], workspace: parts[1], className: parts[2], title: parts.slice(3).join(',') }
+}

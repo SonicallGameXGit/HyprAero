@@ -4,6 +4,7 @@ import QtQuick
 import qs.design
 import qs.modules.clock
 import qs.modules.startmenu
+import qs.modules.system
 import qs.modules.tray
 import qs.services
 import '../../services/workspaceList.js' as WorkspaceList
@@ -68,8 +69,9 @@ PanelWindow {
     // The window or the pinned app whose right-click menu is open (null: none).
     property var menuWindow: null
     property var menuApp: null
-    // The tray icon whose app menu is open.
+    // The tray icon whose app menu is open, and whether that menu is a system icon's (`barMenu`).
     property string trayMenuKey: ''
+    property bool systemMenuOpen: false
     // The icon-only control the pointer rests on (a pin, a tray icon, the tray's arrow), for its tooltip;
     // the same in the tray's flyout. Each has a `tooltipText`.
     property Item hoveredTip: null
@@ -185,6 +187,14 @@ PanelWindow {
         }
 
         trayMenuKey = Tray.keyOf(item)
+        if (item.system !== undefined) {
+            menuWindow = null
+            menuApp = null
+            systemMenuOpen = true
+            barMenu.show(SystemIcons.menuFor(item.system), at)
+            return
+        }
+
         trayMenu.show(item.menu, at)
     }
 
@@ -212,6 +222,7 @@ PanelWindow {
     function openWindowMenu(window: var, at: point): void {
         const app = Apps.appFor(window.appId)
         const pinned = Pins.isPinned(app)
+        systemMenuOpen = false
         menuApp = null
         menuWindow = window
         barMenu.show([
@@ -228,6 +239,7 @@ PanelWindow {
     // The bar's own menu, from a right click on its empty glass. For now only the way to the tray's
     // "Customize" page, a second way besides the flyout's link.
     function openBarOwnMenu(at: point): void {
+        systemMenuOpen = false
         menuWindow = null
         menuApp = null
         barMenu.show([
@@ -244,13 +256,16 @@ PanelWindow {
 
         items.push({ separator: true })
         items.push({ text: qsTr('Unpin from bar'), action: 'unpin', app: app.id })
+        systemMenuOpen = false
         menuWindow = null
         menuApp = app
         barMenu.show(items, at)
     }
 
     function menuChosen(item: var): void {
-        if (item.action === 'focus') {
+        if (item.system !== undefined) {
+            SystemIcons.choose(item)
+        } else if (item.action === 'focus') {
             Workspaces.focusWindow(menuWindow.address)
             hideTimer.stop()
             root.popupButton = null
@@ -430,7 +445,7 @@ PanelWindow {
         onClicked: StartMenuState.toggle(root.screen.name)
     }
 
-    BarMenu {
+    PopupMenu {
         id: barMenu
 
         anchor.window: root
@@ -449,6 +464,7 @@ PanelWindow {
             && trayMenu.visible === false
             && (root.hoveredTip !== trayArea.arrow || trayFlyout.visible === false)
             && (root.hoveredTip !== clock || clockFlyout.visible === false)
+            && systemFlyout.visible === false
         text: root.hoveredTip === null ? '' : root.hoveredTip.tooltipText
     }
 
@@ -473,6 +489,18 @@ PanelWindow {
         dragPointerShown: dropLayer.hovered && dropLayer.pointerKnown
         puttingBack: dropLayer.puttingBack
         onTipHovered: (control, hovered) => root.flyoutTipHovered(control, hovered)
+        onFlyoutRequested: (name, barX) => SystemIcons.toggleFlyout(name, root.screen.name, barX)
+    }
+
+    // The flyout of a system icon (power, network, volume) over its icon.
+    SystemFlyout {
+        id: systemFlyout
+
+        anchor.window: root
+        shown: SystemIcons.flyoutScreen === root.screen.name
+        name: SystemIcons.flyoutName
+        barWidth: root.width
+        iconX: SystemIcons.flyoutX
     }
 
     ClockFlyout {
@@ -538,12 +566,15 @@ PanelWindow {
             onPinHovered: (pin, hovered) => root.tipHovered(pin, hovered)
         }
 
-        // Left of the "Show desktop" strip, as on Windows 7.
+        // Left of the "Show desktop" strip, as on Windows 7; it can be turned off ("Turn system icons on or
+        // off"), the tray then running up to the strip.
         ClockButton {
             id: clock
 
             anchors.right: emptyButton.left
             anchors.verticalCenter: parent.verticalCenter
+            visible: Config.tray.clock
+            width: visible ? implicitWidth : 0
             current: clockFlyout.visible
             onClicked: Clock.toggleFlyout(root.screen.name)
             onHoveredChanged: root.tipHovered(clock, hovered)
@@ -560,8 +591,16 @@ PanelWindow {
             screen: root.screen
             gap: root.trayGap
             flyoutOpen: trayFlyout.visible
-            menuKey: trayMenu.visible ? root.trayMenuKey : ''
+            // The icon whose menu or flyout is open stays lit.
+            menuKey: {
+                if (trayMenu.visible || (barMenu.visible && root.systemMenuOpen)) {
+                    return root.trayMenuKey
+                }
+
+                return systemFlyout.visible ? 'system:' + SystemIcons.flyoutName : ''
+            }
             onArrowClicked: Tray.toggleFlyout(root.screen.name)
+            onFlyoutRequested: (name, x) => SystemIcons.toggleFlyout(name, root.screen.name, trayArea.mapToItem(null, x, 0).x)
             onCustomizeClicked: Tray.openCustomize()
             onMenuRequested: (item, at) => root.openTrayMenu(item, trayArea.mapToItem(null, at))
             onTipHovered: (control, hovered) => root.tipHovered(control, hovered)
