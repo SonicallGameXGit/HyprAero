@@ -4,7 +4,9 @@ import QtQuick
 // A family menu (`MenuPanel`) in a popup window of its own, like Windows 7's context menus: it opens
 // above-right of a point and takes the keyboard. Made to fit the menu, so it can stand over other popups
 // and past its window's edge; a click anywhere else closes it (the compositor ends its grab). The bar's
-// right-click menus (a pin, a preview card, a system icon) and the tray flyout's system icons use it.
+// right-click menus (a pin, a preview card, a system icon) and the tray flyout's system icons use it. As
+// Windows 7's taskbar menus it fades in rising a little, and fades out sinking back once something is chosen
+// or it is closed by the keyboard (a click outside ends the compositor's grab, and the popup with it, at once).
 //
 // A popup that takes the keyboard may only sit on the bar itself or on another such popup, so it is a popup
 // of the bar, or of a grabbing popup of the bar (the tray's flyout).
@@ -15,6 +17,9 @@ PopupWindow {
     readonly property int shadowRoom: Theme.menuShadowBlur + Theme.menuShadowOffset
     // The point the menu opens from, in its window's coordinates.
     property point at: Qt.point(0, 0)
+    // 0 hidden, 1 shown: the menu's opacity, and how far up it has risen (`rise`, inside the shadow room).
+    property real appear: 0
+    readonly property int rise: shadowRoom - 1
 
     // `chosen` gets the chosen item itself (`items` are MenuPanel items with whatever the owner needs).
     signal chosen(var item)
@@ -22,12 +27,16 @@ PopupWindow {
 
     // A popup is placed when it is shown, so one still open is closed first.
     function show(items: var, windowPoint: point): void {
+        disappearAnimation.stop()
+        menu.keepShown = false
         visible = false
         at = windowPoint
         menu.items = items
         menu.current = -1
         menu.open = true
+        appear = 0
         visible = true
+        appearAnimation.restart()
     }
 
     function close(): void {
@@ -50,8 +59,38 @@ PopupWindow {
             return
         }
 
+        appearAnimation.stop()
+        disappearAnimation.stop()
+        menu.keepShown = false
         menu.close()
         root.dismissed()
+    }
+
+    NumberAnimation {
+        id: appearAnimation
+
+        target: root
+        property: 'appear'
+        to: 1
+        duration: Theme.motionSoft
+        easing.type: Easing.OutCubic
+    }
+
+    // The menu stays drawn while it fades out, then the popup goes.
+    SequentialAnimation {
+        id: disappearAnimation
+
+        NumberAnimation {
+            target: root
+            property: 'appear'
+            to: 0
+            duration: Theme.motionFast
+            easing.type: Easing.OutCubic
+        }
+
+        ScriptAction {
+            script: root.visible = false
+        }
     }
 
     Item {
@@ -79,11 +118,20 @@ PopupWindow {
 
         anchors.fill: parent
         at: Qt.point(root.shadowRoom, root.shadowRoom)
+        opacity: root.appear
+        // Nothing more is chosen while it fades out.
+        enabled: disappearAnimation.running === false
         onChosen: index => root.chosen(menu.items[index])
         onOpenChanged: {
-            if (menu.open === false) {
-                root.visible = false
+            if (menu.open === false && root.visible) {
+                appearAnimation.stop()
+                menu.keepShown = true
+                disappearAnimation.restart()
             }
+        }
+
+        transform: Translate {
+            y: (1 - root.appear) * root.rise
         }
     }
 }
