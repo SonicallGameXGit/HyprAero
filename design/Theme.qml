@@ -283,6 +283,13 @@ Singleton {
 
     readonly property int motionSoft: 220
 
+    // The Frutiger Aero backdrop (imagery only, behind glass): sky to water to green, a soft light and bokeh.
+    readonly property color backdropTop: slate ? '#10161d' : '#2f8fd8'
+    readonly property color backdropMiddle: slate ? '#25323f' : '#7fd0f0'
+    readonly property color backdropBottom: slate ? '#16303a' : '#3fb68b'
+    readonly property color backdropLight: slate ? '#388cbee6' : '#bfffffff'
+    readonly property color backdropBokeh: slate ? '#1aa0d2f0' : '#47ffffff'
+
     readonly property real dragImageOpacity: 0.75
     // focus-glow: a 1px ring, then a soft glow around it (blur, spread), the same in both themes.
     readonly property color focusGlowRing: '#3c9be6'

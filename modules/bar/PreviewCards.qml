@@ -112,9 +112,21 @@ Grid {
                 Accessible.role: Accessible.Button
                 Accessible.name: title.text
                 onClicked: {
+                    Peek.cancel()
                     Workspaces.focusWindow(card.window.address)
                     root.windowChosen()
                 }
+
+                // Resting on a card for a while shows its window alone (`Peek`, drawn by `PeekLayer`).
+                onHoveredChanged: {
+                    if (hovered) {
+                        Peek.hoverWindow(window.address, root.screen === null ? '' : root.screen.name)
+                    } else {
+                        Peek.unhoverWindow(window.address)
+                    }
+                }
+
+                Component.onDestruction: Peek.unhoverWindow(window.address)
 
                 onPreviewChanged: {
                     scannedCrop = null

@@ -55,6 +55,12 @@ Singleton {
                 height: size[1],
                 // Outside the tiling layout, moved and sized freely.
                 floating: info.floating === true,
+                // Hyprland's focus history: 0 is the window focused last (it is drawn on top of its kind).
+                focusOrder: typeof info.focusHistoryID === 'number' ? info.focusHistoryID : 0,
+                fullscreen: typeof info.fullscreen === 'number' && info.fullscreen > 0,
+                // Top-left corner and the monitor's rectangle, both in layout coordinates (null: unknown).
+                at: info.at !== undefined && info.at !== null && info.at.length >= 2 ? { x: info.at[0], y: info.at[1] } : null,
+                monitor: monitorRect(toplevel.monitor),
                 // Hyprland leaves the part of a window outside its monitor blank in the capture.
                 offScreen: WorkspaceList.hangsOffMonitor(info.at, size, monitorRect(toplevel.monitor)),
                 // The Wayland handle the live preview captures; null when the compositor has none.
@@ -64,15 +70,24 @@ Singleton {
 
         return result
     }
+    // The workspaces shown on a monitor right now.
+    readonly property var shownIds: {
+        const ids = []
+        for (const workspace of Hyprland.workspaces.values) {
+            if (workspace.active) {
+                ids.push(WorkspaceList.workspaceNumber(workspace.id, workspace.name))
+            }
+        }
+
+        return ids
+    }
     // The workspaces that really exist in Hyprland: the ones with windows, the ones shown on a monitor and
     // the focused one (an empty workspace exists only while it is shown). Quickshell's own list can keep a
     // workspace that was renumbered away.
     readonly property var existingIds: {
         const ids = new Set(windows.map(window => window.workspaceId))
-        for (const workspace of Hyprland.workspaces.values) {
-            if (workspace.active) {
-                ids.add(WorkspaceList.workspaceNumber(workspace.id, workspace.name))
-            }
+        for (const id of shownIds) {
+            ids.add(id)
         }
         ids.add(focusedId)
 
@@ -192,6 +207,19 @@ Singleton {
             width: monitor.width / monitor.scale,
             height: monitor.height / monitor.scale,
         }
+    }
+
+    // The rectangle of the monitor with this name (a Quickshell screen's name), in layout coordinates, or
+    // null when it is unknown. Its width over a layer's own width is how many layout pixels one Qt unit is
+    // (more than 1 when the shell runs with a QT_SCALE_FACTOR below 1, less above it).
+    function monitorRectNamed(name: string): var {
+        for (const monitor of Hyprland.monitors.values) {
+            if (monitor.name === name) {
+                return monitorRect(monitor)
+            }
+        }
+
+        return null
     }
 
     // Hyprland 0.56 with a Lua config takes Lua dispatchers here; the old 'workspace N' text is rejected.

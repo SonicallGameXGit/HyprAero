@@ -96,6 +96,14 @@ PanelWindow {
     implicitHeight: 48
     color: 'transparent'
 
+    // Peeking needs the previews open and nothing else going on over them.
+    readonly property bool peekAllowed: popup.shown && BarDrag.active === false && barMenu.visible === false
+    onPeekAllowedChanged: {
+        if (peekAllowed === false && Peek.screenName === root.screen.name) {
+            Peek.cancel()
+        }
+    }
+
     onTrayDragOverArrowChanged: {
         if (trayDragOverArrow) {
             Tray.openFlyout(root.screen.name, true)
@@ -287,6 +295,15 @@ PanelWindow {
     }
 
     function buttonHoverChanged(button: var): void {
+        // The whole workspace is peeked at once the pointer rests on its button (`Peek`).
+        if (button.entry !== null && button.entry.windows.length > 0) {
+            if (button.hovered) {
+                Peek.hoverWorkspace(button.entry.id, root.screen.name)
+            } else {
+                Peek.unhoverWorkspace(button.entry.id)
+            }
+        }
+
         if (button.hovered) {
             hideTimer.stop()
             popupButton = button
@@ -391,6 +408,11 @@ PanelWindow {
                 StartMenuState.close()
             }
         }
+    }
+
+    PeekLayer {
+        screen: root.screen
+        barHeight: root.height
     }
 
     WorkspacePopup {

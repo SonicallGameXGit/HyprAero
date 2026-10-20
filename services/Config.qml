@@ -12,6 +12,7 @@ Singleton {
     id: root
 
     // One object per group, every setting filled in.
+    property var bar: Settings.parseConfig('').values.bar
     property var startMenu: Settings.parseConfig('').values.startMenu
     property var tray: Settings.parseConfig('').values.tray
 
@@ -30,6 +31,7 @@ Singleton {
             console.warn('Config: config.json: ' + problem)
         }
 
+        bar = config.values.bar
         startMenu = config.values.startMenu
         tray = config.values.tray
     }

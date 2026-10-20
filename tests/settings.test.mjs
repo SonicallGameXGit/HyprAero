@@ -75,3 +75,14 @@ test('a file that cannot be changed safely, or an unknown setting, is refused', 
     assert.equal(setSetting('{ "tray": 3 }', 'tray', 'showAll', true), null)
     assert.equal(setSetting('', 'tray', 'nope', true), null)
 })
+
+test('the peek settings default to on after half a second, and wrong kinds fall back', () => {
+    assert.equal(defaults.bar.peek, true)
+    assert.equal(defaults.bar.peekDelay, 500)
+    assert.equal(defaults.bar.peekWorkspaces, true)
+    const { values, problems } = parseConfig('{ "bar": { "peek": false, "peekDelay": "fast" } }')
+    assert.equal(values.bar.peek, false)
+    assert.equal(values.bar.peekDelay, 500)
+    assert.equal(problems.length, 1)
+    assert.match(problems[0], /bar\.peekDelay.*number.*string/)
+})

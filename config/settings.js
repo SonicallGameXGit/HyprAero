@@ -9,6 +9,15 @@
 
 // Grouped by what they are about, one object per group.
 const defaults = {
+    bar: {
+        // Resting on a window's preview card for a moment shows that window on its own, almost full screen.
+        peek: true,
+        // How long the pointer rests on a card before that, in milliseconds (clamped to 100-3000 where used).
+        peekDelay: 500,
+        // The same for a workspace button: resting on it shows the whole workspace as if it was shown, after
+        // twice the delay.
+        peekWorkspaces: true,
+    },
     startMenu: {
         // Drag the app list to scroll it, and hold an app (a long press) to pick it up, as on a phone. Off:
         // dragging an app picks it up at once and the list scrolls with the wheel or the scrollbar.
