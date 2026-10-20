@@ -76,8 +76,8 @@ PanelWindow {
     // the same in the tray's flyout. Each has a `tooltipText`.
     property Item hoveredTip: null
     property Item hoveredFlyoutTip: null
-    // How many workspace buttons there are. It holds still during a drag: rebuilding the buttons would
-    // destroy the one a workspace drag started from.
+    // How many workspace buttons there are. It holds still during a drag (rebuilding the buttons would
+    // destroy the one a drag started from) and while the buttons are reordered.
     property int buttonCount: 0
     // Qt gives a popup that takes the keyboard (the start menu) only to a program that has had some input,
     // and closes it at once otherwise: opened by a key binding (IPC) right after the shell started, the
@@ -89,7 +89,7 @@ PanelWindow {
 
     Binding on buttonCount {
         value: Workspaces.entries.length
-        when: BarDrag.active === false
+        when: BarDrag.active === false && strip.reordering === false
         restoreMode: Binding.RestoreNone
     }
 
@@ -97,7 +97,7 @@ PanelWindow {
     color: 'transparent'
 
     // Peeking needs the previews open and nothing else going on over them.
-    readonly property bool peekAllowed: popup.shown && BarDrag.active === false && barMenu.visible === false
+    readonly property bool peekAllowed: popup.shown && BarDrag.active === false && barMenu.visible === false && strip.reordering === false
     onPeekAllowedChanged: {
         if (peekAllowed === false && Peek.screenName === root.screen.name) {
             Peek.cancel()
@@ -114,8 +114,8 @@ PanelWindow {
     // screen, so its x is the bar's x and the bar's top is the layer's height minus the bar's.
     function dropWorkspaceAt(point: point): int {
         const slots = []
-        for (let index = 0; index < buttons.count; index++) {
-            const button = buttons.itemAt(index)
+        for (let index = 0; index < strip.count; index++) {
+            const button = strip.buttonAt(index)
             if (button === null || button.entry === null) {
                 continue
             }
@@ -295,6 +295,11 @@ PanelWindow {
     }
 
     function buttonHoverChanged(button: var): void {
+        // A button being dragged along the bar opens nothing.
+        if (strip.reordering) {
+            return
+        }
+
         // The whole workspace is peeked at once the pointer rests on its button (`Peek`).
         if (button.entry !== null && button.entry.windows.length > 0) {
             if (button.hovered) {
@@ -397,11 +402,6 @@ PanelWindow {
                 return
             }
 
-            if (BarDrag.workspaceId !== 0) {
-                Workspaces.moveWorkspace(BarDrag.workspaceId, target)
-                return
-            }
-
             // Started, so the menu it came from has done its job, as after a click.
             if (BarDrag.appId !== '') {
                 Apps.launchOn(BarDrag.appId, target)
@@ -424,7 +424,7 @@ PanelWindow {
         anchor.edges: Edges.Top
         anchor.gravity: Edges.Top
         barScreen: root.screen
-        shown: root.popupButton !== null && root.popupButton.entry.windows.length > 0
+        shown: root.popupButton !== null && root.popupButton.entry.windows.length > 0 && strip.reordering === false
         workspaceId: root.lastButton === null ? 0 : root.lastButton.entry.id
         windows: root.lastButton === null ? [] : root.lastButton.entry.windows
         centerX: root.lastButton === null ? 0 : root.lastButton.mapToItem(null, root.lastButton.width / 2, 0).x
@@ -628,68 +628,36 @@ PanelWindow {
             onTipHovered: (control, hovered) => root.tipHovered(control, hovered)
         }
 
-        // Inside the top and bottom glass borders and flush with the screen's right edge (the panel's right
-        // border is off the screen), like Windows 7's "Show desktop".
+        // Under the bar's top lines, down to the screen's bottom edge and flush with its right edge (the glass
+        // runs 2px past it), like Windows 7's "Show desktop".
         EmptyWorkspaceButton {
             id: emptyButton
 
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             anchors.right: parent.right
-            anchors.margins: 2
+            anchors.topMargin: 2
+            anchors.rightMargin: 2
             width: implicitWidth
             onClicked: Workspaces.switchToFirstEmpty()
         }
 
-        Item {
+        WorkspaceStrip {
             id: strip
 
             anchors.centerIn: parent
-            width: row.width
-            height: row.height
-
-            WorkspaceHighlight {
-                y: row.y
-                height: row.height
-                targetX: row.focusedButton === null ? 0 : row.x + row.focusedButton.x
-                targetWidth: row.focusedButton === null ? 0 : row.focusedButton.width
-            }
-
-            Row {
-                id: row
-
-                readonly property var focusedButton: {
-                    for (let index = 0; index < buttons.count; index++) {
-                        const button = buttons.itemAt(index)
-                        if (button !== null && button.entry !== null && button.entry.focused) {
-                            return button
-                        }
-                    }
-
-                    return null
-                }
-
-                spacing: Theme.space1
-
-                Repeater {
-                    id: buttons
-
-                    // Counting only, so a change inside one entry (an icon) does not rebuild every button.
-                    model: root.buttonCount
-
-                    WorkspaceButton {
-                        id: button
-
-                        required property int index
-
-                        // The count can lag behind the list during a drag.
-                        entry: index < Workspaces.entries.length ? Workspaces.entries[index] : null
-                        onClicked: Workspaces.switchTo(entry.id)
-                        screen: root.screen
-                        highlighted: root.dropTarget === entry.id
-                        onHoveredChanged: root.buttonHoverChanged(button)
-                    }
-                }
+            buttonCount: root.buttonCount
+            height: root.height
+            dropTarget: root.dropTarget
+            // From the pins' grip to the tray, in the strip's parent.
+            leftLimit: pinBar.x + pinBar.width + Theme.taskbarItemGap
+            rightLimit: trayArea.x - Theme.taskbarItemGap
+            onButtonHovered: button => root.buttonHoverChanged(button)
+            onReorderBegan: {
+                hideTimer.stop()
+                root.popupButton = null
+                // Also one only waiting for its delay.
+                Peek.cancel()
             }
         }
     }

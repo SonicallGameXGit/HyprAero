@@ -6,9 +6,14 @@ import qs.services
 import '../../services/startMenu.js' as StartMenuList
 
 // The left pane's list: rows from `startMenu.js`, top to bottom. One row is current (`selected`, an index
-// into `rows`): the one under the pointer or the one the keyboard moved to. An app with actions of its own
-// can be opened like a tree branch (`expanded`), its actions hanging under it; then one of them can be the
-// current one instead of the app (`selectedAction`).
+// into `rows`): the one under the pointer or the one the keyboard moved to. One app with actions of its own
+// can have them open (`actionsApp`), shown by the menu in its right column (`ActionsPane`); then one of them
+// can be the current one instead of the app (`selectedAction`).
+//
+// As in Windows 7, resting on an app's arrow for `hoverDelay` opens its actions, a click on it at once. They
+// stay open while the pointer is on that app or on the actions (`paneHovered`, from the menu), go to another
+// app with actions at once when the pointer moves onto it, and otherwise close `hoverDelay` after the pointer
+// left.
 Item {
     id: root
 
@@ -17,8 +22,14 @@ Item {
     property int selected: -1
     // Of the current app: -1 for the app itself, else the index of its action.
     property int selectedAction: -1
-    // The ids of the apps whose actions are shown.
-    property var expanded: []
+    // The id of the app whose actions are open ('' none).
+    property string actionsApp: ''
+    // The pointer is on the open actions (set by the menu that shows them).
+    property bool paneHovered: false
+    readonly property int hoverDelay: 400
+    // The app under the pointer ('' none), and the one whose arrow it is on.
+    property string pointedApp: ''
+    property string arrowApp: ''
     property Tooltip tooltip: null
     // Passed to each row's `DragSource`: the bar's screen, the menu window's place in the bar, and where a
     // drop puts the app back (the whole menu).
@@ -33,16 +44,13 @@ Item {
     signal launched(var app, int actionIndex)
     signal menuRequested(var app, point at)
 
-    // Up is -1, down is +1, in reading order, through the actions of an open app too; the first step up
-    // from nothing lands on the lowest app.
+    // Up is -1, down is +1, in reading order; on the open actions it walks through them and stays there.
+    // The first step up from nothing lands on the lowest app. Going to another app closes the actions.
     function move(step: int): void {
         const app = selectedApp()
-        if (app !== null && isExpanded(app.id)) {
-            const next = selectedAction + step
-            if (next >= -1 && next < app.actions.length) {
-                selectedAction = next
-                return
-            }
+        if (app !== null && isExpanded(app.id) && selectedAction >= 0) {
+            selectedAction = Math.max(0, Math.min(selectedAction + step, app.actions.length - 1))
+            return
         }
 
         const from = selected === -1 && step < 0 ? rows.length : selected
@@ -52,11 +60,7 @@ Item {
         }
 
         select(index)
-        // Going up into an open app lands on its last action, the row right above.
-        const landed = selectedApp()
-        if (step < 0 && landed !== null && isExpanded(landed.id)) {
-            selectedAction = landed.actions.length - 1
-        }
+        actionsApp = ''
     }
 
     function selectFirst(): void {
@@ -72,28 +76,108 @@ Item {
     }
 
     function isExpanded(id: string): bool {
-        return expanded.includes(id)
+        return actionsApp !== '' && actionsApp === id
     }
 
     function setExpanded(app: var, on: bool): void {
+        openTimer.stop()
+        closeTimer.stop()
         if (on === isExpanded(app.id) || (on && app.actions.length === 0)) {
             return
         }
 
-        expanded = on ? expanded.concat([app.id]) : expanded.filter(id => id !== app.id)
+        actionsApp = on ? app.id : ''
         const current = selectedApp()
-        if (on === false && current !== null && current.id === app.id) {
+        if (current !== null && (on === false || current.id !== app.id)) {
             selectedAction = -1
         }
     }
 
-    // Opens or closes the current app's actions (`on`: open, close, or -1: the other way).
+    // Opens or closes the current app's actions (`on`: open, close, or -1: the other way). Opened by the
+    // keyboard, the keyboard goes onto the first action.
     function expandSelected(on: int): void {
         const app = selectedApp()
-        if (app !== null) {
-            setExpanded(app, on === -1 ? isExpanded(app.id) === false : on === 1)
+        if (app === null) {
+            return
+        }
+
+        const opening = on === -1 ? isExpanded(app.id) === false : on === 1
+        setExpanded(app, opening)
+        if (opening && isExpanded(app.id)) {
+            selectedAction = 0
         }
     }
+
+    // The app with this id among the rows, null when it is not there.
+    function appWithId(id: string): var {
+        const row = rows.find(item => item.kind === 'app' && item.app.id === id)
+        return row === undefined ? null : row.app
+    }
+
+    // The pointer on action `index` of the open actions: their app becomes the current row, so Enter and the
+    // keyboard go on from there.
+    function pointAction(index: int): void {
+        const at = rows.findIndex(item => item.kind === 'app' && item.app.id === actionsApp)
+        if (at < 0) {
+            return
+        }
+
+        selected = at
+        selectedAction = index
+    }
+
+    // After the pointer moved: the open actions stay while it is on their app or on them, go to another app
+    // with actions at once, and otherwise close after `hoverDelay`.
+    function followPointer(): void {
+        if (actionsApp === '') {
+            return
+        }
+
+        if (paneHovered || pointedApp === actionsApp) {
+            closeTimer.stop()
+            return
+        }
+
+        const pointed = pointedApp === '' ? null : appWithId(pointedApp)
+        if (pointed !== null && pointed.actions.length > 0) {
+            setExpanded(pointed, true)
+            return
+        }
+
+        if (closeTimer.running === false) {
+            closeTimer.start()
+        }
+    }
+
+    function rowHovered(app: var, hovered: bool): void {
+        if (hovered) {
+            pointedApp = app.id
+        } else if (pointedApp === app.id) {
+            pointedApp = ''
+        }
+
+        followPointer()
+    }
+
+    // With nothing open, resting on the arrow opens the actions; with another app's open, it goes there at
+    // once (`followPointer`, the arrow being on its row).
+    function arrowHovered(app: var, hovered: bool): void {
+        if (hovered) {
+            arrowApp = app.id
+            if (actionsApp === '') {
+                openTimer.restart()
+            }
+
+            return
+        }
+
+        if (arrowApp === app.id) {
+            arrowApp = ''
+            openTimer.stop()
+        }
+    }
+
+    onPaneHoveredChanged: followPointer()
 
     function selectedApp(): var {
         if (selected < 0 || selected >= rows.length || rows[selected].kind !== 'app') {
@@ -111,6 +195,34 @@ Item {
         if (selected >= rows.length) {
             selected = -1
             selectedAction = -1
+        }
+
+        if (actionsApp !== '' && appWithId(actionsApp) === null) {
+            actionsApp = ''
+        }
+    }
+
+    Timer {
+        id: openTimer
+
+        interval: root.hoverDelay
+        onTriggered: {
+            const app = root.arrowApp === '' ? null : root.appWithId(root.arrowApp)
+            if (app !== null) {
+                root.setExpanded(app, true)
+            }
+        }
+    }
+
+    Timer {
+        id: closeTimer
+
+        interval: root.hoverDelay
+        onTriggered: {
+            if (root.paneHovered === false && root.pointedApp !== root.actionsApp) {
+                root.actionsApp = ''
+                root.selectedAction = -1
+            }
         }
     }
 
@@ -159,21 +271,22 @@ Item {
                     app: slot.modelData.app
                     big: slot.modelData.section === 'featured'
                     lit: root.selected === slot.index
-                    litAction: root.selectedAction
-                    expanded: root.isExpanded(slot.modelData.app.id)
+                    actionsShown: root.isExpanded(slot.modelData.app.id)
                     featured: Apps.isFeatured(slot.modelData.app.id)
                     tooltip: root.tooltip
                     screen: root.screen
                     windowOffset: root.windowOffset
                     returnArea: root.returnArea
                     holdToDrag: root.touchControls
-                    onPointed: actionIndex => {
+                    onPointed: {
                         root.selected = slot.index
-                        root.selectedAction = actionIndex
+                        root.selectedAction = -1
                     }
-                    onLaunched: actionIndex => root.launched(slot.modelData.app, actionIndex)
+                    onRowHovered: hovered => root.rowHovered(slot.modelData.app, hovered)
+                    onArrowHovered: hovered => root.arrowHovered(slot.modelData.app, hovered)
+                    onLaunched: root.launched(slot.modelData.app, -1)
                     onFeatureToggled: Apps.setFeatured(slot.modelData.app.id, featured === false)
-                    onExpandToggled: root.setExpanded(slot.modelData.app, expanded === false)
+                    onExpandToggled: root.setExpanded(slot.modelData.app, actionsShown === false)
                     onMenuRequested: at => root.menuRequested(slot.modelData.app, mapToItem(root, at))
                 }
             }

@@ -228,6 +228,86 @@ function workspaceMovePlan(fromId, toId, fromHasWindows, toHasWindows, existingI
     return 'moveWindows'
 }
 
+// Reordering the bar's workspace buttons by dragging one along the bar, as Windows 7 reorders its taskbar
+// buttons. Slots are numbered from 0, left to right.
+//
+// Where button `index` stands while the one from slot `from` is held over slot `to`: the held one in `to`,
+// the ones between one slot over toward where it came from, the rest in their own.
+function reorderSlot(index, from, to) {
+    if (index === from) {
+        return to
+    }
+
+    if (from < to && index > from && index <= to) {
+        return index - 1
+    }
+
+    if (from > to && index >= to && index < from) {
+        return index + 1
+    }
+
+    return index
+}
+
+// The slot a dragged button goes to: the one whose middle is closest to the button's middle `centre`,
+// slot k's middle being `firstCentre + k * pitch`; past either end, the first or the last.
+function reorderTarget(centre, firstCentre, pitch, count) {
+    if (count <= 0 || pitch <= 0) {
+        return 0
+    }
+
+    return Math.max(0, Math.min(Math.round((centre - firstCentre) / pitch), count - 1))
+}
+
+// The button a held one could join (its windows go there), as a browser tab dropped onto another: the other
+// button it covers most where they stand now (the held one from slot `from`, holding slot `to` free), if it
+// covers at least `share` of its width; -1 for none. `left` is the held button's left edge, slot 0 starting
+// at 0, slots `pitch` apart, buttons `width` wide. The bar joins it only once the pointer has rested there.
+function joinCandidate(left, from, to, count, pitch, width, share) {
+    let best = -1
+    let bestCover = 0
+    for (let index = 0; index < count; index++) {
+        if (index === from) {
+            continue
+        }
+
+        const otherLeft = reorderSlot(index, from, to) * pitch
+        const cover = Math.min(left, otherLeft) + width - Math.max(left, otherLeft)
+        if (cover > bestCover) {
+            best = index
+            bestCover = cover
+        }
+    }
+
+    return best >= 0 && bestCover >= width * share ? best : -1
+}
+
+// The renumbers (Hyprland's `change_id`, each to a free number) that move the workspace in slot `from` to
+// slot `to`, the ones between one slot over toward `from`, so every workspace keeps its windows and layout.
+// `ids` are the bar's workspace numbers in order, `existingIds` the ones Hyprland has (one that does not
+// exist has nothing to move), `spareId` a number nothing uses, where the moved workspace waits meanwhile.
+// A list of { from, to }, to be done in order; empty when nothing moves.
+function reorderPlan(ids, from, to, existingIds, spareId) {
+    if (from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) {
+        return []
+    }
+
+    if (existingIds.includes(ids[from]) === false || ids.includes(spareId) || existingIds.includes(spareId)) {
+        return []
+    }
+
+    const steps = [{ from: ids[from], to: spareId }]
+    const step = from < to ? 1 : -1
+    for (let slot = from + step; slot !== to + step; slot += step) {
+        if (existingIds.includes(ids[slot])) {
+            steps.push({ from: ids[slot], to: ids[slot - step] })
+        }
+    }
+
+    steps.push({ from: spareId, to: ids[to] })
+    return steps
+}
+
 // The number of a workspace as Quickshell reports it. Quickshell 0.3.2 gives a workspace it has only
 // heard of by name (as after a renumber) the id -1 until its next full refresh, which may never come;
 // its name is then the number Hyprland gave it. A renamed workspace has a real id, so this only matters

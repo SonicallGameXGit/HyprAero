@@ -93,7 +93,7 @@ Aero (light) is the base; Slate overrides only what differs. Values not listed f
 
 ### Taskbar glass (a desktop shell's own chrome)
 
-Windows 7 and Vista give the taskbar, the start menu and the flyouts over the taskbar a glass of their own: darker than a window's, with plain white words. Its tint is dark enough that white body text keeps WCAG AA contrast even over a white backdrop without compositor blur. A member that draws a desktop shell uses it for that chrome; a window's chrome keeps the glass above. Something meant to stand out of it (the user's picture tile) still uses the window glass, which reads as a lighter, frosted frame on it.
+Windows 7 and Vista give the taskbar, the start menu and the flyouts over the taskbar a glass of their own: darker than a window's, with plain white words. Its tint is dark enough that white body text keeps WCAG AA contrast even over a white backdrop without compositor blur. A member that draws a desktop shell uses it for that chrome; a window's chrome keeps the glass above. The user's picture stands out of it in a silver frame of its own ("User picture tile" below).
 
 | Token | Aero | Slate |
 | --- | --- | --- |
@@ -106,17 +106,17 @@ Windows 7 and Vista give the taskbar, the start menu and the flyouts over the ta
 
 A solid pane set into the taskbar glass (the start menu's list) is edged like Windows 7's: a `taskbar-glass-border-outer` line around it and a `taskbar-glass-border-inner` line outside that one.
 
-The taskbar strip itself (the bar along the screen's edge, not the menus and flyouts over it) is Windows 7's taskbar, measured on the screenshots of the owner's mockups: a lighter, more see-through glass than the menus over it (the wallpaper shows through, mostly darkened), a dark line along its top with a `taskbar-glass-border-inner` line under it, a faint sheen fading out by the middle, no horizon, and no line along the bottom or the ends. Over a very bright wallpaper white words on it fall below WCAG AA (about 2.3:1 over white without compositor blur), as on Windows 7; this is the one exception to the taskbar glass's contrast rule above, kept for the look.
+The taskbar strip itself (the bar along the screen's edge, not the menus and flyouts over it) is Windows 7's taskbar, measured on the screenshots of the owner's mockups: a lighter glass than the menus over it, close to Windows 7's own light grey-blue, with the wallpaper showing through only faintly, a dark line along its top with a `taskbar-glass-border-inner` line under it, a faint sheen fading out by the middle, no horizon, and no line along the bottom or the ends. White words on it fall below WCAG AA (about 1.7:1 over a white wallpaper, 3:1 over a dark one, without compositor blur), as on Windows 7, whose taskbar is as light. This is the one exception to the taskbar glass's contrast rule above, kept for the look.
 
 | Token | Aero | Slate |
 | --- | --- | --- |
-| `taskbar-bar-tint` | `rgba(70,92,124,0.5)` | `rgba(16,20,26,0.62)` |
+| `taskbar-bar-tint` | `rgba(150,175,205,0.75)` | `rgba(22,27,34,0.78)` |
 | `taskbar-bar-edge` (1px, along the top edge) | `rgba(12,30,52,0.8)` | `rgba(0,0,0,0.85)` |
 | `taskbar-bar-shine` | vertical gradient white 0.03 at 0% -> 0 at 50% | same shape, white 0.02 -> 0 |
 
 ### Glass buttons (controls standing on glass)
 
-A tool button standing on glass (a taskbar button, a tray icon, a place in the start menu) does not take the opaque control face: it lights up as glass, a see-through white gloss with the horizon at 49% / 50%, a dark edge and a bright inner line, as Windows 7's taskbar buttons do. Flat until hovered; one that must always look like a button (the start menu's Shut down) shows the rest face. `current` is the one that is selected (the current workspace, a button whose menu is open); `active` is pressed, as for controls.
+A tool button standing on glass (a tray icon, the clock, a place in the start menu) does not take the opaque control face: it lights up as glass, a see-through white gloss with the horizon at 49% / 50%, a dark edge and a bright inner line. Flat until hovered; one that must always look like a button (the start menu's Shut down) shows the rest face. `current` is the one that is selected (a button whose menu or flyout is open); `active` is pressed, as for controls. An app's button on the taskbar is drawn differently ("Taskbar items" below).
 
 | Token | Aero | Slate |
 | --- | --- | --- |
@@ -126,6 +126,47 @@ A tool button standing on glass (a taskbar button, a tray icon, a place in the s
 | `glass-button-face-active` | `rgba(0,10,25,a)`, a = 0.34 / 0.24 / 0.20 / 0.10 | black 0.40 / 0.30 / 0.26 / 0.14 |
 | `glass-button-border` | `rgba(0,8,20,0.70)` | `rgba(0,0,0,0.85)` |
 | `glass-button-inner` | `rgba(255,255,255,0.5)` | `rgba(255,255,255,0.2)` |
+
+### Taskbar items (the apps on a desktop shell's taskbar)
+
+An app's button on the taskbar strip is Windows 7's, measured on Windows 7 screenshots, not a glass button. At rest it is only its icon. The buttons fill the strip's height and stand `taskbar-item-gap` apart. Under the pointer two side lines fade in, dark at their middle and fading out to the top and bottom, each with a faint light line on its right, and a small see-through light spot sits at the bottom centre. An open app instead lights up in its own colour: a light (the main colour of its icon, `taskbar-item-glow-neutral` for an icon without one) follows the pointer along the bottom, glowing: near white at its middle, the colour further out. Pressed, its face darkens through the middle, still fading out to the top and bottom, and its icon moves a pixel down and right. An app that is open is a rounded button of its own (a dark border, drawn over the light, a light inner line, a face bright at the top easing out by 70% of its height, no horizon, and the glass's gloss: a see-through sheet over its top-left, lighter toward the corner, its lower edge a sharp curve from 65% down the left side up to the top-right corner); the selected one (the workspace on screen) is the same, brighter, fading in and out (`motion-soft`) as the selection changes, not sliding. Dragged along the strip a button follows the pointer sideways only, the others gliding aside to make room; it stops dead against whatever stands beside the strip, and let go it glides into its slot (`motion-soft`, nearly linear, so the farther it is the faster it goes). Covering a third of another button for a moment (the moving goes on unchanged meanwhile) it joins it instead: that one looks hovered, the held one turns see-through (`drag-image-opacity`) over it, and let go it fades into it.
+
+| Token | Aero | Slate |
+| --- | --- | --- |
+| `taskbar-item-face-hover` (top -> middle -> bottom) | white 0 / 0.12 / 0 | white 0 / 0.06 / 0 |
+| `taskbar-item-face-pressed` (top -> middle -> bottom) | white 0.06 / `rgba(0,10,25,0.32)` / white 0.06 | white 0.03 / black 0.45 / white 0.03 |
+| `taskbar-item-face-open` (top -> 70% -> bottom, eased out between the first two) | white 0.43 / 0.09 / 0.09 | white 0.18 / 0.05 / 0.05 |
+| `taskbar-item-face-open-hover` | white 0.55 / 0.14 / 0.14 | white 0.24 / 0.08 / 0.08 |
+| `taskbar-item-face-current` | white 0.80 / 0.34 / 0.38 | white 0.40 / 0.18 / 0.20 |
+| `taskbar-item-shine` (the gloss: at the top-left corner -> along its edge) | white 0.23 -> 0.04 | white 0.09 -> 0.015 |
+| `taskbar-item-border` / `taskbar-item-inner` (drawn over the light) | `rgba(0,10,25,0.55)` / `rgba(255,255,255,0.45)` | `rgba(0,0,0,0.8)` / `rgba(255,255,255,0.16)` |
+| `taskbar-item-edge` / `taskbar-item-edge-light` (the side lines, at their middle) | `rgba(0,10,25,0.5)` / `rgba(255,255,255,0.22)` | `rgba(0,0,0,0.7)` / `rgba(255,255,255,0.08)` |
+| `taskbar-item-spot` | `rgba(255,255,255,0.4)` | `rgba(255,255,255,0.25)` |
+| `taskbar-item-glow-strength` (the app's light at its brightest) | 0.9 | 0.7 |
+| `taskbar-item-glow-neutral` | `#ffffff` | same |
+| `taskbar-item-glow-core` (how far toward white the light's middle goes, on a soft bell into the colour; the light's alpha falls off by smoothstep) | 0.65 | 0.5 |
+| `taskbar-item-gap` (between two buttons) | 3px | same |
+
+### Show desktop (the block at the end of a desktop shell's taskbar)
+
+Windows 7's "Show desktop" block, measured on Windows 7 screenshots: set off from the taskbar by a `taskbar-item-edge` line with a `taskbar-item-edge-light` line after it, a darker glass than the strip with a light inner line (`taskbar-glass-border-inner`) all round, eased between its stops, the taskbar items' gloss over its top (its edge from 35% on the left to 12% on the right), lighter under the pointer, darker pressed.
+
+| Token | Aero | Slate |
+| --- | --- | --- |
+| `show-desktop-face` (top -> 25% -> bottom) | white 0.22 / `rgba(0,10,25,0.32)` / `rgba(0,10,25,0.04)` | white 0.10 / black 0.40 / black 0.08 |
+| `show-desktop-face-hover` | white 0.40 / 0.08 / 0.14 | white 0.20 / 0.04 / 0.08 |
+| `show-desktop-face-active` | white 0.10 / `rgba(0,10,25,0.45)` / `rgba(0,10,25,0.20)` | white 0.05 / black 0.50 / black 0.30 |
+| `show-desktop-shine` (the gloss at its top-left corner; a quarter of it along the edge) | white 0.15 | white 0.06 |
+
+### User picture tile
+
+The frame of the user's picture (the start menu's tile) is Windows 7's: a silver glossy band 6px wide, white at the top, see-through down its sides and aqua along the bottom, its outer sides bowed out a little at their middle (`picture-frame-bulge`) so the band is widest there; a `glass-border-outer` line around it, a `glass-border-outer` line along the picture and a `glass-border-inner` line outside that one.
+
+| Token | Aero | Slate |
+| --- | --- | --- |
+| `picture-frame-face` (top -> 50% -> 85% -> bottom) | `#f2f5f8`, `rgba(200,210,220,0.7)`, `rgba(160,180,196,0.65)`, `#5cc8e6` | `#8d969f`, `rgba(80,90,100,0.75)`, `rgba(60,70,80,0.7)`, `#2f8fa8` |
+| `picture-frame-shine` (vertical, over the upper half) | white 0.7 -> 0 | white 0.25 -> 0 |
+| `picture-frame-bulge` | 1.5px | same |
 
 ### Solid surfaces (content)
 

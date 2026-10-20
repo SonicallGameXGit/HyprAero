@@ -8,18 +8,17 @@ import '../../services/startMenu.js' as StartMenuList
 // One app in the start menu: icon, name and under it what the app is (its description, or the program it
 // runs), lit like a list row while it is the current one; at the right end the star that features it
 // (always shown on featured apps, on the lit row otherwise) and, for an app with actions of its own, the
-// arrow that opens them. Open, the actions hang under the app on a tree line from its icon, lined up with
-// its name, so they read as part of the app and not as apps of their own. Dragged, the app goes to a
-// workspace to start there.
+// arrow button joined to the row that shows them, as Windows 7's split rows: the actions open in the menu's
+// right column (`ActionsPane`), and while the arrow is pointed at or they are open the row is lit deeper blue.
+// Dragged, the app goes to a workspace to start there.
 Item {
     id: root
 
     required property var app
     property bool big: false
     property bool lit: false
-    // Of a lit row: -1 when the app itself is current, else the index of the current action.
-    property int litAction: -1
-    property bool expanded: false
+    // Its actions are open in the right column.
+    property bool actionsShown: false
     property bool featured: false
     // The menu's shared tooltip.
     property Tooltip tooltip: null
@@ -34,9 +33,11 @@ Item {
     // Out of the menu in a drag: its place stays empty (the ghost is drawn there), so nothing moves.
     readonly property bool takenOut: BarDrag.from === 'startMenu' && BarDrag.appId === app.id
 
-    // `actionIndex` is -1 for the app itself.
-    signal launched(int actionIndex)
-    signal pointed(int actionIndex)
+    signal launched()
+    signal pointed()
+    // The pointer came onto the row or left it, and onto its arrow or off it.
+    signal rowHovered(bool hovered)
+    signal arrowHovered(bool hovered)
     signal featureToggled()
     signal expandToggled()
     signal menuRequested(point at)
@@ -45,13 +46,10 @@ Item {
     readonly property int iconSize: big ? 32 : 24
     readonly property string detail: StartMenuList.appDetail(app)
     readonly property bool hasActions: app.actions.length > 0
-    readonly property int actionHeight: 26
-    // Where the tree line runs (under the middle of the icon) and where the action names start (under the
-    // app's name).
-    readonly property real lineX: icon.x + iconSize / 2
-    readonly property real textX: icon.x + iconSize + Theme.space2
+    // Lit deeper blue, as Windows 7 lights a row whose arrow is pointed at or whose actions are open.
+    readonly property bool deep: actionsShown || (hasActions && arrowHover.hovered)
 
-    implicitHeight: head.height + branch.height
+    implicitHeight: head.height
     Accessible.role: Accessible.Button
     Accessible.name: app.name
 
@@ -88,14 +86,16 @@ Item {
             holdToDrag: root.holdToDrag
         }
 
-        // Lit like a list row.
+        // Lit like a list row, deeper blue over it (row-selected-*).
         Rectangle {
+            id: highlight
+
             anchors.fill: parent
             anchors.leftMargin: Theme.space1
             anchors.rightMargin: Theme.space1
             anchors.topMargin: 1
             anchors.bottomMargin: 1
-            opacity: root.lit && root.litAction === -1 ? 1 : 0
+            opacity: root.lit || root.deep ? 1 : 0
             radius: Theme.radiusControl
             border.width: 1
             border.color: Theme.rowHoverBorder
@@ -107,6 +107,23 @@ Item {
             gradient: Gradient {
                 GradientStop { position: 0.0; color: Theme.rowHoverFace[0] }
                 GradientStop { position: 1.0; color: Theme.rowHoverFace[1] }
+            }
+        }
+
+        Rectangle {
+            anchors.fill: highlight
+            opacity: root.deep ? 1 : 0
+            radius: Theme.radiusControl
+            border.width: 1
+            border.color: Theme.rowSelectedBorder
+
+            Behavior on opacity {
+                NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
+            }
+
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Theme.rowSelectedFace[0] }
+                GradientStop { position: 1.0; color: Theme.rowSelectedFace[1] }
             }
         }
 
@@ -124,16 +141,6 @@ Item {
         GenericAppIcon {
             anchors.fill: icon
             visible: root.iconPath === ''
-        }
-
-        // The start of the tree line, from under the icon down to the actions.
-        Rectangle {
-            x: root.lineX
-            y: icon.y + icon.height + 2
-            width: 1
-            height: head.height - y
-            color: Theme.surfaceBorder
-            visible: root.expanded
         }
 
         Column {
@@ -166,8 +173,10 @@ Item {
         HoverHandler {
             onHoveredChanged: {
                 if (hovered) {
-                    root.pointed(-1)
+                    root.pointed()
                 }
+
+                root.rowHovered(hovered)
             }
         }
 
@@ -192,7 +201,7 @@ Item {
                     return
                 }
 
-                root.launched(-1)
+                root.launched()
             }
         }
 
@@ -232,139 +241,48 @@ Item {
             }
         }
 
-        // Points right while closed and down while open, like a tree branch.
+        // The arrow's half of the split row: a line parts it from the app while the row is lit.
         Item {
             id: arrow
 
             anchors.right: parent.right
-            anchors.rightMargin: Theme.space2
-            anchors.verticalCenter: parent.verticalCenter
-            width: 24
-            height: 24
+            anchors.rightMargin: Theme.space1
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.topMargin: 1
+            anchors.bottomMargin: 1
+            width: 26
             visible: root.hasActions
             Accessible.role: Accessible.Button
-            Accessible.name: root.expanded ? qsTr('Hide actions') : qsTr('Show actions')
+            Accessible.name: root.actionsShown ? qsTr('Hide actions') : qsTr('Show actions')
             Accessible.onPressAction: root.expandToggled()
+
+            Rectangle {
+                width: 1
+                height: parent.height
+                color: root.deep ? Theme.rowSelectedBorder : Theme.rowHoverBorder
+                opacity: root.lit || root.deep ? 1 : 0
+
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
+                }
+            }
 
             ChevronGlyph {
                 anchors.centerIn: parent
                 size: 10
-                color: arrowHover.hovered ? Theme.text : Theme.textMuted
-                rotation: root.expanded ? 90 : 0
-
-                Behavior on rotation {
-                    NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
-                }
+                color: root.lit || root.deep ? Theme.text : Theme.textMuted
             }
 
             HoverHandler {
                 id: arrowHover
 
-                onHoveredChanged: root.tip(arrow, arrow.Accessible.name, arrowHover.hovered)
+                onHoveredChanged: root.arrowHovered(arrowHover.hovered)
             }
 
             MouseArea {
                 anchors.fill: parent
                 onClicked: root.expandToggled()
-            }
-        }
-    }
-
-    // The actions, sliding open under the app.
-    Item {
-        id: branch
-
-        y: head.height
-        width: parent.width
-        height: root.expanded ? actions.height : 0
-        clip: true
-
-        Behavior on height {
-            NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
-        }
-
-        // Shut, they are hidden too: clipping does not keep the pointer away from them.
-        Column {
-            id: actions
-
-            width: parent.width
-            visible: branch.height > 0
-
-            Repeater {
-                model: root.app.actions
-
-                Item {
-                    id: action
-
-                    required property string modelData
-                    required property int index
-
-                    readonly property bool last: index === root.app.actions.length - 1
-
-                    width: actions.width
-                    height: root.actionHeight
-
-                    // Down from the app, and a short branch to the name; the last one ends there.
-                    Rectangle {
-                        x: root.lineX
-                        width: 1
-                        height: action.last ? action.height / 2 : action.height
-                        color: Theme.surfaceBorder
-                    }
-
-                    Rectangle {
-                        x: root.lineX
-                        y: action.height / 2
-                        width: root.textX - Theme.space2 - x
-                        height: 1
-                        color: Theme.surfaceBorder
-                    }
-
-                    // Lit like the app, from where the name starts.
-                    Rectangle {
-                        x: root.textX - Theme.space2 + Theme.space1
-                        y: 1
-                        width: parent.width - x - Theme.space1
-                        height: parent.height - 2
-                        opacity: root.lit && root.litAction === action.index ? 1 : 0
-                        radius: Theme.radiusControl
-                        border.width: 1
-                        border.color: Theme.rowHoverBorder
-
-                        Behavior on opacity {
-                            NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
-                        }
-
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: Theme.rowHoverFace[0] }
-                            GradientStop { position: 1.0; color: Theme.rowHoverFace[1] }
-                        }
-                    }
-
-                    Text {
-                        x: root.textX
-                        width: parent.width - x - Theme.space2
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: action.modelData
-                        elide: Text.ElideRight
-                        color: Theme.text
-                        font.family: Theme.fontUi
-                        font.pixelSize: Theme.fontSizeBody
-                    }
-
-                    HoverHandler {
-                        onHoveredChanged: {
-                            if (hovered) {
-                                root.pointed(action.index)
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: root.launched(action.index)
-                    }
-                }
             }
         }
     }

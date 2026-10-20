@@ -63,7 +63,7 @@ Singleton {
     readonly property color taskbarGlassText: slate ? '#e9eef3' : '#ffffff'
     readonly property color taskbarGlassLink: slate ? '#9fd0f7' : '#cfe8ff'
     // The taskbar strip itself: Windows 7's taskbar, lighter and more see-through than the menus over it.
-    readonly property color taskbarBarTint: slate ? '#9e10141a' : '#80465c7c'
+    readonly property color taskbarBarTint: slate ? '#c7161b22' : '#bf96afcd'
     readonly property color taskbarBarEdge: slate ? '#d9000000' : '#cc0c1e34'
     readonly property color taskbarBarShineTop: slate ? '#05ffffff' : '#08ffffff'
 
@@ -82,6 +82,35 @@ Singleton {
         : ['#57000a19', '#3d000a19', '#33000a19', '#1a000a19']
     readonly property color glassButtonBorder: slate ? '#d9000000' : '#b3000814'
     readonly property color glassButtonInner: slate ? '#33ffffff' : '#80ffffff'
+
+    // An app's button on the taskbar strip. Faces fading at both ends: top, middle, bottom; an open app's:
+    // top, 70%, bottom (eased between), and the gloss over it: at the top-left corner, along its edge.
+    readonly property var taskbarItemFaceHover: slate ? ['#00ffffff', '#0fffffff', '#00ffffff'] : ['#00ffffff', '#1fffffff', '#00ffffff']
+    readonly property var taskbarItemFacePressed: slate ? ['#08ffffff', '#73000000', '#08ffffff'] : ['#0fffffff', '#52000a19', '#0fffffff']
+    readonly property var taskbarItemFaceOpen: slate ? ['#2effffff', '#0dffffff', '#0dffffff'] : ['#6effffff', '#17ffffff', '#17ffffff']
+    readonly property var taskbarItemFaceOpenHover: slate ? ['#3dffffff', '#14ffffff', '#14ffffff'] : ['#8cffffff', '#24ffffff', '#24ffffff']
+    readonly property var taskbarItemFaceCurrent: slate ? ['#66ffffff', '#2effffff', '#33ffffff'] : ['#ccffffff', '#57ffffff', '#61ffffff']
+    readonly property var taskbarItemShine: slate ? ['#17ffffff', '#04ffffff'] : ['#3affffff', '#0affffff']
+    readonly property color taskbarItemBorder: slate ? '#cc000000' : '#8c000a19'
+    readonly property color taskbarItemInner: slate ? '#29ffffff' : '#73ffffff'
+    readonly property color taskbarItemEdge: slate ? '#b3000000' : '#80000a19'
+    readonly property color taskbarItemEdgeLight: slate ? '#14ffffff' : '#38ffffff'
+    readonly property color taskbarItemSpot: slate ? '#40ffffff' : '#66ffffff'
+    readonly property real taskbarItemGlowStrength: slate ? 0.7 : 0.9
+    readonly property color taskbarItemGlowNeutral: '#ffffff'
+    readonly property real taskbarItemGlowCore: slate ? 0.5 : 0.65
+    readonly property int taskbarItemGap: 3
+
+    // The "Show desktop" block at the bar's end. Faces: top, 25%, bottom.
+    readonly property var showDesktopFace: slate ? ['#1affffff', '#66000000', '#14000000'] : ['#38ffffff', '#52000a19', '#0a000a19']
+    readonly property var showDesktopFaceHover: slate ? ['#33ffffff', '#0affffff', '#14ffffff'] : ['#66ffffff', '#14ffffff', '#24ffffff']
+    readonly property var showDesktopFaceActive: slate ? ['#0dffffff', '#80000000', '#4d000000'] : ['#1affffff', '#73000a19', '#33000a19']
+    readonly property color showDesktopShine: slate ? '#0fffffff' : '#26ffffff'
+
+    // The user's picture tile: the band's face (top, 50%, 85%, bottom), its shine and how far its sides bow out.
+    readonly property var pictureFrameFace: slate ? ['#8d969f', '#bf505a64', '#b33c4650', '#2f8fa8'] : ['#f2f5f8', '#b3c8d2dc', '#a6a0b4c4', '#5cc8e6']
+    readonly property color pictureFrameShine: slate ? '#40ffffff' : '#b3ffffff'
+    readonly property real pictureFrameBulge: 1.5
 
     readonly property color surface: slate ? '#23282e' : '#ffffff'
     readonly property color surfaceSunken: slate ? '#1b2025' : '#f2f6fb'

@@ -367,3 +367,97 @@ test('openwindow event: address, workspace, class and a title that may hold comm
     assert.equal(parseOpenWindow('5593c0f2a1b0,3'), null)
     assert.equal(parseOpenWindow(undefined), null)
 })
+
+const { reorderSlot, reorderTarget, reorderPlan, joinCandidate } = new Function(source + '\nreturn { reorderSlot, reorderTarget, reorderPlan, joinCandidate }')()
+
+// Does the steps one by one on a map of workspace number -> its windows, checking each target is free.
+function applyPlan(contents, steps) {
+    const result = new Map(contents)
+    for (const step of steps) {
+        assert.equal(result.has(step.to), false, `workspace ${step.to} is taken when ${step.from} moves there`)
+        result.set(step.to, result.get(step.from))
+        result.delete(step.from)
+    }
+
+    return result
+}
+
+test('reorder: while held, the buttons between make room and the rest stay', () => {
+    // Slot 1 held over slot 3: 2 and 3 move one to the left.
+    assert.deepEqual([0, 1, 2, 3, 4].map(index => reorderSlot(index, 1, 3)), [0, 3, 1, 2, 4])
+    // Slot 3 held over slot 0: 0 to 2 move one to the right.
+    assert.deepEqual([0, 1, 2, 3, 4].map(index => reorderSlot(index, 3, 0)), [1, 2, 3, 0, 4])
+    assert.deepEqual([0, 1, 2].map(index => reorderSlot(index, 1, 1)), [0, 1, 2])
+})
+
+test('reorder: moving right shifts the ones between left, every workspace keeps its windows', () => {
+    const ids = [1, 2, 3, 4, 5]
+    const contents = new Map([[1, 'a'], [2, 'b'], [3, 'c'], [4, 'd'], [5, 'e']])
+    const steps = reorderPlan(ids, 1, 3, [1, 2, 3, 4, 5], 6)
+    const after = applyPlan(contents, steps)
+    assert.deepEqual([1, 2, 3, 4, 5].map(id => after.get(id)), ['a', 'c', 'd', 'b', 'e'])
+    assert.equal(after.has(6), false)
+})
+
+test('reorder: moving left shifts the ones between right', () => {
+    const contents = new Map([[1, 'a'], [2, 'b'], [3, 'c'], [4, 'd']])
+    const after = applyPlan(contents, reorderPlan([1, 2, 3, 4], 3, 0, [1, 2, 3, 4], 9))
+    assert.deepEqual([1, 2, 3, 4].map(id => after.get(id)), ['d', 'a', 'b', 'c'])
+})
+
+test('reorder: workspaces that do not exist are skipped, their slots stay empty in turn', () => {
+    // 3 and 4 do not exist: moving 1 to slot 4 leaves 2 in slot 1 and the gaps shifted along.
+    const contents = new Map([[1, 'a'], [2, 'b'], [5, 'e']])
+    const after = applyPlan(contents, reorderPlan([1, 2, 3, 4, 5], 0, 4, [1, 2, 5], 6))
+    assert.deepEqual([1, 2, 3, 4, 5].map(id => after.get(id)), ['b', undefined, undefined, 'e', 'a'])
+})
+
+test('reorder: gaps in the numbers follow the bar order', () => {
+    const contents = new Map([[9, 'i'], [10, 'j'], [14, 'n']])
+    const after = applyPlan(contents, reorderPlan([9, 10, 14], 2, 0, [9, 10, 14], 15))
+    assert.deepEqual([9, 10, 14].map(id => after.get(id)), ['n', 'i', 'j'])
+})
+
+test('reorder: nothing moves for the same slot, a missing workspace or a spare that is taken', () => {
+    assert.deepEqual(reorderPlan([1, 2, 3], 1, 1, [1, 2, 3], 4), [])
+    assert.deepEqual(reorderPlan([1, 2, 3], 1, 2, [1, 3], 4), [])
+    assert.deepEqual(reorderPlan([1, 2, 3], 0, 2, [1, 2, 3], 3), [])
+    assert.deepEqual(reorderPlan([1, 2, 3], 0, 2, [1, 2, 3, 7], 7), [])
+    assert.deepEqual(reorderPlan([1, 2, 3], 0, 5, [1, 2, 3], 4), [])
+})
+
+test('reorder: the closest slot wins, and past the ends the first or the last', () => {
+    // Buttons 72 wide, 3 apart: middles at 36, 111, 186.
+    assert.equal(reorderTarget(36, 36, 75, 3), 0)
+    assert.equal(reorderTarget(72, 36, 75, 3), 0)
+    assert.equal(reorderTarget(75, 36, 75, 3), 1)
+    assert.equal(reorderTarget(-400, 36, 75, 3), 0)
+    assert.equal(reorderTarget(900, 36, 75, 3), 2)
+    assert.equal(reorderTarget(10, 36, 75, 0), 0)
+})
+
+// Four buttons 72 wide, 75 apart; a third of a button is 24px.
+function candidate(left, from, to) {
+    return joinCandidate(left, from, to, 4, 75, 72, 1 / 3)
+}
+
+test('join: the button covered by at least a third is the one to join', () => {
+    // Held from slot 0, button 1 at 75 to 147.
+    assert.equal(candidate(0, 0, 0), -1)
+    assert.equal(candidate(20, 0, 0), -1)
+    assert.equal(candidate(27, 0, 0), 1)
+    assert.equal(candidate(75, 0, 0), 1)
+})
+
+test('join: where the others stand now counts, and the one covered most wins', () => {
+    // Over slot 1 with button 1 moved aside into slot 0: lined up with the free slot, nothing is covered.
+    assert.equal(candidate(75, 0, 1), -1)
+    // Half way between button 1 (now in slot 0) and button 2 (slot 2): button 1 is covered more.
+    assert.equal(candidate(40, 0, 1), 1)
+    assert.equal(candidate(110, 0, 1), 2)
+})
+
+test('join: nothing beside the strip or without other buttons', () => {
+    assert.equal(candidate(-300, 1, 0), -1)
+    assert.equal(joinCandidate(0, 0, 0, 1, 75, 72, 1 / 3), -1)
+})

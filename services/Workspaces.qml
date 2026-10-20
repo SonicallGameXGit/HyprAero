@@ -310,6 +310,17 @@ Singleton {
         }
     }
 
+    // Moves the workspace in slot `from` of the bar's `ids` to slot `to`, the ones between one slot over, by
+    // renumbering them (`WorkspaceList.reorderPlan`), so each keeps its windows and layout and the view stays
+    // on what it shows. The moved one waits on a number past every one in use.
+    function reorder(ids: var, from: int, to: int): void {
+        const spare = Math.max(...ids, ...existingIds) + 1
+        const steps = WorkspaceList.reorderPlan(ids, from, to, existingIds, spare)
+        for (const step of steps) {
+            Hyprland.dispatch(`hl.dsp.workspace.change_id({ workspace = ${step.from}, id = ${step.to} })`)
+        }
+    }
+
     // The next window whose title starts with `titleStart` opens against the bottom right corner of the work
     // area (the screen without what the bars keep free) of its monitor, as Windows 7's Volume Mixer does.
     // Floating windows only: a tiled one is floated first.

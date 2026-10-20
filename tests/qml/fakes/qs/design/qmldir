@@ -28,3 +28,8 @@ BluetoothGlyph 1.0 ../../../../../design/BluetoothGlyph.qml
 Slider 1.0 ../../../../../design/Slider.qml
 WindowsIcon 1.0 ../../../../../design/WindowsIcon.qml
 GroupFrame 1.0 ../../../../../design/GroupFrame.qml
+TaskbarButton 1.0 ../../../../../design/TaskbarButton.qml
+TaskbarItemFace 1.0 ../../../../../design/TaskbarItemFace.qml
+IconColorReader 1.0 ../../../../../design/IconColorReader.qml
+GlassShine 1.0 ../../../../../design/GlassShine.qml
+DotIcon 1.0 ../../../../../design/DotIcon.qml

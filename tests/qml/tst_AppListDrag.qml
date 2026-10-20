@@ -8,8 +8,9 @@ import '../../modules/startmenu'
 // Touch controls off: dragging an app picks it up at once and the list never scrolls by dragging (not on a
 // row, not between rows); the wheel and the scrollbar scroll it. On: dragging scrolls the list, and holding
 // an app picks it up. A click starts the app either way, and the scrollbar can be dragged in both. An app
-// with actions opens them under it with its arrow; a click on one starts that action, and the keyboard
-// walks through them.
+// with actions opens them (shown by the menu, not here) with a click on its arrow or by resting on it; they
+// stay while the pointer is on the app or on them, go to another app with actions at once, and close a
+// moment after the pointer left; the keyboard walks through them.
 Item {
     id: root
 
@@ -25,7 +26,8 @@ Item {
         anchors.fill: parent
         windowOffset: Qt.point(0, -600)
         returnArea: root
-        // From the top: app0 to app3 (42px each), a header (26px), then app4 to app29; app1 has two actions.
+        // From the top: app0 to app3 (42px each), a header (26px), then app4 to app29; app1 and app2 have two
+        // actions each.
         rows: {
             const rows = []
             for (let index = 0; index < 30; index++) {
@@ -43,7 +45,7 @@ Item {
                         comment: '',
                         command: ['app' + index],
                         icon: '',
-                        actions: index === 1 ? ['New Window', 'New Private Window'] : [],
+                        actions: index === 1 || index === 2 ? ['New Window', 'New Private Window'] : [],
                     },
                 })
             }
@@ -84,7 +86,10 @@ Item {
             list.touchControls = false
             list.launches = 0
             list.lastAction = -2
-            list.expanded = []
+            // On the header between app3 and app4: on no app.
+            mouseMove(list, 150, 175)
+            list.actionsApp = ''
+            list.paneHovered = false
             list.select(-1)
             view().positionViewAtBeginning()
             BarDrag.begins = 0
@@ -282,19 +287,12 @@ Item {
             compare(list.launches, 1)
         }
 
-        // The arrow at the right end of app1 (42 to 84), left of the scrollbar.
-        function test_the_arrow_opens_the_actions_and_a_click_on_one_starts_it() {
+        // The arrow at the right end of app1 (42 to 84), left of the scrollbar; app2's is right under it.
+        function test_a_click_on_the_arrow_opens_the_actions_at_once() {
             mouseClick(list, 270, 63)
             verify(list.isExpanded('app1'))
             compare(list.launches, 0)
-            // The first action right under app1, once the branch has slid open (26px each).
-            wait(300)
-            mouseClick(list, 150, 84 + 13)
-            compare(list.launches, 1)
-            compare(list.lastAction, 0)
-            // The second one, and the app itself still starts plainly.
-            mouseClick(list, 150, 84 + 26 + 13)
-            compare(list.lastAction, 1)
+            // The app itself still starts plainly.
             mouseClick(list, 150, 63)
             compare(list.lastAction, -1)
         }
@@ -303,10 +301,55 @@ Item {
             mouseClick(list, 270, 63)
             mouseClick(list, 270, 63)
             verify(list.isExpanded('app1') === false)
-            // What was under the actions is back right under app1.
-            wait(300)
-            mouseClick(list, 150, 84 + 13)
-            compare(list.lastAction, -1)
+        }
+
+        function test_resting_on_the_arrow_opens_the_actions_after_a_moment() {
+            mouseMove(list, 270, 63)
+            verify(list.isExpanded('app1') === false)
+            tryVerify(() => list.isExpanded('app1'), 1000)
+            compare(list.launches, 0)
+        }
+
+        function test_passing_over_the_arrow_does_not_open_them() {
+            mouseMove(list, 270, 63)
+            mouseMove(list, 150, 175)
+            wait(list.hoverDelay + 100)
+            verify(list.isExpanded('app1') === false)
+        }
+
+        function test_they_stay_on_their_app_and_close_a_moment_after_the_pointer_left() {
+            mouseClick(list, 270, 63)
+            mouseMove(list, 150, 63)
+            wait(list.hoverDelay + 100)
+            verify(list.isExpanded('app1'))
+            // Onto app0, which has no actions: still open for a moment, then closed.
+            mouseMove(list, 150, 21)
+            verify(list.isExpanded('app1'))
+            tryVerify(() => list.actionsApp === '', 1000)
+        }
+
+        function test_they_stay_while_the_pointer_is_on_them() {
+            mouseClick(list, 270, 63)
+            mouseMove(list, 150, 175)
+            list.paneHovered = true
+            wait(list.hoverDelay + 100)
+            verify(list.isExpanded('app1'))
+            list.paneHovered = false
+            tryVerify(() => list.actionsApp === '', 1000)
+        }
+
+        function test_onto_another_app_with_actions_they_go_there_at_once() {
+            mouseClick(list, 270, 63)
+            mouseMove(list, 150, 105)
+            verify(list.isExpanded('app2'))
+            verify(list.isExpanded('app1') === false)
+        }
+
+        function test_a_pointed_action_makes_its_app_current() {
+            mouseClick(list, 270, 63)
+            list.pointAction(1)
+            compare(list.selected, 1)
+            compare(list.selectedAction, 1)
         }
 
         function test_an_app_without_actions_has_no_arrow() {
@@ -318,23 +361,15 @@ Item {
         function test_the_keyboard_walks_through_the_actions() {
             list.select(1)
             list.expandSelected(1)
-            list.move(1)
             compare(list.selected, 1)
             compare(list.selectedAction, 0)
             list.move(1)
             compare(list.selectedAction, 1)
+            // The last one stays the last one.
             list.move(1)
-            compare(list.selected, 2)
-            compare(list.selectedAction, -1)
-            // Back up lands on the last action, the row right above.
-            list.move(-1)
-            compare(list.selected, 1)
             compare(list.selectedAction, 1)
             list.move(-1)
-            list.move(-1)
-            compare(list.selectedAction, -1)
-            list.move(-1)
-            compare(list.selected, 0)
+            compare(list.selectedAction, 0)
         }
 
         function test_closing_an_app_on_one_of_its_actions_goes_back_to_the_app() {
@@ -344,6 +379,18 @@ Item {
             list.expandSelected(0)
             compare(list.selected, 1)
             compare(list.selectedAction, -1)
+            verify(list.isExpanded('app1') === false)
+        }
+
+        function test_going_to_another_app_by_the_keyboard_closes_them() {
+            list.select(1)
+            list.expandSelected(1)
+            list.expandSelected(0)
+            list.expandSelected(1)
+            list.selectedAction = -1
+            list.move(1)
+            compare(list.selected, 2)
+            compare(list.actionsApp, '')
         }
     }
 }

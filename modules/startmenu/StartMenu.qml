@@ -10,7 +10,8 @@ import '../../services/startMenu.js' as StartMenuList
 // white pane read from the top, "Featured" and the featured apps, the dark line, "Most used" and the apps
 // used lately, another line and every app left (A to Z), with the search field under it; on the right, on
 // the glass, the user's places and the shut down button, the user's picture rising over the menu's top
-// edge. An app with actions of its own opens them under it like a tree branch.
+// edge. An app with actions of its own shows them in the right column instead of the places, the menu
+// growing a little wider for them, as Windows 7 shows an app's jump list.
 //
 // It takes the keyboard while open (typing goes to the search) and closes on Escape, on a click outside,
 // and once something was started. An app can also be dragged out of it and dropped on a workspace, to
@@ -36,6 +37,13 @@ PopupWindow {
     readonly property int menuWidth: 440
     readonly property int menuHeight: 560
     readonly property int leftWidth: 272
+    // How much wider the menu grows while an app's actions are shown. The window always has that room (the
+    // part past the glass lets the pointer through), so only the glass grows.
+    readonly property int actionsWidening: 80
+    readonly property bool actionsShown: list.actionsApp !== ''
+    property real glassWidth: actionsShown ? menuWidth + actionsWidening : menuWidth
+    // The app whose actions are shown, kept while they fade out.
+    property var actionsShownApp: null
     // How far the user's picture rises over the glass's top edge, as in Windows 7; the window is that much
     // taller than the glass.
     readonly property int pictureRise: Theme.space5
@@ -55,7 +63,14 @@ PopupWindow {
     // What the power menu's rows do, in its order.
     readonly property var powerActions: ['reboot', 'suspend', 'lock', 'logOut']
 
-    implicitWidth: menuWidth
+    // Not while hidden: a menu opened again starts at its own width at once.
+    Behavior on glassWidth {
+        enabled: root.visible
+
+        NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
+    }
+
+    implicitWidth: menuWidth + actionsWidening
     implicitHeight: menuHeight + pictureRise
     color: 'transparent'
     grabFocus: true
@@ -67,7 +82,7 @@ PopupWindow {
         item: BarDrag.active ? null : glass
 
         Region {
-            item: BarDrag.active ? null : places.pictureItem
+            item: BarDrag.active || places.placesShown === false ? null : places.pictureItem
         }
     }
     // Hyprland dismisses the popup (its focus grab) when a drag out of it ends, a put back included. A
@@ -128,7 +143,7 @@ PopupWindow {
 
     function reset(): void {
         search.text = ''
-        list.expanded = []
+        list.actionsApp = ''
         list.select(-1)
         list.scrollToTop()
         contextMenu.close()
@@ -273,6 +288,16 @@ PopupWindow {
         event.accepted = true
     }
 
+    Connections {
+        target: list
+
+        function onActionsAppChanged(): void {
+            if (list.actionsApp !== '') {
+                root.actionsShownApp = list.appWithId(list.actionsApp)
+            }
+        }
+    }
+
     Item {
         id: content
 
@@ -289,7 +314,7 @@ PopupWindow {
             id: glass
 
             y: root.pictureRise
-            width: parent.width
+            width: root.glassWidth
             height: parent.height - y
             cornerRadius: Theme.radiusPanel
             kind: 'taskbar'
@@ -353,12 +378,33 @@ PopupWindow {
 
             x: pane.x + pane.width + Theme.space2
             y: 0
-            width: parent.width - x - Theme.space2
+            width: root.glassWidth - x - Theme.space2
             height: parent.height - y - Theme.space2
+            placesShown: root.actionsShown === false
             tooltip: menuTooltip
             onOpened: StartMenuState.close()
             onPowerRequested: action => root.requestPower(action)
             onPowerMenuRequested: at => root.openPowerMenu(mapToItem(glass, at))
+        }
+
+        // In the places' room, down to the shut down button.
+        ActionsPane {
+            x: places.x
+            y: glass.y + Theme.space2
+            width: root.glassWidth - x - Theme.space2
+            height: places.y + places.powerTop - Theme.space2 - y
+            shown: root.actionsShown
+            app: root.actionsShownApp
+            current: root.actionsShown && list.selectedApp() !== null && list.selectedApp().id === list.actionsApp
+                ? list.selectedAction
+                : -1
+            onHoveredChanged: list.paneHovered = hovered
+            onPointed: index => list.pointAction(index)
+            onLaunched: index => {
+                if (root.actionsShownApp !== null) {
+                    root.launch(root.actionsShownApp, index)
+                }
+            }
         }
 
         // Kept on the glass: above it the window lets the pointer through.

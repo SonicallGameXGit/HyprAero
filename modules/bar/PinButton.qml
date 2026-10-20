@@ -2,9 +2,9 @@ import QtQuick
 import qs.design
 import qs.services
 
-// One pinned app on the bar: its icon on a glass tool button. Click starts it, right click asks for its menu, a
+// One pinned app on the bar: its icon on a taskbar button, as on Windows 7. Click starts it, right click asks for its menu, a
 // drag takes it among the pins (to move it) or to a workspace (to start it there).
-ControlButton {
+TaskbarButton {
     id: root
 
     required property var app
@@ -22,7 +22,7 @@ ControlButton {
     // `at` is in this button.
     signal menuRequested(point at)
 
-    kind: 'glassTool'
+    iconSource: iconPath
     implicitWidth: 32
     implicitHeight: 40
     opacity: takenOut ? 0 : 1

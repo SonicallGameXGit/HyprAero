@@ -21,6 +21,8 @@ Item {
     // It is kept inside the parent.
     property point at: Qt.point(0, 0)
     property bool above: false
+    // Still drawn after it was closed, while its owner fades it out.
+    property bool keepShown: false
     // The row the keyboard is on (-1: none).
     property int current: -1
     // The panel's size, for a window made to fit around it.
@@ -77,7 +79,7 @@ Item {
         return Qt.rect(place.x, place.y, row.width, row.height)
     }
 
-    visible: open
+    visible: open || keepShown
     z: 50
 
     MouseArea {

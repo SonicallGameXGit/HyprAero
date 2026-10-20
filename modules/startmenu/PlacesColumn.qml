@@ -6,15 +6,19 @@ import qs.services
 
 // The right column of the start menu, on the glass: the user's picture, their name (home), the personal
 // folders, the system places, and the shut down button with its menu at the bottom. Pointing at a place
-// shows its icon in the picture frame, as in Windows 7.
+// shows its icon in the picture frame, as in Windows 7. While an app's actions are shown in their place
+// (`placesShown` off) only the shut down button stays.
 Item {
     id: root
 
     property Tooltip tooltip: null
     // The icon of the place under the pointer ('' shows the user's picture).
     property string pointedIcon: ''
+    property bool placesShown: true
     // The picture, which rises over the glass: the menu's window takes the pointer there too.
     readonly property Item pictureItem: picture
+    // Where the shut down button's top is, for what is put above it.
+    readonly property real powerTop: powerRow.y
 
     // Something was opened; the menu closes.
     signal opened()
@@ -96,6 +100,13 @@ Item {
 
         anchors.horizontalCenter: parent.horizontalCenter
         y: 0
+        opacity: root.placesShown ? 1 : 0
+        visible: opacity > 0
+
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
+        }
+
         iconPath: AppIcons.forName(root.pointedIcon)
         Accessible.role: Accessible.Button
         Accessible.name: Session.canChoosePicture
@@ -117,6 +128,12 @@ Item {
         anchors.topMargin: Theme.space3
         width: parent.width
         spacing: 2
+        opacity: root.placesShown ? 1 : 0
+        visible: opacity > 0
+
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
+        }
 
         Place {
             label: Session.displayName
@@ -179,6 +196,8 @@ Item {
     // Shut down, and the arrow for the other ways of leaving; joined like one split button of glass, as in
     // Windows 7.
     Row {
+        id: powerRow
+
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         spacing: -1
