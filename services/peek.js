@@ -161,3 +161,11 @@ function sceneKey(scene) {
     const own = scene.highlight === null ? '' : part(scene.highlight)
     return [scene.mode, scene.base, scene.scrim, own, scene.windows.map(part).join(';')].join('|')
 }
+
+// Whether the peek's layer is mapped. Hyprland moves the keyboard to the last window when a layer unmaps while
+// what has the keyboard cannot take it, as a popup of the bar does: that ends the grab of the bar's menu and
+// closes it. So a mapped layer that has nothing left to draw stays mapped, empty, while `keepMapped` (a menu
+// is open over the bar); one that is not mapped is not mapped for it.
+function staysMapped(mapped, drawing, keepMapped) {
+    return drawing || (mapped && keepMapped)
+}

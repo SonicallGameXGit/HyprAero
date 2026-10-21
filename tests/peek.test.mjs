@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 
 // The module is a QML library script; strip the pragma and evaluate it as plain JS.
 const source = readFileSync(new URL('../services/peek.js', import.meta.url), 'utf8').replace('.pragma library', '')
-const { worthPeeking, peekLayout, peekMode, peekPlace, worthPeekingWorkspace, visibleRect, stackOrder, peekScene, sceneKey } = new Function(source + '\nreturn { worthPeeking, peekLayout, peekMode, peekPlace, worthPeekingWorkspace, visibleRect, stackOrder, peekScene, sceneKey }')()
+const { worthPeeking, peekLayout, peekMode, peekPlace, worthPeekingWorkspace, visibleRect, stackOrder, peekScene, sceneKey, staysMapped } = new Function(source + '\nreturn { worthPeeking, peekLayout, peekMode, peekPlace, worthPeekingWorkspace, visibleRect, stackOrder, peekScene, sceneKey, staysMapped }')()
 
 const window = (address, workspaceId, floating) => ({ address: address, workspaceId: workspaceId, floating: floating })
 
@@ -184,4 +184,11 @@ test('the scene key changes with what is drawn only', () => {
     const moved = sceneKey(peekScene({ kind: 'window', address: '0x1' }, [Object.assign({}, wanted, { at: { x: 1400, y: 40 } }), other], [1]))
     assert.notEqual(moved, key)
     assert.equal(sceneKey(null), '')
+})
+
+test('the layer stays mapped once the peek ends while a menu is open over the bar', () => {
+    assert.equal(staysMapped(false, true, false), true)
+    assert.equal(staysMapped(true, false, true), true)
+    assert.equal(staysMapped(true, false, false), false)
+    assert.equal(staysMapped(false, false, true), false)
 })

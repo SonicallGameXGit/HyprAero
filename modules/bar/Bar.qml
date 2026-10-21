@@ -413,6 +413,8 @@ PanelWindow {
     PeekLayer {
         screen: root.screen
         barHeight: root.height
+        // A card's menu ends the peek; the layer unmapping then would close the menu.
+        keepMapped: barMenu.visible
     }
 
     WorkspacePopup {

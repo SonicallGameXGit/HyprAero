@@ -17,6 +17,11 @@ PanelWindow {
 
     // The bar's height, kept free at the bottom.
     property int barHeight: 0
+    // A menu is open over the bar: the layer is not unmapped meanwhile (`PeekLogic.staysMapped`).
+    property bool keepMapped: false
+    // Something is drawn, or still fading out.
+    readonly property bool drawing: wanted || content.opacity > 0
+    property bool mapped: false
 
     readonly property var target: ({
         kind: Peek.kind,
@@ -58,16 +63,18 @@ PanelWindow {
     }
 
     color: 'transparent'
-    visible: wanted || content.opacity > 0
+    visible: mapped
     // No input at all: the pointer belongs to the bar's popup under it.
     mask: Region {}
 
     onKeyChanged: route()
     onWantedChanged: route()
+    onKeepMappedChanged: mapped = PeekLogic.staysMapped(mapped, drawing, keepMapped)
 
-    // Once fully hidden nothing is kept: the next peek starts fresh.
-    onVisibleChanged: {
-        if (visible) {
+    // Once fully faded out nothing is kept: the next peek starts fresh.
+    onDrawingChanged: {
+        mapped = PeekLogic.staysMapped(mapped, drawing, keepMapped)
+        if (drawing) {
             return
         }
 
@@ -156,7 +163,7 @@ PanelWindow {
             anchors.fill: parent
             z: root.front === firstScene ? 2 : 1
             unit: root.unit
-            active: root.visible
+            active: root.drawing
             opacity: root.front === firstScene || root.old === firstScene ? 1 : 0
             onReadyChanged: root.showLoaded(false)
 
@@ -171,7 +178,7 @@ PanelWindow {
             anchors.fill: parent
             z: root.front === secondScene ? 2 : 1
             unit: root.unit
-            active: root.visible
+            active: root.drawing
             opacity: root.front === secondScene || root.old === secondScene ? 1 : 0
             onReadyChanged: root.showLoaded(false)
 
