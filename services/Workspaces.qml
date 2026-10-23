@@ -113,6 +113,9 @@ Singleton {
     property int cornerTries: 0
     readonly property int closingHold: 10000
 
+    // A window closed (its address); what the shell kept for it can go.
+    signal windowClosed(string address)
+
     // Hyprland only tells us about opened / closed / moved windows; resizes arrive as raw events.
     // Refreshing (debounced) keeps the window sizes behind the icon order current.
     //
@@ -129,6 +132,10 @@ Singleton {
             if (event.name === 'changeworkspaceid') {
                 Hyprland.refreshMonitors()
                 Hyprland.refreshToplevels()
+            }
+
+            if (event.name === 'closewindow' && /^[0-9a-fA-F]+$/.test(event.data)) {
+                root.windowClosed('0x' + event.data)
             }
 
             if (event.name === 'openwindow' && cornerTitle !== '') {
@@ -312,13 +319,16 @@ Singleton {
 
     // Moves the workspace in slot `from` of the bar's `ids` to slot `to`, the ones between one slot over, by
     // renumbering them (`WorkspaceList.reorderPlan`), so each keeps its windows and layout and the view stays
-    // on what it shows. The moved one waits on a number past every one in use.
-    function reorder(ids: var, from: int, to: int): void {
+    // on what it shows. The moved one waits on a number past every one in use. Whether anything was asked
+    // of Hyprland.
+    function reorder(ids: var, from: int, to: int): bool {
         const spare = Math.max(...ids, ...existingIds) + 1
         const steps = WorkspaceList.reorderPlan(ids, from, to, existingIds, spare)
         for (const step of steps) {
             Hyprland.dispatch(`hl.dsp.workspace.change_id({ workspace = ${step.from}, id = ${step.to} })`)
         }
+
+        return steps.length > 0
     }
 
     // The next window whose title starts with `titleStart` opens against the bottom right corner of the work

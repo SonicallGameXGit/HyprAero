@@ -77,7 +77,7 @@ Grid {
                 required property int index
 
                 readonly property var window: root.windows[index]
-                readonly property string iconPath: AppIcons.pathFor(window.appId)
+                readonly property string iconPath: IconOverrides.windowIcon(window.address, window.appId)
 
                 // The captured picture's own size wins over Hyprland's window size (they can differ,
                 // e.g. for floating windows), which stays as the early guess.

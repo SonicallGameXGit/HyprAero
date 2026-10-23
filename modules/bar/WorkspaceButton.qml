@@ -3,10 +3,13 @@ import qs.design
 import qs.services
 
 // One workspace: a dot when empty, the app icon when it has one app, and the biggest app's icon
-// with the second biggest as a small badge in the bottom-right corner when it has several. One with
-// windows is an open app's button, as on the Windows 7 taskbar, the one on screen brighter. One with windows
-// can be dragged along the bar to move the workspace among the others, as Windows 7 reorders its buttons;
-// where it goes is the bar's business (`reorder*` signals, the offset along the bar since the press).
+// with the second biggest as a small badge in the bottom-right corner when it has several (each the icon of
+// that app's biggest window, `IconOverrides.windowIcon`). A workspace given an icon of its own
+// (`IconOverrides`) always shows only that, whatever its windows are, empty too. One with windows is an open
+// app's button, as on the Windows 7 taskbar, the one on screen brighter. One with windows can be dragged
+// along the bar to move the workspace among the others, as Windows 7 reorders its buttons; where it goes is
+// the bar's business (`reorder*` signals, the offset along the bar since the press). A right click asks for
+// its menu (`menuRequested`).
 TaskbarButton {
     id: root
 
@@ -14,8 +17,16 @@ TaskbarButton {
 
     readonly property string mainApp: entry === null || entry.mainApp === null ? '' : entry.mainApp
     readonly property string secondApp: entry === null || entry.secondApp === null ? '' : entry.secondApp
-    readonly property string mainPath: mainApp === '' ? '' : AppIcons.pathFor(mainApp)
-    readonly property string secondPath: secondApp === '' ? '' : AppIcons.pathFor(secondApp)
+    // The workspace's own icon, '' when it shows its windows' icons.
+    readonly property string ownPath: entry === null ? '' : IconOverrides.workspaceIcon(entry.id)
+    readonly property string mainPath: {
+        if (ownPath !== '') {
+            return ownPath
+        }
+
+        return mainApp === '' ? '' : biggestWindowIcon(mainApp)
+    }
+    readonly property string secondPath: ownPath !== '' || secondApp === '' ? '' : biggestWindowIcon(secondApp)
     readonly property int iconSize: 36
     readonly property int badgeSize: 18
 
@@ -24,6 +35,14 @@ TaskbarButton {
     signal reorderStarted()
     signal reorderMoved(real offset)
     signal reorderEnded()
+    // `at` is in this button.
+    signal menuRequested(point at)
+
+    // The icon of the app's biggest window (the windows come biggest first).
+    function biggestWindowIcon(appId: string): string {
+        const window = entry.windows.find(item => item.appId === appId)
+        return IconOverrides.windowIcon(window === undefined ? '' : window.address, appId)
+    }
 
     iconSource: mainPath
     open: entry !== null && entry.windows.length > 0
@@ -52,9 +71,15 @@ TaskbarButton {
         }
     }
 
+    // The button's own MouseArea takes only the left button, so a right press comes down to here.
+    TapHandler {
+        acceptedButtons: Qt.RightButton
+        onTapped: eventPoint => root.menuRequested(eventPoint.position)
+    }
+
     DotIcon {
         anchors.centerIn: parent
-        visible: root.mainApp === ''
+        visible: root.mainApp === '' && root.ownPath === ''
     }
 
     GenericAppIcon {
@@ -77,7 +102,7 @@ TaskbarButton {
         y: parent.height / 2 + root.iconSize / 2 - root.badgeSize + 2
         width: root.badgeSize
         height: root.badgeSize
-        visible: root.secondApp !== '' && root.secondPath === ''
+        visible: root.ownPath === '' && root.secondApp !== '' && root.secondPath === ''
     }
 
     AppIconImage {

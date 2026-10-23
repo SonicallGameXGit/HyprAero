@@ -18,8 +18,9 @@ QtObject {
         switchedTo = id
     }
 
-    function reorder(ids: var, from: int, to: int): void {
+    function reorder(ids: var, from: int, to: int): bool {
         reordered = { ids: ids, from: from, to: to }
+        return true
     }
 
     function moveWorkspace(fromId: int, toId: int): void {

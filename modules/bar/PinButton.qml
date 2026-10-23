@@ -11,7 +11,7 @@ TaskbarButton {
     // The bar's screen, for the ghost left behind while the pin is dragged.
     property var screen: null
 
-    readonly property string iconPath: AppIcons.forName(app.icon)
+    readonly property string iconPath: IconOverrides.appIcon(app.id, app.icon)
     // What the bar's tooltip says over it.
     readonly property string tooltipText: app.name
     readonly property int iconSize: 24

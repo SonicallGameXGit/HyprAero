@@ -42,7 +42,7 @@ Item {
     signal expandToggled()
     signal menuRequested(point at)
 
-    readonly property string iconPath: AppIcons.forName(app.icon)
+    readonly property string iconPath: IconOverrides.appIcon(app.id, app.icon)
     readonly property int iconSize: big ? 32 : 24
     readonly property string detail: StartMenuList.appDetail(app)
     readonly property bool hasActions: app.actions.length > 0

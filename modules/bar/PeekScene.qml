@@ -60,7 +60,7 @@ Item {
     readonly property int frameBorder: 8
     readonly property int titleHeight: 24
     readonly property int iconSize: 16
-    readonly property string fitIconPath: fitWindow === null ? '' : AppIcons.pathFor(fitWindow.appId)
+    readonly property string fitIconPath: fitWindow === null ? '' : IconOverrides.windowIcon(fitWindow.address, fitWindow.appId)
     readonly property bool fitClosing: fitWindow !== null && Workspaces.closingAddresses.includes(fitWindow.address)
 
     Item {

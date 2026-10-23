@@ -14,7 +14,8 @@ import '../../services/workspaceList.js' as WorkspaceList
 // (`WorkspaceList.joinCandidate`; moving goes on as before meanwhile): that button lights up, the held one
 // turns see-through over it, and let go its windows go to that workspace (`Workspaces.moveWorkspace`), the
 // others gliding back. Until Hyprland has done either, the buttons keep showing what they showed when the drag
-// started (`frozen`), so nothing flickers in between.
+// started (`frozen`), so nothing flickers in between; the workspaces' own icons go with their buttons then
+// (`IconOverrides.reorderWorkspaces`), a joined workspace keeping its own.
 Item {
     id: root
 
@@ -48,6 +49,8 @@ Item {
     // address of one of its windows, '' for none, null when it does not matter).
     property var frozen: []
     property var expected: []
+    // The reorder whose workspace icons still have to follow (`{ ids, from, to }`), null for none.
+    property var iconMove: null
     readonly property bool reordering: dragFrom >= 0
     readonly property real minX: leftLimit - x
     readonly property real maxX: rightLimit - x - slotWidth
@@ -60,6 +63,8 @@ Item {
     signal buttonHovered(var button)
     // A button was taken: the bar closes what is open over the buttons.
     signal reorderBegan()
+    // A right click on a button; `at` is in the window.
+    signal menuRequested(var entry, point at)
 
     function buttonAt(index: int): var {
         return buttons.itemAt(index)
@@ -148,7 +153,10 @@ Item {
 
         expected = next
         caughtUpTimer.restart()
-        Workspaces.reorder(frozen.map(entry => entry.id), dragFrom, dragTo)
+        const ids = frozen.map(entry => entry.id)
+        if (Workspaces.reorder(ids, dragFrom, dragTo)) {
+            iconMove = { ids: ids, from: dragFrom, to: dragTo }
+        }
     }
 
     // Every slot shows what it should: Hyprland has done the renumbering.
@@ -184,6 +192,11 @@ Item {
         }
 
         caughtUpTimer.stop()
+        if (iconMove !== null) {
+            IconOverrides.reorderWorkspaces(iconMove.ids, iconMove.from, iconMove.to)
+            iconMove = null
+        }
+
         snapping = true
         dragFrom = -1
         dragTo = -1
@@ -281,6 +294,11 @@ Item {
             onReorderStarted: root.begin(index)
             onReorderMoved: offset => root.move(offset)
             onReorderEnded: root.end()
+            onMenuRequested: at => {
+                if (root.reordering === false && button.entry !== null) {
+                    root.menuRequested(button.entry, button.mapToItem(null, at))
+                }
+            }
 
             Behavior on opacity {
                 NumberAnimation { duration: Theme.motionSoft; easing.type: Easing.OutCubic }

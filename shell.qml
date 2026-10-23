@@ -1,6 +1,7 @@
 import Quickshell
 import QtQuick
 import qs.modules.bar
+import qs.modules.icons
 import qs.modules.system
 import qs.modules.tray
 
@@ -26,5 +27,8 @@ ShellRoot {
     }
 
     EjectProblem {
+    }
+
+    IconManager {
     }
 }

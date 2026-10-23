@@ -9,7 +9,8 @@ import '../../modules/bar'
 // it stops dead at the limits, and let go it goes to its slot (past the ends the first or the last) and the
 // reorder is asked of Hyprland. Covering a third of another button for a moment it joins it instead: that
 // one lights up, and let go its windows are asked to go there; passing over it does not. Until the entries have caught up the buttons keep what
-// they showed.
+// they showed; then the workspaces' own icons follow a reorder (not a join). A right click asks for the
+// button's menu.
 Item {
     id: root
 
@@ -39,6 +40,9 @@ Item {
         leftLimit: 64
         rightLimit: strip.x + strip.width
         onReorderBegan: began++
+        onMenuRequested: (entry, at) => menuFor = entry.id
+
+        property int menuFor: 0
     }
 
     TestCase {
@@ -51,7 +55,10 @@ Item {
             Workspaces.joined = null
             Workspaces.switchedTo = 0
             strip.began = 0
+            strip.menuFor = 0
             tryVerify(() => strip.reordering === false, 3000)
+            // After the last test's drag has ended, which may move the icons.
+            IconOverrides.reordered = null
         }
 
         // Presses the button in slot `slot` and moves it `dx` sideways, `steps` moves; not let go.
@@ -113,6 +120,23 @@ Item {
             compare(strip.buttonAt(0).x, 0)
             compare(strip.buttonAt(2).x, 150)
             compare(strip.buttonAt(2).entry.windows[0].address, '0xa')
+        }
+
+        function test_icons_follow_the_reorder_only_once_hyprland_has_caught_up() {
+            const at = hold(0, 170)
+            mouseRelease(strip, at, 24)
+            wait(300)
+            compare(IconOverrides.reordered, null)
+            Workspaces.entries = root.entriesOf(['0xb', '0xc', '0xa', '0xd'])
+            compare(IconOverrides.reordered.ids, [1, 2, 3, 4])
+            compare(IconOverrides.reordered.from, 0)
+            compare(IconOverrides.reordered.to, 2)
+        }
+
+        function test_a_right_click_asks_for_that_buttons_menu() {
+            mouseClick(strip, 75 * 2 + 36, 24, Qt.RightButton)
+            compare(strip.menuFor, 3)
+            compare(Workspaces.switchedTo, 0)
         }
 
         function test_it_stops_dead_at_the_limits() {
@@ -178,6 +202,8 @@ Item {
             compare(strip.buttonAt(0).x, 0)
             compare(strip.buttonAt(0).entry.windows.length, 0)
             tryCompare(strip.buttonAt(0), 'opacity', 1)
+            // Each workspace keeps its own icon.
+            compare(IconOverrides.reordered, null)
         }
 
         // Past button 1 first (they trade), then back onto it where it now stands: joined from the other side.

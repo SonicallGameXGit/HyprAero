@@ -2,9 +2,10 @@ import QtQuick
 
 // An app icon from a file or the icon theme, smooth at any size. Theme icons often only exist as a big
 // picture (256px), and the theme shrinks it to the asked size in one step, which leaves jagged edges.
-// So the big picture is loaded as it is and the GPU shrinks it through mipmaps.
+// So the big picture is loaded as it is and the GPU shrinks it through mipmaps. A long list of small icons
+// (the Icon Manager's) loads them smaller, so each is quick to read.
 Image {
-    readonly property int loadSize: 256
+    property int loadSize: 256
 
     sourceSize: Qt.size(loadSize, loadSize)
     asynchronous: true

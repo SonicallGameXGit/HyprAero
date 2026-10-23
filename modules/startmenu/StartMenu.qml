@@ -168,6 +168,7 @@ PopupWindow {
         items.push({ separator: true })
         items.push({ text: Apps.isFeatured(app.id) ? qsTr('Remove from Featured') : qsTr('Add to Featured'), enabled: true })
         items.push({ text: qsTr('Forget usage'), enabled: Apps.scores[app.id] !== undefined })
+        items.push({ text: qsTr('Change icon...'), enabled: true })
         contextMenu.items = items
         contextMenu.at = at
         contextMenu.above = false
@@ -183,7 +184,7 @@ PopupWindow {
             return
         }
 
-        // After the actions: the separator, then featuring, then forgetting.
+        // After the actions: the separator, then featuring, forgetting and the icon.
         if (index === actionCount + 2) {
             Apps.setFeatured(app.id, Apps.isFeatured(app.id) === false)
             return
@@ -191,6 +192,13 @@ PopupWindow {
 
         if (index === actionCount + 3) {
             Apps.forget(app.id)
+            return
+        }
+
+        // The Icon Manager is a window of its own, so the menu closes.
+        if (index === actionCount + 4) {
+            IconOverrides.openManager('apps', app.id, app.name, '')
+            StartMenuState.close()
         }
     }
 

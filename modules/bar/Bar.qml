@@ -239,8 +239,33 @@ PanelWindow {
             { text: qsTr('Fit into layout'), enabled: window.floating, action: 'tile' },
             { text: qsTr('Float freely'), enabled: window.floating === false, action: 'float' },
             { text: pinned ? qsTr('Unpin from bar') : qsTr('Pin to bar'), enabled: app !== '', action: pinned ? 'unpin' : 'pin', app: app },
+            {
+                text: qsTr('Change icon...'),
+                action: 'changeIcon',
+                kind: 'windows',
+                key: window.address,
+                name: window.title === '' ? window.appId : window.title,
+                app: app,
+            },
             { separator: true },
             { text: qsTr('Close'), action: 'close' },
+        ], at)
+    }
+
+    // A workspace button's menu, `at` in the bar's coordinates. The previews over it close: the menu opens
+    // where they would be.
+    function openWorkspaceMenu(entry: var, at: point): void {
+        hideTimer.stop()
+        popupButton = null
+        Peek.cancel()
+        systemMenuOpen = false
+        menuWindow = null
+        menuApp = null
+        const name = qsTr('Workspace %1').arg(entry.id)
+        barMenu.show([
+            { text: qsTr('Go to workspace %1').arg(entry.id), bold: true, action: 'workspace', id: entry.id },
+            { separator: true },
+            { text: qsTr('Change icon...'), action: 'changeIcon', kind: 'workspaces', key: String(entry.id), name: name, app: '' },
         ], at)
     }
 
@@ -263,6 +288,7 @@ PanelWindow {
         }
 
         items.push({ separator: true })
+        items.push({ text: qsTr('Change icon...'), action: 'changeIcon', kind: 'apps', key: app.id, name: app.name, app: '' })
         items.push({ text: qsTr('Unpin from bar'), action: 'unpin', app: app.id })
         systemMenuOpen = false
         menuWindow = null
@@ -291,6 +317,10 @@ PanelWindow {
             Apps.launch(menuApp.id, item.index)
         } else if (item.action === 'customizeTray') {
             Tray.openCustomize()
+        } else if (item.action === 'workspace') {
+            Workspaces.switchTo(item.id)
+        } else if (item.action === 'changeIcon') {
+            IconOverrides.openManager(item.kind, item.key, item.name, item.app)
         }
     }
 
@@ -565,7 +595,7 @@ PanelWindow {
         height: parent.height
 
         // Under everything on the bar, so it only gets right clicks on the empty glass (the controls keep
-        // theirs). Not on the workspace buttons either: there it would read as a menu of the workspace.
+        // theirs). Not between the workspace buttons either: there it would read as a menu of the workspace.
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.RightButton
@@ -655,6 +685,7 @@ PanelWindow {
             leftLimit: pinBar.x + pinBar.width + Theme.taskbarItemGap
             rightLimit: trayArea.x - Theme.taskbarItemGap
             onButtonHovered: button => root.buttonHoverChanged(button)
+            onMenuRequested: (entry, at) => root.openWorkspaceMenu(entry, at)
             onReorderBegan: {
                 hideTimer.stop()
                 root.popupButton = null
