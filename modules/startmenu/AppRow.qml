@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.design
+import qs.modules.common
 import qs.services
 import '../../services/startMenu.js' as StartMenuList
 

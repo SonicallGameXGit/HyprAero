@@ -1,0 +1,4 @@
+[submodule "design"]
+	path = design
+	url = https://github.com/SonicallGameXGit/HyprAero.git
+	branch = design

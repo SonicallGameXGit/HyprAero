@@ -1,8 +1,8 @@
 .pragma library
 
 // The maths of the clock flyout: the grids of its calendar (days of a month, months of a year, years of a
-// decade), moving between them, and the angles of the analog clock's hands. Plain JS, no Quickshell
-// imports, so node can test it. Months are 0-11 and weekdays 0-6 from Sunday, as in `Date`.
+// decade) and moving between them (the analog clock's hands are `design/clockHands.js`). Plain JS, no
+// Quickshell imports, so node can test it. Months are 0-11 and weekdays 0-6 from Sunday, as in `Date`.
 
 // `new Date(year, ...)` turns the years 0-99 into 1900-1999; setting the year afterwards does not.
 function dateOf(year, month, day) {
@@ -95,18 +95,6 @@ function zoomedOut(view) {
 
 function zoomedIn(view) {
     return view === 'years' ? 'months' : 'days'
-}
-
-// The hands' angles in degrees, clockwise from 12. The minute and hour hands creep between marks, the second
-// hand ticks (as the analog clock of Windows 7 does).
-function handAngles(date) {
-    const seconds = date.getSeconds()
-    const minutes = date.getMinutes()
-    return {
-        second: seconds * 6,
-        minute: (minutes + seconds / 60) * 6,
-        hour: ((date.getHours() % 12) + minutes / 60) * 30,
-    }
 }
 
 // A locale's short date format with the year in full ("M/d/yy" to "M/d/yyyy"): Windows 7's taskbar shows

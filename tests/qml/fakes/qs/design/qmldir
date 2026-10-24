@@ -1,8 +1,8 @@
 module qs.design
+singleton SystemTheme 1.0 ../../../../../design/SystemTheme.qml
 singleton Theme 1.0 ../../../../../design/Theme.qml
 AppIconImage 1.0 ../../../../../design/AppIconImage.qml
 ChevronGlyph 1.0 ../../../../../design/ChevronGlyph.qml
-DragSource 1.0 ../../../../../design/DragSource.qml
 GenericAppIcon 1.0 ../../../../../design/GenericAppIcon.qml
 SearchGlyph 1.0 ../../../../../design/SearchGlyph.qml
 SortGlyph 1.0 ../../../../../design/SortGlyph.qml
@@ -21,7 +21,6 @@ ScrollBar 1.0 ../../../../../design/ScrollBar.qml
 EtchedLine 1.0 ../../../../../design/EtchedLine.qml
 GlassText 1.0 ../../../../../design/GlassText.qml
 StatusBadge 1.0 ../../../../../design/StatusBadge.qml
-VolumeGlyph 1.0 ../../../../../design/VolumeGlyph.qml
 BatteryGlyph 1.0 ../../../../../design/BatteryGlyph.qml
 DriveGlyph 1.0 ../../../../../design/DriveGlyph.qml
 BluetoothGlyph 1.0 ../../../../../design/BluetoothGlyph.qml

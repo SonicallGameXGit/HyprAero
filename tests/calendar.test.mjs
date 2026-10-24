@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 
 // The module is a QML library script; strip the pragma and evaluate it as plain JS.
 const source = readFileSync(new URL('../services/calendar.js', import.meta.url), 'utf8').replace('.pragma library', '')
-const calendar = new Function(source + '\nreturn { weekdayOrder, monthGrid, shiftMonth, monthCells, yearCells, sameDay, step, zoomedOut, zoomedIn, handAngles, fullYearFormat, withSeconds }')()
+const calendar = new Function(source + '\nreturn { weekdayOrder, monthGrid, shiftMonth, monthCells, yearCells, sameDay, step, zoomedOut, zoomedIn, fullYearFormat, withSeconds }')()
 
 test('weekdays: start on the given day and wrap', () => {
     assert.deepEqual(calendar.weekdayOrder(0), [0, 1, 2, 3, 4, 5, 6])
@@ -86,15 +86,6 @@ test('zoom: out to months then years and stops; in to months then days and stops
     assert.equal(calendar.zoomedIn('years'), 'months')
     assert.equal(calendar.zoomedIn('months'), 'days')
     assert.equal(calendar.zoomedIn('days'), 'days')
-})
-
-test('hands: noon, a quarter past three, and the creeping of the slower hands', () => {
-    assert.deepEqual(calendar.handAngles(new Date(2026, 9, 15, 12, 0, 0)), { second: 0, minute: 0, hour: 0 })
-    assert.deepEqual(calendar.handAngles(new Date(2026, 9, 15, 15, 15, 0)), { second: 0, minute: 90, hour: 97.5 })
-    const half = calendar.handAngles(new Date(2026, 9, 15, 6, 30, 30))
-    assert.equal(half.second, 180)
-    assert.equal(half.minute, 183)
-    assert.equal(half.hour, 195)
 })
 
 test('fullYearFormat: two year letters become four, anything else stays', () => {

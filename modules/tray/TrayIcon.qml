@@ -1,6 +1,7 @@
 import Quickshell.Widgets
 import QtQuick
 import qs.design
+import qs.modules.common
 import qs.services
 
 // One icon in the notification area, on the bar or in the flyout: a tool button with the app's 16px icon,

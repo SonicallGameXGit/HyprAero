@@ -19,9 +19,13 @@ The Lua examples go into your Hyprland config (`~/.config/hypr/hyprland.lua`). O
 ### 2. Get it and run it
 
 ```bash
-git clone https://github.com/SonicallGameXGit/HyprAero.git ~/HyprAero
+git clone -b bar --recurse-submodules https://github.com/SonicallGameXGit/HyprAero.git ~/HyprAero
 qs --path ~/HyprAero     # qs log --path ~/HyprAero reads its log, qs kill --path ~/HyprAero stops it
 ```
+
+HyprAero keeps each of its modules on a branch of its own; this is the `bar` branch, the desktop shell. Notifications are another module (the `notifications` branch; the `main` branch lists them all), installed the same way and never needed by the shell. The shell's look comes from the `design` branch, which git puts into `~/HyprAero/design/` (that is what `--recurse-submodules` is for; in a clone made without it, run `git submodule update --init` in `~/HyprAero`).
+
+To update: `git -C ~/HyprAero pull --recurse-submodules`. The shell reloads by itself when its files change.
 
 To start it with Hyprland, add it to the autostart. Start the tray's watcher with it, and let **the apps that put an icon in the tray** (Discord, Telegram, Steam, ...) wait for that watcher: autostart commands all start at once, and an Electron app (Discord) that starts before the watcher never shows its tray icon (see the tray in "What works"). `gdbus wait` returns as soon as the watcher is there, at most 10 seconds later. If you used another bar (Waybar, an AGS shell, ...), take that one out, or both will show:
 

@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Wayland
 import QtQuick
 import qs.design
+import qs.modules.common
 import qs.services
 import '../../services/pictureBounds.js' as PictureBounds
 

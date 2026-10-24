@@ -2,7 +2,6 @@ module qs.services
 singleton AppIcons 1.0 AppIcons.qml
 singleton Apps 1.0 Apps.qml
 singleton BarDrag 1.0 BarDrag.qml
-singleton SystemTheme 1.0 SystemTheme.qml
 singleton Workspaces 1.0 Workspaces.qml
 singleton Tray 1.0 Tray.qml
 singleton SystemIcons 1.0 SystemIcons.qml

@@ -1,5 +1,6 @@
 import QtQuick
 import qs.design
+import qs.modules.common
 import qs.services
 
 // One pinned app on the bar: its icon on a taskbar button, as on Windows 7. Click starts it, right click asks for its menu, a

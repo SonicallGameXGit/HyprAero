@@ -1,0 +1,2 @@
+module qs.modules.common
+DragSource 1.0 ../../../../../../modules/common/DragSource.qml

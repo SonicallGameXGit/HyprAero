@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process'
 
 // The module is a QML library script; strip the pragma and evaluate it as plain JS.
 const source = readFileSync(new URL('../services/userInfo.js', import.meta.url), 'utf8').replace('.pragma library', '')
-const user = new Function(source + '\nreturn { userFolders, fullName, initial, avatarIndex, pictureFilter, chosenPicture, savePictureCommand }')()
+const user = new Function(source + '\nreturn { userFolders, fullName, pictureFilter, chosenPicture, savePictureCommand }')()
 
 // Runs a command array as Quickshell's `Process` would: no shell around it.
 const run = command => spawnSync(command[0], command.slice(1))
@@ -53,14 +53,6 @@ test('full name: the first part of the comment field, or nothing', () => {
     assert.equal(user.fullName(passwd, 'me'), 'Mikhail K')
     assert.equal(user.fullName(passwd, 'root'), '')
     assert.equal(user.fullName(passwd, 'nobody'), '')
-})
-
-test('avatar: an upper-case initial, and a stable colour within range', () => {
-    assert.equal(user.initial(' mike'), 'M')
-    assert.equal(user.initial(''), '?')
-    const index = user.avatarIndex('sonicall', 6)
-    assert.equal(index, user.avatarIndex('sonicall', 6))
-    assert.ok(index >= 0 && index < 6)
 })
 
 test('picture filter: a label and every kind in both cases', () => {
