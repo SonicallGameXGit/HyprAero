@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Shapes
-import '../services/calendar.js' as CalendarMath
+import 'clockHands.js' as ClockHands
 
 // The round clock of the time flyout, after Windows 7's (.aero/STYLE.md "Analog clock"): a dark blue glass
 // disc, light ticks, white hour and minute hands and a thin red second hand that ticks, a shine over the
@@ -13,7 +13,7 @@ Item {
     property real diameter: 120
     property var date: new Date()
 
-    readonly property var angles: CalendarMath.handAngles(date)
+    readonly property var angles: ClockHands.handAngles(date)
     readonly property real radius: diameter / 2
 
     implicitWidth: diameter

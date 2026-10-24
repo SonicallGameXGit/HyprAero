@@ -2,7 +2,6 @@ pragma Singleton
 
 import Quickshell
 import QtQuick
-import qs.services
 
 // The only place visual values are written (.aero/STYLE.md section 4). Only the tokens that
 // the existing primitives use are here; add the rest here first when something needs them.

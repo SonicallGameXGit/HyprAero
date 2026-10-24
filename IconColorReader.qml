@@ -1,7 +1,7 @@
 import QtQuick
-import '../services/iconColor.js' as IconColor
+import 'iconColor.js' as IconColor
 
-// Finds the main colour of an icon (`services/iconColor.js`) by drawing it small on a canvas that is never
+// Finds the main colour of an icon (`iconColor.js`) by drawing it small on a canvas that is never
 // shown and reading its pixels; each icon is read once for the session. Put it anywhere in the item that
 // needs the colour.
 Canvas {

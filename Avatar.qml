@@ -1,5 +1,5 @@
 import QtQuick
-import '../services/userInfo.js' as UserInfo
+import 'avatar.js' as AvatarText
 
 // A person without a picture: their initial on a colour chosen by their name (avatar-1..6), under the
 // avatar glass.
@@ -12,12 +12,12 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: root.radius
-        color: Theme.avatarColors[UserInfo.avatarIndex(root.name, Theme.avatarColors.length)]
+        color: Theme.avatarColors[AvatarText.avatarIndex(root.name, Theme.avatarColors.length)]
     }
 
     Text {
         anchors.centerIn: parent
-        text: UserInfo.initial(root.name)
+        text: AvatarText.initial(root.name)
         color: Theme.avatarText
         font.family: Theme.fontUi
         font.pixelSize: root.height * 0.5

@@ -1,0 +1,14 @@
+module qs.design
+singleton Theme 1.0 ../../../../../Theme.qml
+singleton SystemTheme 1.0 ../../../../../SystemTheme.qml
+CheckBox 1.0 ../../../../../CheckBox.qml
+CheckGlyph 1.0 ../../../../../CheckGlyph.qml
+ChevronGlyph 1.0 ../../../../../ChevronGlyph.qml
+ChoiceBox 1.0 ../../../../../ChoiceBox.qml
+ControlButton 1.0 ../../../../../ControlButton.qml
+GroupFrame 1.0 ../../../../../GroupFrame.qml
+LinkText 1.0 ../../../../../LinkText.qml
+MenuPanel 1.0 ../../../../../MenuPanel.qml
+ScrollBar 1.0 ../../../../../ScrollBar.qml
+Slider 1.0 ../../../../../Slider.qml
+Tooltip 1.0 ../../../../../Tooltip.qml
