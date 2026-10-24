@@ -295,6 +295,15 @@ On a solid pane (the volume flyout's mute button) the same shapes are blue, with
 
 The flyouts of the clock, the volume, the network, the power and the hidden icons are Windows 7's: a frame of window glass (from outside: `glass-border-outer`, `glass-border-inner`, 4px of `glass-tint`, `glass-border-inner`, `glass-border-outer`), a `surface` body, and their links centred in a band along the bottom (`surface-sunken`, its top fading from `toolbar-border` over 5px). Words on the body are `text`, links `text-link`, group headings `text-muted` with a line over them.
 
+### Notification balloons
+
+A notification is Windows 7's balloon, which Windows draws as a tooltip: the `tooltip-face` gradient edged in `tooltip-border`, the `menu-shadow`, `radius-panel` corners, and a stem (its pointed tail) on the edge nearest the corner it points at, standing against a "wall" (one side upright, flush with the point, the other slanting back). Its words are `font-size-small`, the title bold, both in `text`; a 16px icon sits before the title, and a picture sent with the notification 48px left of the title and the words; a small flat close button at the top right; the action buttons along the bottom, wrapping onto more rows. It fades in and out (`motion-soft`).
+
+| Token | Value |
+| --- | --- |
+| `balloon-stem-width` / `balloon-stem-height` | 16 / 16 px |
+| `balloon-stem-inset` (from the balloon's side to the stem's upright side) | 16px |
+
 ### Sliders
 
 A slider (the volume) is Windows 7's trackbar: a narrow sunken channel, a pale ramp beside it widening towards the top, small tick marks, and an aqua thumb pointing at the ramp. Where several sliders stand side by side (the Volume Mixer), only the one with the keyboard has the aqua thumb; the others have a plain grey one.

@@ -56,7 +56,7 @@ design/                         (this branch's root; a module sees it at design/
     Theme.qml                   the tokens (singleton, both themes)
     SystemTheme.qml             follows the system colour scheme (portal, gdbus)
     <Primitive>.qml             one file per primitive (section 7)
-    *.js                        plain logic of the primitives: avatar, clockHands, colorScheme, iconColor, trayGlyphs
+    *.js                        plain logic of the primitives: avatar, balloonShape, clockHands, colorScheme, iconColor, trayGlyphs
     tests/                      node tests of the JS (*.test.mjs)
     tests/qml/                  qmltestrunner tests of primitives, with fakes/ standing in for Quickshell
 ```
@@ -108,15 +108,15 @@ Tokens live in: `Theme.qml` (singleton; only the tokens in use so far, both them
 
 - Glass and surfaces: `GlassPanel` (kinds `window`, the family's pale glass, and `taskbar`, the shell's darker chrome), `BarGlass` (Windows 7's taskbar strip), `GlassText` (words in a glass's text colour), `GlassShine` (Windows 7's sharp-edged gloss over the top-left of the taskbar's glass buttons), `EtchedLine` (Windows 7's separator, fading out at both ends), `FlyoutFrame` (Windows 7's flyout over the notification area: a window-glass frame, a white body, the links in a band along the bottom), `GroupFrame` (Windows 7's group box: a rounded 2px frame the group's name breaks, its first letter underlined as the accelerator).
 - Controls: `ControlButton` (kinds normal / accent / tool / danger and, on the taskbar glass, glass / glassTool; `highlighted`, `current`, keyboard focus, a flat grey disabled look), `CheckBox` (Windows 7's: a light gap and a sunken square inside the box), `RadioButton` (the check box's materials made round), `ChoiceBox` (a drop-down list whose list is a `MenuPanel`), `SearchField`, `TextField` (the search field's look without the magnifier; `hidden` for keys), `LinkText` (also light on the taskbar glass, `onGlass`), `ScrollBar` (Windows 7's vertical scrollbar: sunken track, a thumb with its own gloss running left to right, grip lines; drag, or press the track to page), `Slider` (Windows 7's trackbar: a sunken channel, a ramp, ticks, an aqua thumb, a plain grey one while `quiet` and without the keyboard; vertical, or turned for horizontal), `DropZone`.
-- Menus, dialogs, tips: `MenuPanel` (Windows 7's icon margin closed by an etched line; items bold, indented on a tree line, with an icon, a tick and a submenu arrow), `PopupMenu` (a `MenuPanel` in a grabbing popup window, fading in rising and out sinking), `TaskDialog`, `Tooltip` (Windows 7's white to grey-blue face).
+- Menus, dialogs, tips: `MenuPanel` (Windows 7's icon margin closed by an etched line; items bold, indented on a tree line, with an icon, a tick and a submenu arrow), `PopupMenu` (a `MenuPanel` in a grabbing popup window, fading in rising and out sinking), `TaskDialog`, `Tooltip` (Windows 7's white to grey-blue face), `Balloon` (Windows 7's notification balloon: the tooltip's face and shadow, a stem standing against its wall on the top or bottom edge, `balloonShape.js`; a bold title with a 16px icon (or the generic app icon), a 48px picture left of the words, a flat close button, action buttons wrapping along the bottom; it only draws and reports clicks).
 - Taskbar pieces: `TaskbarButton` (Windows 7's taskbar button: only the icon at rest, fading side lines, a bottom light and a light in the icon's colour following the pointer; `open` and `current` give an open app's button, `TaskbarItemFace`), `StartOrb` with `HyprlandMark` (a `highlighted` state lit like hover), `IconColorReader` (an icon's main colour, read from its pixels on a hidden canvas, `iconColor.js`), `AnalogClock` (drawn from the `clock-*` tokens, `clockHands.js`), `PictureFrame` (Windows 7's user tile: a silver glossy band, its sides bowed out), `Avatar` (`avatar.js`).
 - Pictures and glyphs: `WindowsIcon` (one of Windows' own icons from the module's `resources/icons/`, at the frame Windows drew for its size; section 4.3), `StatusBadge` (a drawn corner sign: error cross, warning triangle, available star, busy disc, check, muted sign), `BatteryPicture` (the flyouts' 32px glossy pictures), `PixelGlyph` drawing the grids of `trayGlyphs.js` (`BatteryGlyph`, `DriveGlyph`, `BluetoothGlyph`, with pixel badges on their corner: the notification area's system icons not yet taken from Windows), `DotIcon`, `GenericAppIcon`, `AppIconImage`, `PowerIcon`, `CloseGlyph`, `MaximizeGlyph` (maximize, or restore's two boxes), `ReturnGlyph`, `ChevronGlyph`, `CaretGlyph` (a folding group's thin caret), `CheckGlyph`, `SearchGlyph`, `SortGlyph`, `StarGlyph`, `GripGlyph` (the dotted grip at the ends of the pins).
 
 ## 8. Roadmap and current state
 
-Works today: every token and primitive above, both themes, used by the bar.
+Works today: every token and primitive above, both themes, used by the bar and (`Balloon`) the notifications module.
 
-Next: what the notifications module needs (its balloons and their pictures), added here when it is first drawn.
+Next: whatever a module needs drawn next, added here when it is first drawn.
 
 ## 9. Decision log
 

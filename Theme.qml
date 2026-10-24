@@ -153,6 +153,11 @@ Singleton {
     readonly property color tooltipText: slate ? '#d5dbe1' : '#575757'
     readonly property color overlay: slate ? '#8c000000' : '#590a1e3c'
 
+    // A notification balloon is drawn from the tooltip's tokens; only its stem has its own.
+    readonly property int balloonStemWidth: 16
+    readonly property int balloonStemHeight: 16
+    readonly property int balloonStemInset: 16
+
     // Gradient stops of a control face: top, 49%, 50%, bottom.
     readonly property var controlFace: slate
         ? ['#5a626b', '#474e56', '#363c43', '#2f343a']
