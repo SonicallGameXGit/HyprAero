@@ -1,0 +1,24 @@
+# .aero/CODE_STYLE.md section 5. Trailing commas in multi-line lists cannot be enforced by clang-format: a review item.
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 160
+NamespaceIndentation: All
+AccessModifierOffset: -2
+PointerAlignment: Left
+InsertBraces: true
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+BreakBeforeBraces: Attach
+Cpp11BracedListStyle: true
+IncludeBlocks: Preserve
+SortIncludes: CaseSensitive
+FixNamespaceComments: false
+BreakTemplateDeclarations: Yes
+IncludeIsMainRegex: "^$"

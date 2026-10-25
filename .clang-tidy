@@ -1,0 +1,32 @@
+# .aero/CODE_STYLE.md section 5 and AGENTS.md section 5.1, as far as clang-tidy can check them.
+# -Wreturn-type-c-linkage is off: Hyprland's interface itself returns C++ types from extern "C" functions (PluginAPI.hpp).
+Checks: >
+    bugprone-*,
+    -bugprone-easily-swappable-parameters,
+    cert-err58-cpp,
+    cppcoreguidelines-no-malloc,
+    cppcoreguidelines-pro-type-const-cast,
+    cppcoreguidelines-pro-type-cstyle-cast,
+    cppcoreguidelines-pro-type-reinterpret-cast,
+    cppcoreguidelines-init-variables,
+    misc-const-correctness,
+    modernize-use-nullptr,
+    performance-*,
+    readability-braces-around-statements,
+    readability-identifier-naming,
+    readability-implicit-bool-conversion,
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*/plugin/(src|tests)/.*'
+CheckOptions:
+    readability-identifier-naming.ClassCase: CamelCase
+    readability-identifier-naming.StructCase: CamelCase
+    readability-identifier-naming.EnumCase: CamelCase
+    readability-identifier-naming.EnumConstantCase: CamelCase
+    readability-identifier-naming.FunctionCase: camelBack
+    readability-identifier-naming.VariableCase: camelBack
+    readability-identifier-naming.ParameterCase: camelBack
+    readability-identifier-naming.MemberCase: camelBack
+    readability-identifier-naming.FunctionIgnoredRegexp: '^(pluginInit|pluginExit|pluginAPIVersion)$'
+    readability-implicit-bool-conversion.AllowPointerConditions: false
+ExtraArgs:
+    - -Wno-return-type-c-linkage

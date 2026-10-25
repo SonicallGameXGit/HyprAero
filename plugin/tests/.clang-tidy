@@ -1,0 +1,5 @@
+# Tests throw exceptions of odd types on purpose, and an exception that ends a test run is a failure, not a crash of anything else
+InheritParentConfig: true
+Checks: >
+    -bugprone-exception-escape,
+    -bugprone-std-exception-baseclass,
