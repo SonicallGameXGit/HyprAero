@@ -24,6 +24,9 @@ return {
     isSystemKey,
     defaultBehaviorOf,
     hiddenApps,
+    behaviorsOf,
+    choiceOf,
+    notificationsShown,
 }`)()
 
 const icon = (key, behavior) => ({ key: key, behavior: behavior, name: key, icon: '' })
@@ -173,6 +176,37 @@ test('place: into the flyout, a shown icon becomes only-notify, a hidden one sta
     const icons = [icon('a', 'show'), icon('x', 'hide'), icon('y', 'notify')]
     assert.deepEqual(keys(tray.placeIcon(icons, 'a', false, ['x', 'y'], 1)), ['x:hide', 'a:notify', 'y:notify'])
     assert.deepEqual(keys(tray.placeIcon(icons, 'x', false, ['x', 'y'], 2)), ['a:show', 'y:notify', 'x:hide'])
+})
+
+test('place: an icon whose notifications are hidden keeps them hidden, wherever it is dragged', () => {
+    const icons = [icon('a', 'icon'), icon('x', 'hide')]
+    // Along the bar it stays "Only show icon", not "Show icon and notifications".
+    assert.deepEqual(keys(tray.placeIcon(icons, 'a', true, ['a'], 0)), ['x:hide', 'a:icon'])
+    assert.deepEqual(keys(tray.placeIcon(icons, 'x', true, ['a'], 1)), ['a:icon', 'x:icon'])
+    assert.deepEqual(keys(tray.placeIcon(icons, 'a', false, ['x'], 1)), ['x:hide', 'a:hide'])
+})
+
+test('arrange: "Only show icon" is always on the bar', () => {
+    assert.deepEqual(tray.arrange([icon('a', 'icon')], [{ key: 'a' }], false), { shown: ['a'], hidden: [] })
+})
+
+test('choices: an app has all four, a system icon only shown or hidden, its "notify" counting as hidden', () => {
+    assert.deepEqual(tray.behaviorsOf('steam'), ['show', 'hide', 'notify', 'icon'])
+    assert.deepEqual(tray.behaviorsOf('system:volume'), ['show', 'hide'])
+    assert.equal(tray.choiceOf('steam', 'notify'), 'notify')
+    assert.equal(tray.choiceOf('system:drives', 'notify'), 'hide')
+    assert.equal(tray.choiceOf('system:volume', 'show'), 'show')
+    assert.equal(tray.choiceOf('system:volume', 'icon'), 'show')
+})
+
+test('notifications: shown with "Show icon and notifications" and "Only show notifications" only', () => {
+    assert.deepEqual(['show', 'hide', 'notify', 'icon'].map(tray.notificationsShown), [true, false, true, false])
+})
+
+test('behavior: "Only show icon" is a behavior the file keeps', () => {
+    const { icons, problems } = tray.parseTray(tray.serializeTray([icon('a', 'icon')]))
+    assert.deepEqual(keys(icons), ['a:icon'])
+    assert.deepEqual(problems, [])
 })
 
 test('place: into an empty place, or an icon never remembered, still lands somewhere', () => {

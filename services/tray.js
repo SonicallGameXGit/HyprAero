@@ -4,18 +4,24 @@
 // test it.
 //
 // Every icon ever seen is remembered, in the user's order, with what it should do (its "behavior", the
-// words are Windows 7's):
-//     'show'    Show icon and notifications: always on the bar.
-//     'hide'    Hide icon and notifications: always behind the arrow, in the flyout.
-//     'notify'  Only show notifications: in the flyout, but on the bar while it asks for attention.
-// A new icon starts as 'notify', as on Windows 7. Icons are told apart by their key (`itemKey`).
+// first three are Windows 7's):
+//     'show'    Show icon and notifications: always on the bar, its app's notifications shown.
+//     'hide'    Hide icon and notifications: always behind the arrow, in the flyout, its app's notifications
+//               hidden.
+//     'notify'  Only show notifications: in the flyout, but on the bar while it asks for attention, its app's
+//               notifications shown.
+//     'icon'    Only show icon: always on the bar, its app's notifications hidden.
+// "Notifications" are the notifications module's balloons (`notificationChoices.js`) and the app asking for
+// attention. A new icon starts as 'notify', as on Windows 7. Icons are told apart by their key (`itemKey`).
 //
 // The shell's own icons (Windows 7's "system icons": volume, network, power, Safely Remove Hardware,
 // Bluetooth) live in the same list under keys starting with 'system:', which no app's id does, so they
 // are dragged, hidden and customised like any other. Their defaults are Windows 7's: volume, network and
 // power always shown, the other two behind the arrow.
 
-const behaviors = ['show', 'hide', 'notify']
+const behaviors = ['show', 'hide', 'notify', 'icon']
+// The shell's own icons send no notifications and never ask for attention, so they are only shown or hidden.
+const systemBehaviors = ['show', 'hide']
 const defaultBehavior = 'notify'
 const systemPrefix = 'system:'
 const systemDefaults = {
@@ -43,6 +49,26 @@ function isSystemKey(key) {
 function defaultBehaviorOf(key) {
     const behavior = systemDefaults[key]
     return behavior === undefined ? defaultBehavior : behavior
+}
+
+// The choices the "Customize" page offers for the icon with `key`.
+function behaviorsOf(key) {
+    return isSystemKey(key) ? systemBehaviors : behaviors
+}
+
+// The page's choice that stands for `behavior` of the icon with `key`: for a system icon, 'notify' (the
+// Windows 7 default of two of them) hides it just as 'hide' does, and 'icon' shows it as 'show' does.
+function choiceOf(key, behavior) {
+    if (isSystemKey(key) === false) {
+        return behavior
+    }
+
+    return behavior === 'show' || behavior === 'icon' ? 'show' : 'hide'
+}
+
+// Whether the app of an icon with `behavior` has its notifications shown.
+function notificationsShown(behavior) {
+    return behavior === 'show' || behavior === 'notify'
 }
 
 // Whether the system icon `key` stands after `other` in the notification area when both are new: every
@@ -246,6 +272,7 @@ function arrange(icons, present, showAll) {
     for (const icon of ordered) {
         const onBar = showAll
             || icon.behavior === 'show'
+            || icon.behavior === 'icon'
             || (icon.behavior === 'notify' && attention.get(icon.key))
         if (onBar) {
             result.shown.push(icon.key)
@@ -260,19 +287,18 @@ function arrange(icons, present, showAll) {
 // The icons after the one with `key` was dropped in a gap of the bar (`toShown`) or of the flyout. `keys`
 // are that place's icons as shown during the drag (the dragged one keeps its place among them while it is
 // out), `gap` the gap it was dropped in: 0 before the first, `keys.length` after the last. On the bar it
-// becomes 'show'; into the flyout an icon that was always shown becomes 'notify' (Windows 7 does the same)
-// and a 'hide' or 'notify' one stays as it was.
+// becomes always shown; into the flyout an icon that was always shown becomes 'notify' (Windows 7 does the
+// same) and a 'hide' or 'notify' one stays as it was. Its notifications stay as they were: on the bar 'hide'
+// becomes 'icon', into the flyout 'icon' becomes 'hide'.
 function placeIcon(icons, key, toShown, keys, gap) {
     const known = icons.find(icon => icon.key === key)
     const record = known === undefined
         ? { key: key, behavior: defaultBehaviorOf(key), name: key, icon: '' }
         : known
-    let behavior = record.behavior
-    if (toShown) {
-        behavior = 'show'
-    } else if (behavior === 'show') {
-        behavior = 'notify'
-    }
+    const moved = toShown
+        ? { show: 'show', hide: 'icon', notify: 'show', icon: 'icon' }
+        : { show: 'notify', hide: 'hide', notify: 'notify', icon: 'hide' }
+    const behavior = moved[record.behavior]
 
     const others = keys.filter(item => item !== key)
     const from = keys.indexOf(key)

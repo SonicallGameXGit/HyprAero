@@ -10,25 +10,31 @@ import '../../services/tray.js' as TrayList
 // The "Notification Area Icons" page, after Windows 7's, opened by "Customize..." in the tray's flyout:
 // every icon the tray has seen (running apps and the shell's own system icons first, then the apps that are
 // not running) with what it should do, "Restore default icon behaviors" and "Always show all icons and
-// notifications on the taskbar". Its "Turn system icons on or off" link shows Windows 7's second page in the
-// same window: the clock and each system icon on or off (greyed out where this computer has nothing for it,
+// notifications on the taskbar". Each row offers only the choices that mean something for it: an app's
+// icon the four of `tray.js` (its notifications included), a system icon shown or hidden. With HyprAero's
+// notifications module, the apps that sent notifications without a tray icon are listed after the icons,
+// their notifications shown or hidden, and "Hide all notifications" hides every one (`NotificationChoices`).
+// Its "Turn system icons on or off" link shows Windows 7's second page in the same window: the clock and each system icon on or off (greyed out where this computer has nothing for it,
 // as Windows 7 does with Power on a desktop), and whether the applets they replace keep their own icons. A
 // window of its own. Changes apply at once, as in every settings window of the family, so it has a Close
 // button instead of Windows' OK and Cancel.
 FloatingWindow {
     id: root
 
-    // What each choice of the drop-down lists means, in their order.
-    readonly property var behaviors: ['show', 'hide', 'notify']
-    readonly property var behaviorNames: [
-        qsTr('Show icon and notifications'),
-        qsTr('Hide icon and notifications'),
-        qsTr('Only show notifications'),
-    ]
+    // The words of an app icon's choices (`tray.js`).
+    readonly property var behaviorNames: ({
+        show: qsTr('Show icon and notifications'),
+        hide: qsTr('Hide icon and notifications'),
+        notify: qsTr('Only show notifications'),
+        icon: qsTr('Only show icon'),
+    })
     // Which page is shown: 'icons' (every icon's behavior) or 'system' ("Turn system icons on or off").
     property string page: 'icons'
-    // One row per icon ever seen: `{ key, name, behavior, item }`, `item` null when its app is not running.
-    // An applet replaced by a system icon, and a system icon that is off, are not listed.
+    // One row per icon ever seen: `{ key, name, icon, item, kind, choices, choice }`, `item` null when its app
+    // is not running, `kind` 'app' or 'system', `choices` what its drop-down list offers and `choice` the one
+    // chosen. An applet replaced by a system icon, and a system icon that is off, are not listed. Then one row
+    // per app that sent notifications without a tray icon listed here (`kind` 'sender', `appKey` its key in
+    // `NotificationChoices`, row keys starting with 'notifications:').
     readonly property var rows: {
         const running = []
         const away = []
@@ -42,8 +48,11 @@ FloatingWindow {
                 key: icon.key,
                 name: icon.name,
                 icon: icon.icon,
-                behavior: icon.behavior,
                 item: item === undefined ? null : item,
+                kind: TrayList.isSystemKey(icon.key) ? 'system' : 'app',
+                choices: TrayList.behaviorsOf(icon.key),
+                choice: TrayList.choiceOf(icon.key, icon.behavior),
+                appKey: '',
             }
             if (row.item === null) {
                 away.push(row)
@@ -52,7 +61,17 @@ FloatingWindow {
             }
         }
 
-        return running.concat(away)
+        const senders = NotificationChoices.appsWithoutTray().map(app => ({
+            key: 'notifications:' + app.key,
+            name: app.name,
+            icon: app.icon,
+            item: null,
+            kind: 'sender',
+            choices: NotificationChoices.appChoices,
+            choice: NotificationChoices.appChoiceOf(app.key),
+            appKey: app.key,
+        }))
+        return running.concat(away, senders)
     }
     // The rows of the "Turn system icons on or off" page, in Windows 7's order: `{ key (the setting), name,
     // system (the picture), possible }`.
@@ -66,11 +85,27 @@ FloatingWindow {
     ]
     readonly property var onOffNames: [qsTr('On'), qsTr('Off')]
     readonly property int choiceWidth: 220
-    // The icon whose drop-down list is open.
+    // The row whose drop-down list is open (its key, and the row itself for the choice made in it).
     property string listKey: ''
+    property var listRow: null
+
+    // The words of a row's choice.
+    function choiceName(kind: string, choice: string): string {
+        if (kind === 'system') {
+            return choice === 'show' ? qsTr('Show icon') : qsTr('Hide icon')
+        }
+
+        if (kind === 'sender') {
+            return choice === 'shown' ? qsTr('Show notifications') : qsTr('Hide notifications')
+        }
+
+        const name = behaviorNames[choice]
+        return name === undefined ? '' : name
+    }
 
     function openList(row: var, box: Item): void {
         listKey = row.key
+        listRow = row
         const items = []
         if (root.page === 'system') {
             const on = Config.tray[row.key] === true
@@ -78,11 +113,11 @@ FloatingWindow {
             items.push({ text: onOffNames[1], check: 'radio', checked: on === false })
             list.current = on ? 0 : 1
         } else {
-            for (let index = 0; index < behaviors.length; index++) {
-                items.push({ text: behaviorNames[index], check: 'radio', checked: behaviors[index] === row.behavior })
+            for (const choice of row.choices) {
+                items.push({ text: choiceName(row.kind, choice), check: 'radio', checked: choice === row.choice })
             }
 
-            list.current = behaviors.indexOf(row.behavior)
+            list.current = row.choices.indexOf(row.choice)
         }
 
         list.items = items
@@ -98,7 +133,13 @@ FloatingWindow {
             return
         }
 
-        Tray.setBehavior(listKey, behaviors[index])
+        const choice = listRow.choices[index]
+        if (listRow.kind === 'sender') {
+            NotificationChoices.setAppChoice(listRow.appKey, choice)
+            return
+        }
+
+        Tray.setBehavior(listKey, choice)
     }
 
     // Windows 7's "Restore default icon behaviors" on the system page: every one on.
@@ -278,7 +319,12 @@ FloatingWindow {
                 height: parent.height - y - 1
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                model: root.page === 'system' ? root.systemRows : root.rows
+                // Rows are matched by key and updated in place, so a choice made far down the list does not
+                // rebuild it and scroll it back to the top.
+                model: ScriptModel {
+                    objectProp: 'key'
+                    values: root.page === 'system' ? root.systemRows : root.rows
+                }
 
                 delegate: Item {
                     id: row
@@ -288,6 +334,8 @@ FloatingWindow {
                     // A row of the "Turn system icons on or off" page (read from the row itself: while the
                     // page changes, the old rows are still there for a moment).
                     readonly property bool systemPage: modelData.possible !== undefined
+                    // An app that sent notifications and has no tray icon here.
+                    readonly property bool sender: modelData.kind === 'sender'
                     // The picture of a system icon ('clock' and the `SystemIcons` names), '' for an app.
                     readonly property string system: {
                         if (systemPage) {
@@ -299,6 +347,10 @@ FloatingWindow {
                     readonly property string detail: {
                         if (systemPage) {
                             return modelData.possible ? '' : qsTr('Nothing for it on this computer')
+                        }
+
+                        if (sender) {
+                            return qsTr('No icon in the notification area')
                         }
 
                         if (modelData.item === null) {
@@ -384,7 +436,7 @@ FloatingWindow {
                             width: parent.width
                             text: row.modelData.name
                             elide: Text.ElideRight
-                            color: (row.systemPage ? row.modelData.possible : row.modelData.item !== null) ? Theme.text : Theme.textMuted
+                            color: (row.systemPage ? row.modelData.possible : row.modelData.item !== null || row.sender) ? Theme.text : Theme.textMuted
                             font.family: Theme.fontUi
                             font.pixelSize: Theme.fontSizeBody
                         }
@@ -407,15 +459,21 @@ FloatingWindow {
                         x: parent.width - width - Theme.space3
                         anchors.verticalCenter: parent.verticalCenter
                         width: root.choiceWidth
-                        // "Always show all" leaves nothing to choose, as on Windows 7; nor does a system icon this
-                        // computer has nothing for (shown off).
-                        enabled: row.systemPage ? row.modelData.possible : Config.tray.showAll === false
+                        // "Always show all" leaves an icon nothing to choose, as on Windows 7 (an app without one
+                        // keeps its choice); nor does a system icon this computer has nothing for (shown off).
+                        enabled: {
+                            if (row.systemPage) {
+                                return row.modelData.possible
+                            }
+
+                            return row.sender || Config.tray.showAll === false
+                        }
                         choice: {
                             if (row.systemPage) {
                                 return root.onOffNames[row.modelData.possible && Config.tray[row.modelData.key] === true ? 0 : 1]
                             }
 
-                            return root.behaviorNames[Math.max(0, root.behaviors.indexOf(row.modelData.behavior))]
+                            return root.choiceName(row.modelData.kind, row.modelData.choice)
                         }
                         onListRequested: root.openList(row.modelData, choiceBox)
                     }
@@ -457,6 +515,7 @@ FloatingWindow {
                         root.restoreSystemIcons()
                     } else {
                         Tray.restoreDefaults()
+                        NotificationChoices.restoreDefaults()
                     }
                 }
             }
@@ -466,6 +525,13 @@ FloatingWindow {
                 text: qsTr('Always show all icons and notifications on the bar')
                 checked: Config.tray.showAll
                 onToggled: on => Tray.setShowAll(on)
+            }
+
+            CheckBox {
+                visible: root.page === 'icons' && NotificationChoices.available
+                text: qsTr('Hide all notifications')
+                checked: NotificationChoices.choices.hideAll
+                onToggled: on => NotificationChoices.setHideAll(on)
             }
 
             CheckBox {
