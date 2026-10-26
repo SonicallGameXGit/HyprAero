@@ -53,6 +53,26 @@ Singleton {
     readonly property color glassShineTop: slate ? '#29ffffff' : '#99ffffff'
     readonly property color glassShineMiddle: slate ? '#08ffffff' : '#1fffffff'
     readonly property color glassText: slate ? '#e9eef3' : '#0d2238'
+    // The frames around apps' windows (.aero/STYLE.md "Window frames"). The frames module's plugin cannot
+    // import QML: its build reads these lines, so each keeps the one-line form of the others.
+    readonly property int frameBorder: 8
+    readonly property int frameCaption: 30
+    readonly property int frameRadius: 6
+    readonly property int frameButtonsTop: 1
+    readonly property int frameButtonsRight: 6
+    readonly property int frameIconLeft: 10
+    readonly property int frameIconSize: 16
+    readonly property int frameTitleGap: 5
+    readonly property color frameGlassTint: slate ? '#cc1e242c' : '#b35c8bc2'
+    readonly property color frameGlassTintInactive: slate ? '#99262c34' : '#73a4bcd8'
+    readonly property color frameEdgeOuter: slate ? '#e6000000' : '#cc000000'
+    readonly property color frameEdgeOuterInactive: slate ? '#b3000000' : '#99000000'
+    readonly property color frameEdgeInner: slate ? '#4dffffff' : '#ccffffff'
+    readonly property color frameEdgeInnerInactive: slate ? '#33ffffff' : '#99ffffff'
+    readonly property color frameClientEdgeLight: slate ? '#33ffffff' : '#8cffffff'
+    readonly property color frameClientEdgeDark: '#80000000'
+    readonly property color frameTitleText: slate ? '#e9eef3' : '#000000'
+    readonly property real frameTitleGlow: slate ? 0 : 1
     // The shell's own chrome (bar, start menu, flyouts): Windows 7's darker taskbar glass.
     readonly property color taskbarGlassTint: slate ? '#b80a0d12' : '#ad163456'
     readonly property color taskbarGlassBorderOuter: slate ? '#e6000000' : '#d9000814'

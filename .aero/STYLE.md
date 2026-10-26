@@ -24,7 +24,7 @@ The original belongs to someone else; the owner's own copy, which the owner's ac
 
 The file needs a Figma login: its API, page and thumbnails answer "log in" to a client without one. Ways in that work: Figma's MCP server (only on a file the account can edit, a `use_figma` call returns at most 20KB, and the owner's Starter plan allows only a few calls a month, so it suits one look at one node, not an export), or Figma's REST API with a personal access token of the owner's (read-only "file content" scope), passed in the request header and nothing else (`GET /v1/files/<key>?geometry=paths` for every page, component, style and vector; `GET /v1/images/<key>?ids=...&format=svg` to export many nodes in one request). An agent that cannot open it says so and asks the owner for screenshots, an export or a token, instead of guessing. A token is never written into the repository, a config file or a log.
 
-Many of its pieces are Microsoft's own Windows 7 bitmaps (sprite strips cut from Windows' resources) next to the author's vector redraws. Both are for looking at and measuring; none of it is shipped (see "Start orb": drawn from values, never from a picture of the original).
+Many of its pieces are Microsoft's own Windows 7 bitmaps (sprite strips cut from Windows' resources) next to the author's vector redraws. Both are for looking at and measuring; none of it is shipped (see "Start orb": drawn from values, never from a picture of the original). **Exception:** the window frames ("Window frames") ship the pieces of Windows 7's own frame atlas (caption buttons, their glyphs and glows, the title's glow, the glass's reflection), cut from it unchanged, as a member ships Windows' own icons; owner's decision (2026-10-25).
 
 ## 2. What "Windows Aero" means concretely
 
@@ -90,6 +90,24 @@ Aero (light) is the base; Slate overrides only what differs. Values not listed f
 | `glass-shadow` | `0 12px 34px rgba(8,35,70,0.45)` + 1px white 0.12 ring | `0 12px 34px rgba(0,0,0,0.65)` + 1px white 0.05 ring |
 | `glass-text` | `#0d2238` | `#e9eef3` |
 | `glass-text-shadow` | `0 0 8px rgba(255,255,255,0.9)` | `0 0 8px rgba(0,0,0,0.9)` |
+
+### Window frames
+
+A member that draws the frames around other apps' windows draws Windows 7's, measured on Windows 7 screenshots (1:1) and on Windows 7's own picture atlas of the frame (the owner's design file): a band of window glass `frame-border` wide down the sides and along the bottom, `frame-caption` tall along the top, the window's corners rounded by `frame-radius` on the outside. From the outside in: a `frame-edge-outer` line, a `frame-edge-inner` line, the glass (`frame-glass-tint` over the blurred desktop, with Windows 7's streaks of reflection over it), then around the window itself a `frame-client-edge-light` line and a `frame-client-edge-dark` line. A window that is not active takes the `-inactive` values, paler and more see-through, as Windows 7 tells them apart.
+
+Along the top, from the left: the app's 16px icon `frame-icon-left` in from the outer edge, centred in the caption, then after `frame-title-gap` the title in `font-ui` `font-size-small`, `frame-title-text`, over Windows 7's soft white glow (`frame-title-glow`: how strong, 0 leaves it out), cut off with an ellipsis before the buttons. The caption buttons hang from `frame-buttons-top` below the top edge, `frame-buttons-right` in from the right one: Maximize (Restore while maximized), then Close, joined. Their faces, glyphs and the glow around a button under the pointer (blue, red for Close) are Windows 7's own pictures, drawn as they are in both themes (the exception in "The owner's design file").
+
+| Token | Aero | Slate |
+| --- | --- | --- |
+| `frame-border` / `frame-caption` / `frame-radius` | 8 / 30 / 6 px | same |
+| `frame-buttons-top` / `frame-buttons-right` | 1 / 6 px | same |
+| `frame-icon-left` / `frame-icon-size` / `frame-title-gap` | 10 / 16 / 5 px | same |
+| `frame-glass-tint` / `-inactive` | `rgba(92,139,194,0.70)` / `rgba(164,188,216,0.45)` | `rgba(30,36,44,0.80)` / `rgba(38,44,52,0.60)` |
+| `frame-edge-outer` / `-inactive` | `rgba(0,0,0,0.8)` / `rgba(0,0,0,0.6)` | `rgba(0,0,0,0.9)` / `rgba(0,0,0,0.7)` |
+| `frame-edge-inner` / `-inactive` | `rgba(255,255,255,0.8)` / `rgba(255,255,255,0.6)` | `rgba(255,255,255,0.3)` / `rgba(255,255,255,0.2)` |
+| `frame-client-edge-light` / `frame-client-edge-dark` | `rgba(255,255,255,0.55)` / `rgba(0,0,0,0.5)` | `rgba(255,255,255,0.2)` / `rgba(0,0,0,0.5)` |
+| `frame-title-text` | `#000000` | `#e9eef3` |
+| `frame-title-glow` | 1 | 0 |
 
 ### Taskbar glass (a desktop shell's own chrome)
 
