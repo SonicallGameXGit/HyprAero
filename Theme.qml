@@ -72,7 +72,6 @@ Singleton {
     readonly property color frameClientEdgeLight: slate ? '#33ffffff' : '#8cffffff'
     readonly property color frameClientEdgeDark: '#80000000'
     readonly property color frameTitleText: slate ? '#e9eef3' : '#000000'
-    readonly property real frameTitleGlow: slate ? 0 : 1
     // The shell's own chrome (bar, start menu, flyouts): Windows 7's darker taskbar glass.
     readonly property color taskbarGlassTint: slate ? '#b80a0d12' : '#ad163456'
     readonly property color taskbarGlassBorderOuter: slate ? '#e6000000' : '#d9000814'

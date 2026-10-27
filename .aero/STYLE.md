@@ -95,7 +95,7 @@ Aero (light) is the base; Slate overrides only what differs. Values not listed f
 
 A member that draws the frames around other apps' windows draws Windows 7's, measured on Windows 7 screenshots (1:1) and on Windows 7's own picture atlas of the frame (the owner's design file): a band of window glass `frame-border` wide down the sides and along the bottom, `frame-caption` tall along the top, the window's corners rounded by `frame-radius` on the outside. From the outside in: a `frame-edge-outer` line, a `frame-edge-inner` line, the glass (`frame-glass-tint` over the blurred desktop, with Windows 7's streaks of reflection over it), then around the window itself a `frame-client-edge-light` line and a `frame-client-edge-dark` line. A window that is not active takes the `-inactive` values, paler and more see-through, as Windows 7 tells them apart.
 
-Along the top, from the left: the app's 16px icon `frame-icon-left` in from the outer edge, centred in the caption, then after `frame-title-gap` the title in `font-ui` `font-size-small`, `frame-title-text`, over Windows 7's soft white glow (`frame-title-glow`: how strong, 0 leaves it out), cut off with an ellipsis before the buttons. The caption buttons hang from `frame-buttons-top` below the top edge, `frame-buttons-right` in from the right one: Maximize (Restore while maximized), then Close, joined. Their faces, glyphs and the glow around a button under the pointer (blue, red for Close) are Windows 7's own pictures, drawn as they are in both themes (the exception in "The owner's design file").
+Along the top, from the left: the app's 16px icon `frame-icon-left` in from the outer edge, centred in the caption, then after `frame-title-gap` the title in `font-ui` `font-size-small`, `frame-title-text`, centred in the caption's height, without Windows 7's white glow behind it (the owner's choice), cut off with an ellipsis before the buttons. The caption buttons hang from `frame-buttons-top` below the top edge, `frame-buttons-right` in from the right one: Maximize (Restore while maximized), then Close, joined. Their faces, glyphs and the glow around a button under the pointer (blue, red for Close) are Windows 7's own pictures, drawn as they are in both themes (the exception in "The owner's design file").
 
 | Token | Aero | Slate |
 | --- | --- | --- |
@@ -107,7 +107,6 @@ Along the top, from the left: the app's 16px icon `frame-icon-left` in from the 
 | `frame-edge-inner` / `-inactive` | `rgba(255,255,255,0.8)` / `rgba(255,255,255,0.6)` | `rgba(255,255,255,0.3)` / `rgba(255,255,255,0.2)` |
 | `frame-client-edge-light` / `frame-client-edge-dark` | `rgba(255,255,255,0.55)` / `rgba(0,0,0,0.5)` | `rgba(255,255,255,0.2)` / `rgba(0,0,0,0.5)` |
 | `frame-title-text` | `#000000` | `#e9eef3` |
-| `frame-title-glow` | 1 | 0 |
 
 ### Taskbar glass (a desktop shell's own chrome)
 
