@@ -7,23 +7,29 @@
 #include <hyprland/src/desktop/state/ViewState.hpp>
 #include <hyprland/src/desktop/state/WindowState.hpp>
 #include <hyprland/src/desktop/view/Window.hpp>
+#include <hyprland/src/devices/IKeyboard.hpp>
 #include <hyprland/src/event/EventBus.hpp>
+#include <hyprland/src/layout/LayoutManager.hpp>
 #include <hyprland/src/managers/SeatManager.hpp>
 #include <hyprland/src/managers/fullscreen/FullscreenController.hpp>
 #include <hyprland/src/managers/input/InputManager.hpp>
 #include <hyprland/src/output/Monitor.hpp>
+#include <hyprland/src/pointer/cursor/CursorShapeOverrideController.hpp>
+#include <hyprland/src/render/Renderer.hpp>
 #include <hyprland/src/render/decorations/DecorationPositioner.hpp>
+#include <hyprland/src/state/MonitorState.hpp>
 
 #include <linux/input-event-codes.h>
 
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <format>
-#include <ranges>
 #include <variant>
 #include <vector>
 
 #include "core/command.hpp"
+#include "core/moving.hpp"
 #include "core/status.hpp"
 #include "host/frame.hpp"
 #include "host/state.hpp"
@@ -33,6 +39,10 @@ namespace frames::host {
     namespace {
 
         constexpr std::string_view pluginVersion = FRAMES_VERSION;
+
+        // The modifiers a keybind holds; Caps Lock and Num Lock are locks, not held, and Hyprland's binds ignore them too
+        constexpr uint32_t heldModifiers = static_cast<uint32_t>(HL_MODIFIER_SHIFT) | static_cast<uint32_t>(HL_MODIFIER_CTRL) |
+                                           static_cast<uint32_t>(HL_MODIFIER_ALT) | static_cast<uint32_t>(HL_MODIFIER_META);
 
         // Frames Hyprland has deleted (their windows closed) are dropped from the list
         void prune() {
@@ -78,6 +88,77 @@ namespace frames::host {
                     action(*frame.get());
                 }
             }
+        }
+
+        void readScale() {
+            // Read from Hyprland's own environment, which its config's `env` sets; nothing else is read
+            const char* const text  = std::getenv("QT_SCALE_FACTOR"); // NOLINT(concurrency-mt-unsafe): Hyprland's one thread
+            double            scale = 1;
+            if (text != nullptr) {
+                const auto parsed = scaleFromText(text);
+                if (parsed.has_value()) {
+                    scale = *parsed;
+                } else {
+                    logLine(Log::WARN,
+                            std::format("QT_SCALE_FACTOR is not a number from {} to {}; the frames keep their own size", smallestScale, largestScale));
+                }
+            }
+
+            state->scale = scale;
+        }
+
+        Point pointOf(const Vector2D& vector) {
+            return {.x = vector.x, .y = vector.y};
+        }
+
+        Box boxOf(const CBox& box) {
+            return {.x = box.x, .y = box.y, .width = box.w, .height = box.h};
+        }
+
+        Layout::eRectCorner cornerOf(const Edges& edges) {
+            unsigned corner = Layout::CORNER_NONE;
+            if (edges.top) {
+                corner |= Layout::CORNER_TOP;
+            }
+
+            if (edges.bottom) {
+                corner |= Layout::CORNER_BOTTOM;
+            }
+
+            if (edges.left) {
+                corner |= Layout::CORNER_LEFT;
+            }
+
+            if (edges.right) {
+                corner |= Layout::CORNER_RIGHT;
+            }
+
+            return static_cast<Layout::eRectCorner>(corner);
+        }
+
+        // The cursor over an edge that resizes, through Hyprland's own override for window edges
+        void showCursor(std::string_view shape) {
+            if (state->cursor == shape) {
+                return;
+            }
+
+            state->cursor = shape;
+            if (shape.empty()) {
+                ::Pointer::Cursor::overrideController->unsetOverride(::Pointer::Cursor::CURSOR_OVERRIDE_WINDOW_EDGE);
+                return;
+            }
+
+            ::Pointer::Cursor::overrideController->setOverride(std::string(shape), ::Pointer::Cursor::CURSOR_OVERRIDE_WINDOW_EDGE);
+        }
+
+        bool canResize(const PHLWINDOW& window) {
+            const WindowFacts facts = Frame::factsOf(window);
+            return window != nullptr && resizable(facts.placement, facts.fixed);
+        }
+
+        // Whether a drag of Hyprland's (a keybind's, an app's, ours) is going on: the pointer is its until it ends
+        bool hyprlandDragging() {
+            return g_layoutManager->dragController()->target() != nullptr;
         }
 
         struct Target {
@@ -128,8 +209,134 @@ namespace frames::host {
             return {.frame = frame, .part = part};
         }
 
+        // As on Windows, a press on a frame activates its window
+        void activate(const PHLWINDOW& window) {
+            if (Desktop::focusState()->window() != window) {
+                Desktop::focusState()->fullWindowFocus(window, Desktop::FOCUS_REASON_CLICK);
+            }
+
+            if (window->m_isFloating) {
+                Desktop::windowState()->raise(window);
+            }
+        }
+
+        void damageScreen(const PHLMONITOR& screen) {
+            if (screen != nullptr) {
+                g_pHyprRenderer->damageBox(screen->logicalBoxMinusReserved());
+            }
+        }
+
+        void logFailure(const Config::Actions::ActionResult& result, std::string_view what, const PHLWINDOW& window) {
+            if (!result.has_value()) {
+                logLine(Log::WARN, std::format("could not {} a window of class {}", what, plainText(window->m_class, maxClassLength)));
+            }
+        }
+
+        // Ends a drag of Hyprland's only when it is the one this grab began, never someone else's
+        void endOurDrag(const Grab& grab) {
+            const SP<Layout::ITarget> dragged = grab.dragged.lock();
+            if (grab.dragging && dragged != nullptr && g_layoutManager->dragController()->target() == dragged) {
+                g_layoutManager->endDragTarget();
+            }
+        }
+
+        void dropGrab() {
+            if (!state->grab.has_value()) {
+                return;
+            }
+
+            damageScreen(state->grab->snapScreen.lock());
+            state->grab.reset();
+        }
+
+        // The pointer went far enough from a press on the caption: the window moves from here, out of the layout first
+        void startMove(Grab& grab, const Vector2D& point) {
+            const PHLWINDOW window = grab.frame.expired() ? nullptr : grab.frame->window();
+            if (window == nullptr || !validMapped(window) || hyprlandDragging()) {
+                dropGrab();
+                return;
+            }
+
+            const WindowFacts facts = Frame::factsOf(window);
+            if (facts.placement == Placement::Maximized) {
+                logFailure(Config::Actions::fullscreenWindow(Fullscreen::FSMODE_MAXIMIZED, true, window), "restore", window);
+            }
+
+            if (!window->m_isFloating) {
+                logFailure(Config::Actions::floatWindow(Config::Actions::TOGGLE_ACTION_ENABLE, window), "float", window);
+            }
+
+            // Out of the layout the window takes its floating size, under the pointer where it held the caption
+            if (facts.placement != Placement::Floating && window->m_isFloating) {
+                const Vector2D size  = window->size(Desktop::View::IGeometric::GEOMETRIC_GOAL);
+                const Point    place = placeUnderPointer(grab.outer, pointOf(grab.start), pointOf(point), {.width = size.x, .height = size.y},
+                                                         frameExtents(currentTokens(), state->scale));
+                logFailure(Config::Actions::move({place.x, place.y}, false, window), "move", window);
+            }
+
+            const SP<Layout::ITarget> target = window->layoutTarget();
+            if (target == nullptr || !window->m_isFloating) {
+                dropGrab();
+                return;
+            }
+
+            g_layoutManager->beginDragTarget(target, MBIND_MOVE);
+            if (g_layoutManager->dragController()->target() != target) {
+                dropGrab();
+                return;
+            }
+
+            grab.dragging = true;
+            grab.dragged  = target;
+        }
+
+        // While the caption is held: the move starts past the threshold, then the top of a screen offers the layout
+        // `grab` is state->grab's; once dropGrab() ran it is gone and nothing touches it again
+        void followGrab(Grab& grab, const Vector2D& point) {
+            if (grab.frame.expired()) {
+                dropGrab();
+                return;
+            }
+
+            if (grab.kind == GrabKind::Resize) {
+                return;
+            }
+
+            if (!grab.dragging) {
+                if (pastThreshold(pointOf(grab.start), pointOf(point), dragThreshold(grab.placement, state->scale))) {
+                    startMove(grab, point);
+                }
+
+                return;
+            }
+
+            // Hyprland ended the drag itself (the window closed, a fullscreen window took the workspace)
+            const SP<Layout::ITarget> dragged = grab.dragged.lock();
+            if (dragged == nullptr || g_layoutManager->dragController()->target() != dragged) {
+                dropGrab();
+                return;
+            }
+
+            const PHLWINDOW  window = grab.frame->window();
+            const PHLMONITOR screen = ::State::monitorState()->query().vec(point).run();
+            const bool       snaps  = window != nullptr && screen != nullptr && !Frame::factsOf(window).fixed &&
+                                      atSnapEdge(pointOf(point), boxOf(screen->logicalBox()), state->scale);
+            const PHLMONITOR before = grab.snapScreen.lock();
+            const PHLMONITOR now    = snaps ? screen : nullptr;
+            if (before != now) {
+                damageScreen(before);
+                damageScreen(now);
+                grab.snapScreen = now;
+            }
+        }
+
         void pointerMoved(const Vector2D& point) {
             prune();
+            if (state->grab.has_value()) {
+                followGrab(*state->grab, point);
+                return;
+            }
+
             const Target target = targetAt(point);
 
             // While a button is held, only its frame follows the pointer
@@ -143,42 +350,129 @@ namespace frames::host {
             }
 
             state->underPointer = target.frame;
-            if (!target.frame.expired()) {
-                target.frame->pointerMoved(buttonAt(target.part));
-            }
-        }
-
-        void pressed(Event::SCallbackInfo& info) {
-            const Target target = targetAt(g_pInputManager->getMouseCoordsInternal());
-            if (target.frame.expired() || !target.frame->pointerPressed(buttonAt(target.part))) {
-                // The caption and the edges are Hyprland's: it focuses the window, resizes by the edges
+            if (target.frame.expired()) {
+                showCursor("");
                 return;
             }
 
-            info.cancelled = true;
-            state->holding = target.frame;
+            // A Maximize that cannot be clicked does not light up
+            const PHLWINDOW   window = target.frame->window();
+            const WindowFacts facts  = Frame::factsOf(window);
+            const bool        dead   = target.part == Part::Maximize && !canToggle(facts.placement, facts.fixed);
+            target.frame->pointerMoved(dead ? Button::None : buttonAt(target.part));
 
-            // As on Windows, pressing a caption button activates its window
+            const bool resizes = target.part == Part::Edge && !hyprlandDragging() && canResize(window);
+            showCursor(resizes ? resizeCursor(target.frame->edgesAt(point)) : "");
+        }
+
+        void pressed(Event::SCallbackInfo& info) {
+            // A drag of Hyprland's is going on, or a keybind's press (`bindm = SUPER, mouse:272, movewindow`): theirs
+            if (hyprlandDragging() || (g_pInputManager->getModsFromAllKBs() & heldModifiers) != 0) {
+                return;
+            }
+
+            const Vector2D point  = g_pInputManager->getMouseCoordsInternal();
+            const Target   target = targetAt(point);
+            if (target.frame.expired() || target.part == Part::Outside || target.part == Part::Client) {
+                return;
+            }
+
             const PHLWINDOW window = target.frame->window();
             if (window == nullptr) {
                 return;
             }
 
-            if (Desktop::focusState()->window() != window) {
-                Desktop::focusState()->fullWindowFocus(window, Desktop::FOCUS_REASON_CLICK);
+            // The frame is ours: neither the app nor Hyprland's resize_on_border sees the press
+            info.cancelled = true;
+            activate(window);
+
+            const WindowFacts facts = Frame::factsOf(window);
+            if (target.part == Part::Maximize || target.part == Part::Close) {
+                const bool dead = target.part == Part::Maximize && !canToggle(facts.placement, facts.fixed);
+                if (!dead && target.frame->pointerPressed(buttonAt(target.part))) {
+                    state->holding = target.frame;
+                }
+
+                return;
             }
 
-            if (window->m_isFloating) {
-                Desktop::windowState()->raise(window);
+            const auto outer = target.frame->outerNow();
+            if (!outer.has_value()) {
+                return;
+            }
+
+            if (target.part == Part::Caption) {
+                state->grab = Grab{.frame = target.frame, .kind = GrabKind::Move, .start = point, .outer = *outer, .placement = facts.placement};
+                return;
+            }
+
+            // An edge: Hyprland resizes, by the sides this point means, as Windows does (not by the nearest corner)
+            const Layout::eRectCorner corner = cornerOf(target.frame->edgesAt(point));
+            const SP<Layout::ITarget> layout = window->layoutTarget();
+            if (!resizable(facts.placement, facts.fixed) || corner == Layout::CORNER_NONE || layout == nullptr) {
+                return;
+            }
+
+            g_layoutManager->beginDragTarget(layout, MBIND_RESIZE, corner);
+            if (g_layoutManager->dragController()->target() == layout) {
+                state->grab = Grab{
+                    .frame     = target.frame,
+                    .kind      = GrabKind::Resize,
+                    .start     = point,
+                    .outer     = *outer,
+                    .placement = facts.placement,
+                    .dragging  = true,
+                    .dragged   = layout,
+                };
+            }
+        }
+
+        void toggle(const PHLWINDOW& window) {
+            const WindowFacts facts = Frame::factsOf(window);
+            if (!canToggle(facts.placement, facts.fixed)) {
+                return;
+            }
+
+            // Through the same actions as Hyprland's own dispatchers (`togglefloating`, `fullscreen 1`)
+            switch (toggleFor(facts.placement)) {
+            case Toggle::Float:
+                logFailure(Config::Actions::floatWindow(Config::Actions::TOGGLE_ACTION_ENABLE, window), "float", window);
+                return;
+            case Toggle::Tile:
+                logFailure(Config::Actions::floatWindow(Config::Actions::TOGGLE_ACTION_DISABLE, window), "tile", window);
+                return;
+            case Toggle::Unmaximize:
+                break;
+            }
+
+            logFailure(Config::Actions::fullscreenWindow(Fullscreen::FSMODE_MAXIMIZED, true, window), "restore", window);
+        }
+
+        // `grab` is a copy: dropGrab() lets go of state->grab
+        void releasedGrab(const Grab& grab) {
+            dropGrab();
+            endOurDrag(grab);
+
+            // Let go at the top of a screen: back into the layout
+            const PHLWINDOW window = grab.frame.expired() ? nullptr : grab.frame->window();
+            if (grab.kind == GrabKind::Move && grab.snapScreen.lock() != nullptr && window != nullptr && validMapped(window) && window->m_isFloating) {
+                logFailure(Config::Actions::floatWindow(Config::Actions::TOGGLE_ACTION_DISABLE, window), "tile", window);
             }
         }
 
         void released(Event::SCallbackInfo& info) {
+            // The press was the frame's, so the release is too: the app never saw either
+            if (state->grab.has_value()) {
+                info.cancelled  = true;
+                const Grab grab = *state->grab;
+                releasedGrab(grab);
+                return;
+            }
+
             if (state->holding.expired()) {
                 return;
             }
 
-            // The press was the frame's, so the release is too: the app never saw either
             info.cancelled         = true;
             const WP<Frame> holder = state->holding;
             state->holding         = {};
@@ -186,22 +480,17 @@ namespace frames::host {
             const Target    target = targetAt(g_pInputManager->getMouseCoordsInternal());
             const Button    act    = holder->pointerReleased(target.frame.get() == holder.get() ? buttonAt(target.part) : Button::None);
             const PHLWINDOW window = holder->window();
-            if (window == nullptr) {
+            if (window == nullptr || act == Button::None) {
                 return;
             }
 
-            if (act == Button::None) {
+            if (act == Button::Close) {
+                // As Hyprland's `killactive`: asks the app to close
+                logFailure(Config::Actions::closeWindow(window), "close", window);
                 return;
             }
 
-            // Through the same actions as Hyprland's own dispatchers (`killactive` asks the app to close, `fullscreen 1`)
-            const bool                          closing = act == Button::Close;
-            const Config::Actions::ActionResult result =
-                closing ? Config::Actions::closeWindow(window) : Config::Actions::fullscreenWindow(Fullscreen::FSMODE_MAXIMIZED, true, window);
-            if (!result.has_value()) {
-                logLine(Log::WARN,
-                        std::format("could not {} a window of class {}", closing ? "close" : "maximize", plainText(window->m_class, maxClassLength)));
-            }
+            toggle(window);
         }
 
         void button(const IPointer::SButtonEvent& event, Event::SCallbackInfo& info) {
@@ -272,10 +561,39 @@ namespace frames::host {
             return missingText(state->theme, missingClasses());
         }
 
+        // Ends a move or resize the frames began and gives the cursor back: at unload, and at the first pointer event
+        // after the safety switch turned the plugin off, as Hyprland ends its own drags in its input, never while drawing.
+        // Returns whether a press was the frames', so its release is not passed on.
+        bool letGoOfPointer() noexcept {
+            bool ours = false;
+            runAlways("letting go of the pointer", [&] {
+                ours = state->grab.has_value() || !state->holding.expired();
+                if (state->grab.has_value()) {
+                    const Grab grab = *state->grab;
+                    dropGrab();
+                    endOurDrag(grab);
+                }
+
+                showCursor("");
+                state->holding = {};
+            });
+
+            return ours;
+        }
+
+        // A change to one window's frame, if it has one
+        void withFrame(const PHLWINDOW& window, const auto& action) {
+            const WP<Frame> frame = frameOf(window);
+            if (!frame.expired()) {
+                action(*frame.get());
+            }
+        }
+
     }
 
     void startFrames() {
         state->blurEnabled = std::make_unique<CConfigValue<Config::BOOL>>("decoration:blur:enabled");
+        readScale();
 
         const std::size_t failed = decodePictures(state->pictures);
         if (failed > 0) {
@@ -284,41 +602,44 @@ namespace frames::host {
 
         auto& events = Event::bus()->m_events;
         state->listeners.push_back(events.window.open.listen([](const PHLWINDOW& window) { run("window opened", [&] { addFrame(window); }); }));
-        state->listeners.push_back(events.window.title.listen([](const PHLWINDOW& window) {
-            run("title changed", [&] {
-                const WP<Frame> frame = frameOf(window);
-                if (!frame.expired()) {
-                    frame->titleChanged();
-                }
-            });
-        }));
+        state->listeners.push_back(events.window.title.listen(
+            [](const PHLWINDOW& window) { run("title changed", [&] { withFrame(window, [](Frame& frame) { frame.titleChanged(); }); }); }));
         state->listeners.push_back(events.window.active.listen([](const PHLWINDOW& /* window */, Desktop::eFocusReason /* reason */) {
-            // The window that was active and the one that is now both change their look
-            run("window activated", [] { forEachFrame([](Frame& frame) { frame.damageEntire(); }); });
+            // The window that was active and the one that is now both change their look. An app may have changed its
+            // mind about its title bar meanwhile; Hyprland says nothing when it does, so it is looked at here.
+            run("window activated", [] {
+                forEachFrame([](Frame& frame) {
+                    frame.refresh();
+                    frame.damageEntire();
+                });
+            });
         }));
-        state->listeners.push_back(events.window.updateRules.listen([](const PHLWINDOW& window) {
+        state->listeners.push_back(events.window.updateRules.listen(
             // The `decorate` rule may have turned the frame on or off
-            run("window rules", [&] {
-                const WP<Frame> frame = frameOf(window);
-                if (!frame.expired()) {
-                    g_pDecorationPositioner->repositionDeco(frame.get());
-                    window->updateWindowDecos();
-                }
-            });
-        }));
-        state->listeners.push_back(events.window.fullscreen.listen([](const PHLWINDOW& window) {
+            [](const PHLWINDOW& window) { run("window rules", [&] { withFrame(window, [](Frame& frame) { frame.refresh(); }); }); }));
+        state->listeners.push_back(events.window.fullscreen.listen(
             // Maximize turns into Restore and back
-            run("window maximized", [&] {
-                const WP<Frame> frame = frameOf(window);
-                if (!frame.expired()) {
-                    frame->lookChanged();
-                }
+            [](const PHLWINDOW& window) { run("window maximized", [&] { withFrame(window, [](Frame& frame) { frame.lookChanged(); }); }); }));
+        state->listeners.push_back(events.window.floating.listen(
+            // In or out of the layout, by the frame's button, a keybind or anything else: Restore or Maximize, square or round
+            [](const PHLWINDOW& window) { run("window floating", [&] { withFrame(window, [](Frame& frame) { frame.lookChanged(); }); }); }));
+        state->listeners.push_back(events.config.reloaded.listen([] {
+            // The config's `env` may have changed QT_SCALE_FACTOR
+            run("config reloaded", [] {
+                readScale();
+                forEachFrame([](Frame& frame) { frame.refresh(); });
             });
         }));
-        state->listeners.push_back(
-            events.input.mouse.move.listen([](Vector2D point, Event::SCallbackInfo& /* info */) { run("pointer moved", [&] { pointerMoved(point); }); }));
-        state->listeners.push_back(events.input.mouse.button.listen(
-            [](IPointer::SButtonEvent event, Event::SCallbackInfo& info) { run("pointer button", [&] { button(event, info); }); }));
+        state->listeners.push_back(events.input.mouse.move.listen([](Vector2D point, Event::SCallbackInfo& /* info */) {
+            if (!run("pointer moved", [&] { pointerMoved(point); })) {
+                letGoOfPointer();
+            }
+        }));
+        state->listeners.push_back(events.input.mouse.button.listen([](IPointer::SButtonEvent event, Event::SCallbackInfo& info) {
+            if (!run("pointer button", [&] { button(event, info); }) && letGoOfPointer() && event.state == WL_POINTER_BUTTON_STATE_RELEASED) {
+                info.cancelled = true;
+            }
+        }));
 
         for (const PHLWINDOW& window : Desktop::windowState()->windows()) {
             addFrame(window);
@@ -326,6 +647,7 @@ namespace frames::host {
     }
 
     void stopFrames() noexcept {
+        letGoOfPointer();
         runAlways("unload", [] {
             state->listeners.clear();
             forEachFrame([](Frame& frame) { frame.forgetTextures(); });

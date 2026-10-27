@@ -50,7 +50,6 @@ namespace frames {
         Color frameClientEdgeLight   = {};
         Color frameClientEdgeDark    = {};
         Color frameTitleText         = {};
-        float frameTitleGlow         = 0;
         int   fontSizeSmall          = 0;
         // font-ui's candidates as one comma-separated list, which Pango reads as "the first of these it has"
         std::string_view fontUi = "";

@@ -27,13 +27,12 @@ namespace frames {
         GlyphRestoreInactive,
         GlowMaximize,
         GlowClose,
-        GlowTitle,
         Reflection,
         Application16,
         Application32,
     };
 
-    constexpr std::size_t pieceCount = 20;
+    constexpr std::size_t pieceCount = 19;
 
     // How far a picture's corners and edges reach in from each side: those keep their size when the picture is
     // stretched, only the middle grows (nineSlice)
@@ -69,7 +68,6 @@ namespace frames {
         {.file = "glyph-restore-inactive.png", .width = 12, .height = 12},
         {.file = "glow-maximize.png", .width = 49, .height = 38, .margins = {.left = 11, .top = 9, .right = 10, .bottom = 8}},
         {.file = "glow-close.png", .width = 66, .height = 40, .margins = {.left = 11, .top = 9, .right = 10, .bottom = 10}},
-        {.file = "glow-title.png", .width = 47, .height = 33, .margins = {.left = 23, .top = 0, .right = 23, .bottom = 0}},
         {.file = "reflection.png", .width = 802, .height = 604},
         {.file = "application-16.png", .width = 16, .height = 16},
         {.file = "application-32.png", .width = 32, .height = 32},
@@ -78,8 +76,5 @@ namespace frames {
     constexpr const PieceInfo& pieceInfo(Piece piece) noexcept {
         return pieces.at(static_cast<std::size_t>(piece));
     }
-
-    // How far the title's glow reaches past the words on each side, measured on Windows 7 screenshots
-    constexpr int titleGlowReach = 13;
 
 }

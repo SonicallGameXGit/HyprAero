@@ -54,7 +54,7 @@ namespace {
         const frames::Pointer pointer = {};
         check::that(frames::lookOf(pointer, Button::Close, false) == Look::Inactive, "an inactive window's buttons are pale");
         check::that(frames::facePiece(Button::Close, Look::Inactive) == Piece::FaceCloseInactive, "with the pale face");
-        check::that(frames::glyphPiece(Button::Close, Look::Inactive, false) == Piece::GlyphCloseInactive, "and the pale glyph");
+        check::that(frames::glyphPiece(Button::Close, Look::Inactive, false, true) == Piece::GlyphCloseInactive, "and the pale glyph");
 
         frames::Pointer over = {};
         frames::movePointer(over, Button::Close);
@@ -63,8 +63,10 @@ namespace {
 
     void pieces() {
         check::that(frames::facePiece(Button::Maximize, Look::Pressed) == Piece::FaceMaximizePressed, "Maximize pressed");
-        check::that(frames::glyphPiece(Button::Maximize, Look::Rest, true) == Piece::GlyphRestore, "maximized, it shows Restore");
-        check::that(frames::glyphPiece(Button::Maximize, Look::Rest, false) == Piece::GlyphMaximize, "else Maximize");
+        check::that(frames::glyphPiece(Button::Maximize, Look::Rest, true, true) == Piece::GlyphRestore, "in the layout, it shows Restore");
+        check::that(frames::glyphPiece(Button::Maximize, Look::Rest, false, true) == Piece::GlyphMaximize, "else Maximize");
+        check::that(frames::glyphPiece(Button::Maximize, Look::Rest, false, false) == Piece::GlyphMaximizeInactive, "one that cannot be clicked is pale");
+        check::that(frames::glyphPiece(Button::Maximize, Look::Rest, true, false) == Piece::GlyphRestoreInactive, "Restore too");
         check::that(frames::glowPiece(Button::Close) == Piece::GlowClose && frames::glowPiece(Button::Maximize) == Piece::GlowMaximize,
                     "the red and the blue glow");
         check::that(frames::glows(Look::Hover) && frames::glows(Look::Pressed) && !frames::glows(Look::Rest), "lit buttons glow");

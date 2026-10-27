@@ -6,20 +6,24 @@ Windows 7 window frames for Hyprland, part of HyprAero, a Windows 7 (Aero) style
 
 **Early.** What works:
 
-- Windows 7's frame around every window: see-through glossy glass with Windows 7's streaks, lighter for the active window and paler for the others.
-- The app's icon and the window's title in the top band. Long titles are cut short with "…".
-- Maximize (Restore while the window is maximized) and Close, Windows 7's own buttons: they glow under the pointer, and Close turns red. A click acts when you let go over the same button.
+- Windows 7's frame around every window: see-through glossy glass with Windows 7's streaks, lighter for the active window and paler for the others. Rounded corners on floating windows, square ones on windows in the layout.
+- The app's icon and the window's title in the middle of the top band. Long titles are cut short with "…".
+- Maximize and Close, Windows 7's own buttons: they glow under the pointer, and Close turns red. A click acts when you let go over the same button. A window in Hyprland's layout counts as maximized: Maximize puts a floating window into the layout, and on a window in the layout it shows Restore, which takes it out. The button always shows the window's real state, however it changed (a keybind too). On a window that cannot change its size, Maximize is pale and does nothing.
+- Moving a window by its title: press and drag. A window in the layout only comes out once you drag it 32 pixels away (a floating one after 4), so a slip of the hand does nothing; it then floats under the pointer. Drag a window to the top of the screen and a glass outline shows: let go there and it goes back into the layout.
+- Resizing by the frame's edges, as on Windows: a side changes only the width or the height, a corner both.
+- No frame for apps that draw their own title bar: Chromium and Electron apps that do (VS Code, Vivaldi, Discord, Obsidian), GTK apps, Firefox. They say so to the compositor, and the frame listens.
+- The frame follows the app: if an app draws itself smaller than the room Hyprland gives it, the frame goes around the app, not around the empty room.
+- The frames grow with `QT_SCALE_FACTOR`, as your Qt apps do.
 - The Aero (light) and Slate (dark) themes, following your system's colour scheme while the companion runs.
 
 Not yet:
 
 - Tooltips on the buttons.
-- Moving a window by its title, double-clicking the title, and the window menu.
+- Double-clicking the title, and the window menu.
+- A way to force the frame on an app that draws its own title bar.
 - A Minimize button: Hyprland has no minimized windows.
 
 What is planned is in `AGENTS.md` section 8.
-
-**Apps that draw their own title bar** get a second one, the frame's, above their own. These are GTK apps with header bars (GNOME apps, for example) and some Electron apps. Until there is a better answer, turn the frame off for such an app with Hyprland's `decorate` window rule (see "Setting it up" below).
 
 ## Why it is careful
 
@@ -45,12 +49,12 @@ The plugin is `build/hypraero-frames.so`. HyprAero keeps each module on a branch
 
 ## Setting it up
 
-The frame takes the place of Hyprland's own border and rounded corners, and its glass looks right only with Hyprland's blur. In your Hyprland config:
+The frame takes the place of Hyprland's own border and rounded corners, and its glass looks right only with Hyprland's blur. The frame resizes windows by its edges itself, so Hyprland's `resize_on_border` is not needed; leave it off, or its cursors fight the frame's. In your Hyprland config:
 
 ```ini
 general {
     border_size = 0
-    resize_on_border = true     # resize a window by dragging its frame's edge
+    resize_on_border = false
 }
 
 decoration {
@@ -67,7 +71,7 @@ Or, in a `hyprland.lua`:
 hl.config({
     general = {
         border_size = 0,
-        resize_on_border = true,
+        resize_on_border = false,
     },
     decoration = {
         rounding = 0,
@@ -78,7 +82,9 @@ hl.config({
 })
 ```
 
-Without blur the glass is still drawn, just not blurred. A window rule that rounds windows (`rounding`, `rounding_power`) shows the glass through the window's corners; leave it out.
+Without blur the glass is still drawn, just not blurred.
+
+**Size:** the frames take `QT_SCALE_FACTOR` from Hyprland's environment, so set it in Hyprland's config (`env = QT_SCALE_FACTOR,1.25`), not only in a shell. They read it when the plugin loads and whenever the config is reloaded. A value that is not a number from 0.5 to 4 is ignored (Hyprland's log says so). A window rule that rounds windows (`rounding`, `rounding_power`) shows the glass through the window's corners; leave it out.
 
 Load the plugin (Hyprland must be the version it was built against):
 
@@ -98,7 +104,7 @@ qs -p ~/HyprAero-frames
 
 To start it with Hyprland: `exec-once = qs -p <full path>/HyprAero-frames`. It can be started before or after the plugin is loaded.
 
-**No frame for an app:** Hyprland's `decorate` window rule turns the frame off for the windows it matches:
+**No frame for an app:** apps that draw their own title bar get none by themselves. For any other app, Hyprland's `decorate` window rule turns the frame off for the windows it matches:
 
 ```ini
 windowrule = decorate off, match:class ^org\.gnome\.Nautilus$

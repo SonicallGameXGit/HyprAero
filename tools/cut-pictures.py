@@ -34,8 +34,6 @@ PIECES = {
     # The glows around a button under the pointer, their hole where the button goes
     'glow-maximize': (83, 440, 49, 38),
     'glow-close': (261, 0, 66, 40),
-    # The white glow behind the title
-    'glow-title': (136, 91, 47, 33),
     # The streaks over the glass
     'reflection': (555, 0, 802, 604),
 }

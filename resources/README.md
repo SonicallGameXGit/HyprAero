@@ -27,7 +27,6 @@ Cut from Windows 7's DWM atlas, `assets/aero/windows-7-ui-elements/images/captio
 | `glyph-restore.png` / `-inactive` | 1, 541 / 1, 583, 12 x 12 | Restore's two boxes, while maximized | |
 | `glow-maximize.png` | 83, 440, 49, 38 | the glow around Maximize under the pointer, a hole where the button goes; drawn in nine parts | |
 | `glow-close.png` | 261, 0, 66, 40 | the glow around Close | |
-| `glow-title.png` | 136, 91, 47, 33 | the white glow behind the title; its middle stretched along the words | the title, Aero only |
 | `reflection.png` | 555, 0, 802, 604 | the streaks over the glass | the glass, at 1:1 from the window's corner |
 
 ## icons/

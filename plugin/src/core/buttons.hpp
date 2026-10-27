@@ -46,8 +46,9 @@ namespace frames {
 
     Piece facePiece(Button button, Look look) noexcept;
 
-    // Maximize turns into Restore while the window is maximized
-    Piece glyphPiece(Button button, Look look, bool maximized) noexcept;
+    // Maximize turns into Restore while the window is in the layout (core/window.hpp showsRestore); a Maximize that
+    // cannot be clicked (canToggle) has the pale glyph
+    Piece glyphPiece(Button button, Look look, bool restore, bool enabled) noexcept;
 
     Piece glowPiece(Button button) noexcept;
 

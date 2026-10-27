@@ -91,13 +91,13 @@ namespace frames {
         return Piece::FaceMaximizeRest;
     }
 
-    Piece glyphPiece(Button button, Look look, bool maximized) noexcept {
-        const bool inactive = look == Look::Inactive;
+    Piece glyphPiece(Button button, Look look, bool restore, bool enabled) noexcept {
+        const bool inactive = look == Look::Inactive || !enabled;
         if (button == Button::Close) {
             return inactive ? Piece::GlyphCloseInactive : Piece::GlyphClose;
         }
 
-        if (maximized) {
+        if (restore) {
             return inactive ? Piece::GlyphRestoreInactive : Piece::GlyphRestore;
         }
 

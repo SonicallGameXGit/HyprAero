@@ -1,5 +1,6 @@
 #include "core/layout.hpp"
 
+#include <charconv>
 #include <cmath>
 
 namespace frames {
@@ -8,6 +9,9 @@ namespace frames {
 
         // Larger than any screen; a size past it is a bug or a lie, not a window
         constexpr double largest = 100000;
+
+        // How much of a drawing may stand past its room and still count as fitting: Hyprland's sizes are fractions
+        constexpr double fitSlack = 0.5;
 
         // The button's face, and above it up to the frame's top edge, as on Windows: the pointer thrown at the top
         // of the screen still hits it
@@ -19,19 +23,57 @@ namespace frames {
             return std::isfinite(size) && size > 0 && size <= largest;
         }
 
+        bool finite(const Box& box) {
+            return std::isfinite(box.x) && std::isfinite(box.y) && std::isfinite(box.width) && std::isfinite(box.height);
+        }
+
+        Box pieceBox(Piece piece, double x, double y, double scale) {
+            const PieceInfo& info = pieceInfo(piece);
+            return {.x = x, .y = y, .width = info.width * scale, .height = info.height * scale};
+        }
+
     }
 
     bool contains(const Box& box, double x, double y) noexcept {
         return x >= box.x && x < box.x + box.width && y >= box.y && y < box.y + box.height;
     }
 
-    std::optional<FrameLayout> layoutFrame(double outerWidth, double outerHeight, const Tokens& tokens) noexcept {
+    double usableScale(double scale) noexcept {
+        if (!std::isfinite(scale) || scale < smallestScale || scale > largestScale) {
+            return 1;
+        }
+
+        return scale;
+    }
+
+    std::optional<double> scaleFromText(std::string_view text) noexcept {
+        double     scale  = 0;
+        const auto parsed = std::from_chars(text.data(), text.data() + text.size(), scale, std::chars_format::fixed);
+        if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size()) {
+            return std::nullopt;
+        }
+
+        if (!std::isfinite(scale) || scale < smallestScale || scale > largestScale) {
+            return std::nullopt;
+        }
+
+        return scale;
+    }
+
+    Extents frameExtents(const Tokens& tokens, double scale) noexcept {
+        const double usable = usableScale(scale);
+        return {.border = std::round(tokens.frameBorder * usable), .caption = std::round(tokens.frameCaption * usable)};
+    }
+
+    std::optional<FrameLayout> layoutFrame(double outerWidth, double outerHeight, const Tokens& tokens, double scale) noexcept {
         if (!usable(outerWidth) || !usable(outerHeight)) {
             return std::nullopt;
         }
 
-        const double border  = tokens.frameBorder;
-        const double caption = tokens.frameCaption;
+        const double  pixel   = usableScale(scale);
+        const Extents extents = frameExtents(tokens, pixel);
+        const double  border  = extents.border;
+        const double  caption = extents.caption;
         if (border < 2 || caption < border || outerWidth <= border * 2 || outerHeight <= caption + border) {
             return std::nullopt;
         }
@@ -39,6 +81,8 @@ namespace frames {
         FrameLayout layout = {};
         layout.outer       = {.x = 0, .y = 0, .width = outerWidth, .height = outerHeight};
         layout.client      = {.x = border, .y = caption, .width = outerWidth - border * 2, .height = outerHeight - caption - border};
+        layout.extents     = extents;
+        layout.scale       = pixel;
         layout.strips      = {{
             {.x = 0, .y = 0, .width = outerWidth, .height = caption},
             {.x = 0, .y = caption, .width = border, .height = layout.client.height},
@@ -46,37 +90,28 @@ namespace frames {
             {.x = 0, .y = outerHeight - border, .width = outerWidth, .height = border},
         }};
 
-        const PieceInfo& closeFace    = pieceInfo(Piece::FaceCloseRest);
-        const PieceInfo& maximizeFace = pieceInfo(Piece::FaceMaximizeRest);
-        layout.close                  = {
-            .x      = outerWidth - tokens.frameButtonsRight - closeFace.width,
-            .y      = static_cast<double>(tokens.frameButtonsTop),
-            .width  = static_cast<double>(closeFace.width),
-            .height = static_cast<double>(closeFace.height),
-        };
-        layout.maximize = {
-            .x      = layout.close.x - maximizeFace.width,
-            .y      = static_cast<double>(tokens.frameButtonsTop),
-            .width  = static_cast<double>(maximizeFace.width),
-            .height = static_cast<double>(maximizeFace.height),
-        };
-        layout.showButtons = layout.maximize.x >= border;
+        const double top      = tokens.frameButtonsTop * pixel;
+        const double closeX   = outerWidth - tokens.frameButtonsRight * pixel - pieceInfo(Piece::FaceCloseRest).width * pixel;
+        layout.close          = pieceBox(Piece::FaceCloseRest, closeX, top, pixel);
+        const double maximize = closeX - pieceInfo(Piece::FaceMaximizeRest).width * pixel;
+        layout.maximize       = pieceBox(Piece::FaceMaximizeRest, maximize, top, pixel);
+        layout.showButtons    = layout.maximize.x >= border;
 
-        // The icon and the words sit in the caption's band below the top edge
-        const double band  = caption - border;
+        // The icon and the words sit in the middle of the caption's height
         const double right = layout.showButtons ? layout.maximize.x : outerWidth - border;
-        const double size  = tokens.frameIconSize;
-        layout.icon        = {.x = static_cast<double>(tokens.frameIconLeft), .y = border + std::floor((band - size) / 2), .width = size, .height = size};
+        const double size  = tokens.frameIconSize * pixel;
+        const double gap   = tokens.frameTitleGap * pixel;
+        layout.icon        = {.x = tokens.frameIconLeft * pixel, .y = std::floor((caption - size) / 2), .width = size, .height = size};
         layout.showIcon    = size > 0 && layout.icon.x + size <= right;
 
-        const double titleLeft = layout.icon.x + size + tokens.frameTitleGap;
-        layout.title           = {.x = titleLeft, .y = border, .width = right - tokens.frameTitleGap - titleLeft, .height = band};
+        const double titleLeft = layout.icon.x + size + gap;
+        layout.title           = {.x = titleLeft, .y = 0, .width = right - gap - titleLeft, .height = caption};
         layout.showTitle       = layout.showIcon && layout.title.width >= 1;
 
         return layout;
     }
 
-    Part partAt(const FrameLayout& layout, double x, double y) noexcept {
+    Part partAt(const FrameLayout& layout, double x, double y, bool resizable) noexcept {
         if (!contains(layout.outer, x, y)) {
             return Part::Outside;
         }
@@ -93,50 +128,102 @@ namespace frames {
             return Part::Close;
         }
 
-        if (y < layout.client.y) {
-            return Part::Caption;
+        if (y >= layout.client.y) {
+            return Part::Edge;
         }
 
-        return Part::Edge;
+        // Along the caption the frame's outermost band resizes, as the sides do below it
+        const double band   = layout.extents.border;
+        const bool   onEdge = y < band || x < band || x >= layout.outer.width - band;
+        if (resizable && onEdge) {
+            return Part::Edge;
+        }
+
+        return Part::Caption;
     }
 
-    Box glyphBox(const Box& face, double glyphWidth, double glyphHeight) noexcept {
+    Edges edgesAt(const FrameLayout& layout, double x, double y) noexcept {
+        const double band  = layout.extents.border;
+        const double reach = band * 2;
+        const double width = layout.outer.width;
+        const double high  = layout.outer.height;
+
+        Edges edges = {.top = y < band, .bottom = y >= high - band, .left = x < band, .right = x >= width - band};
+
+        // A corner reaches a little along both its sides, so it is not a single pixel to aim at
+        if (edges.top || edges.bottom) {
+            edges.left  = edges.left || x < reach;
+            edges.right = edges.right || x >= width - reach;
+        }
+
+        if (edges.left || edges.right) {
+            edges.top    = edges.top || y < reach;
+            edges.bottom = edges.bottom || y >= high - reach;
+        }
+
+        // A window so small that both sides are in reach resizes by the top-left ones
+        if (edges.left && edges.right) {
+            edges.right = false;
+        }
+
+        if (edges.top && edges.bottom) {
+            edges.bottom = false;
+        }
+
+        return edges;
+    }
+
+    Box fitToSurface(const Box& outer, const Box& window, const Box& surface) noexcept {
+        if (!finite(outer) || !finite(window) || !finite(surface) || surface.width <= 0 || surface.height <= 0) {
+            return outer;
+        }
+
+        const bool inside = surface.x >= window.x - fitSlack && surface.y >= window.y - fitSlack &&
+                            surface.x + surface.width <= window.x + window.width + fitSlack &&
+                            surface.y + surface.height <= window.y + window.height + fitSlack;
+        if (!inside) {
+            return outer;
+        }
+
         return {
-            .x      = face.x + std::floor((face.width - glyphWidth + 1) / 2),
-            .y      = face.y + std::floor((face.height - 1 - glyphHeight) / 2),
+            .x      = outer.x + (surface.x - window.x),
+            .y      = outer.y + (surface.y - window.y),
+            .width  = outer.width - (window.width - surface.width),
+            .height = outer.height - (window.height - surface.height),
+        };
+    }
+
+    Box glyphBox(const Box& face, double glyphWidth, double glyphHeight, double pixel) noexcept {
+        const double unit = usableScale(pixel);
+        return {
+            .x      = face.x + std::floor((face.width - glyphWidth + unit) / 2 / unit) * unit,
+            .y      = face.y + std::floor((face.height - unit - glyphHeight) / 2 / unit) * unit,
             .width  = glyphWidth,
             .height = glyphHeight,
         };
     }
 
-    Box titleGlowBox(const FrameLayout& layout, double textWidth) noexcept {
-        const PieceInfo& glow = pieceInfo(Piece::GlowTitle);
+    Box buttonGlowBox(const Box& face, const Margins& margins, double scale) noexcept {
+        const double unit = usableScale(scale);
         return {
-            .x      = layout.title.x - titleGlowReach,
-            .y      = layout.title.y + std::floor((layout.title.height - glow.height) / 2),
-            .width  = textWidth + titleGlowReach * 2,
-            .height = static_cast<double>(glow.height),
+            .x      = face.x - margins.left * unit,
+            .y      = face.y - margins.top * unit,
+            .width  = face.width + (margins.left + margins.right) * unit,
+            .height = face.height + (margins.top + margins.bottom) * unit,
         };
     }
 
-    Box buttonGlowBox(const Box& face, const Margins& margins) noexcept {
-        return {
-            .x      = face.x - margins.left,
-            .y      = face.y - margins.top,
-            .width  = face.width + margins.left + margins.right,
-            .height = face.height + margins.top + margins.bottom,
-        };
-    }
-
-    std::array<Slice, 9> nineSlice(double sourceWidth, double sourceHeight, const Margins& margins, const Box& target) noexcept {
+    std::array<Slice, 9> nineSlice(double sourceWidth, double sourceHeight, const Margins& margins, const Box& target, double scale) noexcept {
         std::array<Slice, 9> slices = {};
         if (sourceWidth <= 0 || sourceHeight <= 0 || target.width <= 0 || target.height <= 0) {
             return slices;
         }
 
+        const double unit = usableScale(scale);
+
         // Margins that do not fit the target shrink together, so a small target still shows both sides
-        const double across = margins.left + margins.right;
-        const double down   = margins.top + margins.bottom;
+        const double across = (margins.left + margins.right) * unit;
+        const double down   = (margins.top + margins.bottom) * unit;
         const double scaleX = across > target.width ? target.width / across : 1;
         const double scaleY = down > target.height ? target.height / down : 1;
 
@@ -147,10 +234,10 @@ namespace frames {
         const std::array<double, 3> sourceH = {static_cast<double>(margins.top), sourceHeight - margins.top - margins.bottom,
                                                static_cast<double>(margins.bottom)};
 
-        const double                left    = margins.left * scaleX;
-        const double                right   = margins.right * scaleX;
-        const double                top     = margins.top * scaleY;
-        const double                bottom  = margins.bottom * scaleY;
+        const double                left    = margins.left * unit * scaleX;
+        const double                right   = margins.right * unit * scaleX;
+        const double                top     = margins.top * unit * scaleY;
+        const double                bottom  = margins.bottom * unit * scaleY;
         const std::array<double, 3> targetX = {target.x, target.x + left, target.x + target.width - right};
         const std::array<double, 3> targetW = {left, target.width - left - right, right};
         const std::array<double, 3> targetY = {target.y, target.y + top, target.y + target.height - bottom};

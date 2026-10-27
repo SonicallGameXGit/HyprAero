@@ -68,9 +68,6 @@ namespace frames::host {
         constexpr unsigned char glowClose[] = {
 #embed "frame/glow-close.png"
         };
-        constexpr unsigned char glowTitle[] = {
-#embed "frame/glow-title.png"
-        };
         constexpr unsigned char reflection[] = {
 #embed "frame/reflection.png"
         };
@@ -84,7 +81,7 @@ namespace frames::host {
         constexpr std::array<std::span<const unsigned char>, pieceCount> embedded = {{
             faceMaximizeRest,  faceMaximizeHover, faceMaximizePressed, faceMaximizeInactive, faceCloseRest,         faceCloseHover, faceClosePressed,
             faceCloseInactive, glyphClose,        glyphCloseInactive,  glyphMaximize,        glyphMaximizeInactive, glyphRestore,   glyphRestoreInactive,
-            glowMaximize,      glowClose,         glowTitle,           reflection,           application16,         application32,
+            glowMaximize,      glowClose,         reflection,          application16,        application32,
         }};
 
         struct Reader {
@@ -186,7 +183,7 @@ namespace frames::host {
         if (texture == nullptr) {
             const PieceInfo& info   = pieceInfo(piece);
             const auto       slices = nineSlice(info.width, info.height, info.margins,
-                                                {.x = 0, .y = 0, .width = static_cast<double>(info.width), .height = static_cast<double>(info.height)});
+                                                {.x = 0, .y = 0, .width = static_cast<double>(info.width), .height = static_cast<double>(info.height)}, 1);
             const Surface    part   = cut(pictures.surfaces.at(pieceIndex).get(), slices.at(index).source);
             if (part == nullptr || !uploadable(part.get())) {
                 return nullptr;

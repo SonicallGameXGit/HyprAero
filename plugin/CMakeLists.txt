@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.27)
 
-project(hypraero-frames VERSION 0.2.0 LANGUAGES CXX)
+project(hypraero-frames VERSION 0.3.0 LANGUAGES CXX)
 
 # Hyprland is built with GCC and its plugin interface passes C++ objects: a plugin from another compiler may not
 # match it and could take the session down (AGENTS.md section 3)
@@ -33,9 +33,11 @@ set(coreSources
     src/core/command.cpp
     src/core/icons.cpp
     src/core/layout.cpp
+    src/core/moving.cpp
     src/core/safety.cpp
     src/core/status.cpp
     src/core/text.cpp
+    src/core/window.cpp
 )
 
 # The plugin. It is never built with sanitizers: they do not work in a library loaded into a program built without them.
@@ -48,6 +50,7 @@ set(hostSources
     src/host/frames.cpp
     src/host/pictures.cpp
     src/host/state.cpp
+    src/host/titleBars.cpp
 )
 
 # Windows 7's pictures are built into the plugin (#embed), so it reads no file while Hyprland runs
@@ -71,7 +74,7 @@ enable_testing()
 
 set(framesSanitizers -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
 
-foreach(testName buttonsTest commandTest iconsTest layoutTest safetyTest statusTest textTest)
+foreach(testName buttonsTest commandTest iconsTest layoutTest movingTest safetyTest statusTest textTest windowTest)
     add_executable(${testName} tests/${testName}.cpp ${coreSources})
     add_dependencies(${testName} frames-tokens)
     target_include_directories(${testName} PRIVATE src ${generatedFolder})

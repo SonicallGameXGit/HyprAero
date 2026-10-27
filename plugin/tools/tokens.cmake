@@ -23,7 +23,6 @@ set(frameTokens
     frameClientEdgeLight color
     frameClientEdgeDark color
     frameTitleText color
-    frameTitleGlow real
     fontSizeSmall int
 )
 
