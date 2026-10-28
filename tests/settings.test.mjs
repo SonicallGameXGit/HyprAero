@@ -86,3 +86,21 @@ test('the peek settings default to on after half a second, and wrong kinds fall 
     assert.equal(problems.length, 1)
     assert.match(problems[0], /bar\.peekDelay.*number.*string/)
 })
+
+test('the start orb\'s mark is in Windows\' colours without gaps by default, and only known colours are taken', () => {
+    assert.equal(defaults.startMenu.orbColors, 'windows')
+    assert.equal(defaults.startMenu.orbGaps, false)
+    assert.equal(parseConfig('{ "startMenu": { "orbColors": "hyprland", "orbGaps": true } }').values.startMenu.orbColors, 'hyprland')
+    const { values, problems } = parseConfig('{ "startMenu": { "orbColors": "Hyprland" } }')
+    assert.equal(values.startMenu.orbColors, 'windows')
+    assert.equal(problems.length, 1)
+    assert.match(problems[0], /startMenu\.orbColors.*"windows", "hyprland"/)
+})
+
+test('the start orb shows Hyprland\'s mark by default, or Windows 7\'s flag, and no other logo', () => {
+    assert.equal(defaults.startMenu.orbLogo, 'hyprland')
+    assert.equal(parseConfig('{ "startMenu": { "orbLogo": "windows" } }').values.startMenu.orbLogo, 'windows')
+    const { values, problems } = parseConfig('{ "startMenu": { "orbLogo": "apple" } }')
+    assert.equal(values.startMenu.orbLogo, 'hyprland')
+    assert.match(problems[0], /startMenu\.orbLogo.*"hyprland", "windows"/)
+})

@@ -32,6 +32,13 @@ const defaults = {
         touchControls: false,
         // A window of an app keeping focus for a while counts as using it, for "Most used".
         countFocus: true,
+        // What the start orb shows: Hyprland's mark ('hyprland') or Windows 7's flag ('windows').
+        orbLogo: 'hyprland',
+        // The colours of Hyprland's mark in the start orb: Windows 7's flag's ('windows') or Hyprland's own
+        // ('hyprland').
+        orbColors: 'windows',
+        // Hyprland's mark split into four panes, as the flag is, by gaps as wide as the opening at its top.
+        orbGaps: false,
     },
     tray: {
         // Windows 7's "Always show all icons and notifications on the taskbar": no icon waits behind the
@@ -49,6 +56,18 @@ const defaults = {
         // blueman, pasystray, udiskie, ...) is left out of the notification area.
         hideSystemApps: true,
     },
+}
+
+// Settings that take only some words; anything else falls back to the default.
+const choices = {
+    'startMenu.orbLogo': [
+        'hyprland',
+        'windows',
+    ],
+    'startMenu.orbColors': [
+        'windows',
+        'hyprland',
+    ],
 }
 
 function kindOf(value) {
@@ -111,6 +130,13 @@ function parseConfig(text) {
             const value = given[name]
             if (kindOf(value) !== kindOf(fallback)) {
                 problems.push(`"${group}.${name}" must be a ${kindOf(fallback)}, not a ${kindOf(value)}; using the default (${JSON.stringify(fallback)})`)
+                continue
+            }
+
+            const allowed = choices[group + '.' + name]
+            if (allowed !== undefined && allowed.includes(value) === false) {
+                const listed = allowed.map(choice => JSON.stringify(choice)).join(', ')
+                problems.push(`"${group}.${name}" must be one of ${listed}, not ${JSON.stringify(value)}; using the default (${JSON.stringify(fallback)})`)
                 continue
             }
 

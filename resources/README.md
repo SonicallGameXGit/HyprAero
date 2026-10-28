@@ -4,6 +4,12 @@ Files the shell loads at run time that are not code: Windows' own icons (and lat
 
 They are Microsoft's: taken from Windows' system files, kept for this personal project at the owner's request (`AGENTS.md` decision log, 2026-10-18).
 
+## Pictures (`pictures/`)
+
+| Name | Source | Changed | Used for |
+| --- | --- | --- | --- |
+| `windows-7-flag.svg` | A vector remake of Windows 7's flag (`Windows_7-Logo.wine.svg`, logowine), given by the owner (2026-10-28) | Only its frame: `viewBox` centred on the flag's panes (their centre of mass, without the shadow, measured on a render: 1.2% left of and 1.5% above the middle of the flag and its shadow, which span `0 0 335 297`) with room for all of it, and its fixed 1200 x 800 size taken out, so it centres and scales in the orb: `sed 's/height="800" width="1200" viewBox="-50.25 -74.228 435.5 445.368"/viewBox="-8.56 -9.38 344.06 306.88"/'` | The start orb with `startMenu.orbLogo` `"windows"` |
+
 ## Icons (`icons/`)
 
 Each icon is kept as `<name>-<size>.png`, one file for each 32-bit frame its `.ico` has up to 48 px, as it is (Windows draws each size by hand). `icons/frames.js` lists the frames of every icon and is written again whenever one is added; `design/WindowsIcon.qml` picks the frame from it.

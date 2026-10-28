@@ -1,6 +1,7 @@
 import Quickshell
 import QtQuick
 import qs.design
+import qs.services
 
 // The start orb at the bar's left end. As in Windows Vista it is bigger than the bar and rises above its
 // top edge, which the bar cannot draw (a window cannot draw outside itself), so the orb is its own popup of
@@ -61,6 +62,9 @@ PopupWindow {
         hovered: root.hovered
         pressed: root.pressed
         highlighted: root.menuOpen
+        markColors: Config.startMenu.orbColors
+        markGaps: Config.startMenu.orbGaps
+        logo: Config.startMenu.orbLogo === 'windows' ? Qt.resolvedUrl('../../resources/pictures/windows-7-flag.svg') : ''
     }
 
     Item {
