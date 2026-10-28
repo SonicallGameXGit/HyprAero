@@ -68,7 +68,19 @@ namespace frames {
 
     // Dropped near one side of a tiled window (inside a band a fifth of its size deep, at most 96 pixels), a moved
     // window goes beside it there. Farther in, it stays floating over it. `window` is the tiled one with its frame.
-    std::optional<Side> dropSideAt(const Box& window, Point pointer, double scale) noexcept;
+    // In a corner, inside two bands, a side on the layout's outer edge comes before one it shares with another window
+    // (`shared`, from sharedSides): let go at the bottom of the screen, a window goes below the one there, not beside
+    // it. Between two of the same kind, the side it is deeper toward.
+    std::optional<Side> dropSideAt(const Box& window, Point pointer, double scale, const Edges& shared) noexcept;
+
+    // The tile whose room is nearest to a point, as dwindle finds the window to put a new one beside when the point is
+    // over none and on a screen's reserved area (CDwindleAlgorithm::getClosestNode); none without tiles
+    std::optional<std::size_t> nearestTile(std::span<const Tile> tiles, Point point) noexcept;
+
+    // A place to drop a moved window on is shown, and taken, only once the pointer stayed on it for a while (0.6s):
+    // moved past windows in the layout, or let go near one, a window stays floating. `sinceMs` is when the pointer
+    // came onto it. A time that is not a number ends the wait, rather than keeping it forever.
+    bool dropReady(double sinceMs, double nowMs) noexcept;
 
     // What the dropped window takes of the tiled one's room: the half on that side, as Hyprland's dwindle splits it
     Box dropArea(const Box& node, Side side) noexcept;

@@ -84,6 +84,13 @@ namespace frames::host {
         Box area = {};
     };
 
+    // A place found under the pointer, not shown or taken yet: only once the pointer stayed on it long enough
+    // (core/tiling.hpp dropReady), counted from `sinceMs`
+    struct WaitingDrop {
+        Drop   drop    = {};
+        double sinceMs = 0;
+    };
+
     // Windows 7's glass outline of where a moved window goes, drawn by that window's frame under it, fading in and out
     struct Preview {
         WP<Frame>     drawer = {};
@@ -124,10 +131,12 @@ namespace frames::host {
         // The caption or edge held, and the resize cursor the frames show (empty: none)
         std::optional<Grab> grab   = std::nullopt;
         std::string         cursor = "";
-        // Where letting go of the window being moved puts it, its preview, and the preview fading out
-        std::optional<Drop>    drop    = std::nullopt;
-        std::optional<Preview> preview = std::nullopt;
-        std::optional<Preview> leaving = std::nullopt;
+        // Where letting go of the window being moved puts it, its preview, and the preview fading out; before that, the
+        // place waiting under the pointer
+        std::optional<WaitingDrop> waiting = std::nullopt;
+        std::optional<Drop>        drop    = std::nullopt;
+        std::optional<Preview>     preview = std::nullopt;
+        std::optional<Preview>     leaving = std::nullopt;
         // For a double click on a caption; its second press was the frames', so its release is too
         std::optional<LastClick> lastClick  = std::nullopt;
         bool                     ownRelease = false;

@@ -15,6 +15,9 @@ namespace frames {
         constexpr double dropShare = 0.2;
         constexpr double dropReach = 96;
 
+        // How long the pointer stays on a place before it is taken; the owner asked for half a second or more
+        constexpr double dropDelay = 400;
+
         // A line closer to the pointer than this is under it
         constexpr double closeEnough = 0.5;
 
@@ -175,7 +178,7 @@ namespace frames {
         return "";
     }
 
-    std::optional<Side> dropSideAt(const Box& window, Point pointer, double scale) noexcept {
+    std::optional<Side> dropSideAt(const Box& window, Point pointer, double scale, const Edges& shared) noexcept {
         if (!finite(window) || !contains(window, pointer.x, pointer.y)) {
             return std::nullopt;
         }
@@ -189,30 +192,66 @@ namespace frames {
             Side   side     = Side::Left;
             double distance = 0;
             double band     = 0;
+            bool   shared   = false;
         };
 
         const std::array<Candidate, 4> candidates = {{
-            {.side = Side::Left, .distance = pointer.x - window.x, .band = across},
-            {.side = Side::Right, .distance = right(window) - pointer.x, .band = across},
-            {.side = Side::Top, .distance = pointer.y - window.y, .band = down},
-            {.side = Side::Bottom, .distance = bottom(window) - pointer.y, .band = down},
+            {.side = Side::Left, .distance = pointer.x - window.x, .band = across, .shared = shared.left},
+            {.side = Side::Right, .distance = right(window) - pointer.x, .band = across, .shared = shared.right},
+            {.side = Side::Top, .distance = pointer.y - window.y, .band = down, .shared = shared.top},
+            {.side = Side::Bottom, .distance = bottom(window) - pointer.y, .band = down, .shared = shared.bottom},
         }};
 
-        std::optional<Side> found   = std::nullopt;
-        double              nearest = 1;
+        std::optional<Side> found       = std::nullopt;
+        bool                foundShared = false;
+        double              nearest     = 1;
         for (const Candidate& candidate : candidates) {
             if (candidate.band <= 0 || candidate.distance >= candidate.band) {
                 continue;
             }
 
-            const double depth = candidate.distance / candidate.band;
-            if (!found.has_value() || depth < nearest) {
-                found   = candidate.side;
-                nearest = depth;
+            const double depth  = candidate.distance / candidate.band;
+            const bool   outer  = foundShared && !candidate.shared;
+            const bool   deeper = foundShared == candidate.shared && depth < nearest;
+            if (!found.has_value() || outer || deeper) {
+                found       = candidate.side;
+                foundShared = candidate.shared;
+                nearest     = depth;
             }
         }
 
         return found;
+    }
+
+    std::optional<std::size_t> nearestTile(std::span<const Tile> tiles, Point point) noexcept {
+        if (!std::isfinite(point.x) || !std::isfinite(point.y)) {
+            return std::nullopt;
+        }
+
+        std::optional<std::size_t> found   = std::nullopt;
+        double                     closest = 0;
+        for (std::size_t index = 0; index < tiles.size(); index++) {
+            const Box& node = tiles[index].node;
+            if (!finite(node)) {
+                continue;
+            }
+
+            // How far the point is from the room, nothing inside it; of two as near, the first
+            const double across   = std::max({node.x - point.x, 0.0, point.x - right(node)});
+            const double down     = std::max({node.y - point.y, 0.0, point.y - bottom(node)});
+            const double distance = across * across + down * down;
+            if (!found.has_value() || distance < closest) {
+                found   = index;
+                closest = distance;
+            }
+        }
+
+        return found;
+    }
+
+    bool dropReady(double sinceMs, double nowMs) noexcept {
+        const double waited = nowMs - sinceMs;
+        return !std::isfinite(waited) || waited >= dropDelay;
     }
 
     Box dropArea(const Box& node, Side side) noexcept {

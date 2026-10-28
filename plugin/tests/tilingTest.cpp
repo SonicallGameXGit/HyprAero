@@ -112,21 +112,30 @@ namespace {
     void drops() {
         using frames::Side;
         const Box window = {.x = 0, .y = 0, .width = 1000, .height = 500};
-        check::that(frames::dropSideAt(window, {.x = 50, .y = 250}, 1) == Side::Left, "near the left side");
-        check::that(frames::dropSideAt(window, {.x = 950, .y = 250}, 1) == Side::Right, "near the right side");
-        check::that(frames::dropSideAt(window, {.x = 500, .y = 20}, 1) == Side::Top, "near the top");
-        check::that(frames::dropSideAt(window, {.x = 500, .y = 480}, 1) == Side::Bottom, "near the bottom");
-        check::that(!frames::dropSideAt(window, {.x = 500, .y = 250}, 1).has_value(), "the middle stays floating");
-        check::that(!frames::dropSideAt(window, {.x = 100, .y = 250}, 1).has_value(), "96 pixels at most, however large the window");
-        check::that(frames::dropSideAt(window, {.x = 5, .y = 20}, 1) == Side::Left, "in a corner, the side it is deeper toward");
-        check::that(!frames::dropSideAt(window, {.x = -1, .y = 250}, 1).has_value(), "outside the window");
+        check::that(frames::dropSideAt(window, {.x = 50, .y = 250}, 1, {}) == Side::Left, "near the left side");
+        check::that(frames::dropSideAt(window, {.x = 950, .y = 250}, 1, {}) == Side::Right, "near the right side");
+        check::that(frames::dropSideAt(window, {.x = 500, .y = 20}, 1, {}) == Side::Top, "near the top");
+        check::that(frames::dropSideAt(window, {.x = 500, .y = 480}, 1, {}) == Side::Bottom, "near the bottom");
+        check::that(!frames::dropSideAt(window, {.x = 500, .y = 250}, 1, {}).has_value(), "the middle stays floating");
+        check::that(!frames::dropSideAt(window, {.x = 100, .y = 250}, 1, {}).has_value(), "96 pixels at most, however large the window");
+        check::that(frames::dropSideAt(window, {.x = 5, .y = 20}, 1, {}) == Side::Left, "in a corner, the side it is deeper toward");
+        check::that(!frames::dropSideAt(window, {.x = -1, .y = 250}, 1, {}).has_value(), "outside the window");
+
+        // The left of two windows side by side: its right side is shared, its bottom is the layout's edge
+        const frames::Edges besideRight = {.right = true};
+        check::that(frames::dropSideAt(window, {.x = 990, .y = 450}, 1, besideRight) == Side::Bottom, "in the corner, below rather than beside");
+        check::that(frames::dropSideAt(window, {.x = 999, .y = 499}, 1, besideRight) == Side::Bottom, "even deep toward the shared side");
+        check::that(frames::dropSideAt(window, {.x = 990, .y = 250}, 1, besideRight) == Side::Right, "beside it away from the corner");
+        check::that(frames::dropSideAt(window, {.x = 990, .y = 450}, 1, {}) == Side::Right, "with nothing beside, the deeper side");
+        const frames::Edges shared = {.bottom = true, .right = true};
+        check::that(frames::dropSideAt(window, {.x = 990, .y = 450}, 1, shared) == Side::Right, "two shared sides: the deeper one");
 
         const Box small = {.x = 0, .y = 0, .width = 200, .height = 100};
-        check::that(frames::dropSideAt(small, {.x = 30, .y = 50}, 1) == Side::Left, "a fifth of a small window");
-        check::that(!frames::dropSideAt(small, {.x = 45, .y = 50}, 1).has_value(), "and no more");
+        check::that(frames::dropSideAt(small, {.x = 30, .y = 50}, 1, {}) == Side::Left, "a fifth of a small window");
+        check::that(!frames::dropSideAt(small, {.x = 45, .y = 50}, 1, {}).has_value(), "and no more");
 
         const Box wide = {.x = 0, .y = 0, .width = 2000, .height = 1000};
-        check::that(frames::dropSideAt(wide, {.x = 150, .y = 500}, 2) == Side::Left, "farther at twice the size");
+        check::that(frames::dropSideAt(wide, {.x = 150, .y = 500}, 2, {}) == Side::Left, "farther at twice the size");
 
         const auto same = [](const Box& box, double x, double y, double width, double height) {
             return box.x == x && box.y == y && box.width == width && box.height == height;
@@ -141,6 +150,30 @@ namespace {
         check::that(frames::preselectFor(Side::Top) == "preselect u", "dwindle's up");
     }
 
+    void nearest() {
+        // A | B under a bar: the pointer over the bar, above the gap the layout leaves at the top
+        const std::array<Tile, 2> pair = {tile(0, 30, 500, 570), tile(500, 30, 500, 570)};
+        check::that(frames::nearestTile(pair, {.x = 700, .y = 4}) == 1, "the window under it along the top");
+        check::that(frames::nearestTile(pair, {.x = 200, .y = 4}) == 0, "and the other one");
+        check::that(frames::nearestTile(pair, {.x = 300, .y = 300}) == 0, "inside a room, that one");
+        check::that(frames::nearestTile(pair, {.x = 500, .y = 4}) == 0, "as near to both: the first");
+        check::that(!frames::nearestTile(std::span<const Tile>{}, {.x = 0, .y = 0}).has_value(), "no tiles, none");
+
+        constexpr double          notANumber = std::numeric_limits<double>::quiet_NaN();
+        const std::array<Tile, 2> broken     = {tile(notANumber, 0, 500, 600), tile(500, 0, 500, 600)};
+        check::that(frames::nearestTile(broken, {.x = 0, .y = 0}) == 1, "a room that is not a number is passed over");
+        check::that(!frames::nearestTile(pair, {.x = notANumber, .y = 0}).has_value(), "a pointer that is not a number finds none");
+    }
+
+    void waiting() {
+        check::that(!frames::dropReady(1000, 1000), "not at once");
+        check::that(!frames::dropReady(1000, 1399), "not before 0.4s");
+        check::that(frames::dropReady(1000, 1400), "after 0.4s");
+        check::that(!frames::dropReady(1000, 900), "a clock that went back waits");
+        constexpr double notANumber = std::numeric_limits<double>::quiet_NaN();
+        check::that(frames::dropReady(notANumber, 1000), "a time that is not a number ends the wait");
+    }
+
 }
 
 int main() {
@@ -148,5 +181,7 @@ int main() {
     splitters();
     lines();
     drops();
+    nearest();
+    waiting();
     return check::result("tiling");
 }

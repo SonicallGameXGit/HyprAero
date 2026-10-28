@@ -24,6 +24,7 @@
 #include <hyprland/src/pointer/cursor/CursorShapeOverrideController.hpp>
 #include <hyprland/src/render/Renderer.hpp>
 #include <hyprland/src/render/decorations/DecorationPositioner.hpp>
+#include <hyprland/src/state/MonitorLayoutController.hpp>
 #include <hyprland/src/state/MonitorState.hpp>
 
 #include <linux/input-event-codes.h>
@@ -435,11 +436,46 @@ namespace frames::host {
             damageArea(area);
         }
 
+        // The place waiting under the pointer becomes the drop, and is shown, once the pointer stayed on it long enough
+        void armDrop(double now) {
+            if (!state->waiting.has_value() || !dropReady(state->waiting->sinceMs, now)) {
+                return;
+            }
+
+            const Drop drop = state->waiting->drop;
+            state->waiting.reset();
+            const PHLWINDOW window = drop.window.lock();
+            if (window == nullptr) {
+                return;
+            }
+
+            state->drop = drop;
+            showPreview(frameOf(window), drop.screen.lock(), drop.area);
+        }
+
+        // While a place waits, a pixel of it is drawn again at each frame of its screen, so the wait is looked at before
+        // the next one even while the pointer stays still: no timer of our own, as for the fades
+        void keepWaiting() {
+            if (state->waiting.has_value()) {
+                const Box& area = state->waiting->drop.area;
+                damageArea({.x = area.x, .y = area.y, .width = 1, .height = 1});
+            }
+        }
+
         // While a preview fades, each frame of its screen draws it again, as Hyprland's own animations damage what they
         // move before each frame
         void fadePreviews(const PHLMONITOR& monitor) {
             const double now  = nowMs();
             const double time = fadeTime();
+            if (state->waiting.has_value() && state->waiting->drop.window.expired()) {
+                state->waiting.reset();
+            }
+
+            if (state->waiting.has_value() && state->waiting->drop.screen.lock() == monitor) {
+                armDrop(now);
+                keepWaiting();
+            }
+
             if (state->leaving.has_value() && (state->leaving->drawer.expired() || settled(state->leaving->fade, now, time))) {
                 damageArea(state->leaving->area);
                 state->leaving.reset();
@@ -464,6 +500,7 @@ namespace frames::host {
         }
 
         void clearDrop() {
+            state->waiting.reset();
             state->drop.reset();
             hidePreview();
         }
@@ -473,8 +510,57 @@ namespace frames::host {
             return dwindleLaysOut(workspace) && shownWorkspace(Desktop::focusState()->monitor()) == workspace;
         }
 
+        // The windows in a workspace's layout but the one being moved
+        Tiled tilesBut(const PHLWORKSPACE& workspace, const PHLWINDOW& window) {
+            const Tiled all    = tilesOf(workspace);
+            Tiled       others = {};
+            for (std::size_t index = 0; index < all.windows.size(); index++) {
+                if (all.windows.at(index).lock() != window) {
+                    others.tiles.push_back(all.tiles.at(index));
+                    others.windows.push_back(all.windows.at(index));
+                }
+            }
+
+            return others;
+        }
+
+        // The tiled window dwindle puts a window let go at a point beside, found as CDwindleAlgorithm::addTarget finds
+        // it: the one under the point, else, over a screen's reserved area (a bar), the nearest one. None when that
+        // cannot be told: dwindle then takes one of its own choosing.
+        std::optional<std::size_t> openingOn(const Tiled& tiled, const PHLMONITOR& screen, const Vector2D& point) {
+            constexpr auto searched =
+                static_cast<uint16_t>(static_cast<unsigned>(Desktop::View::RESERVED_EXTENTS) | static_cast<unsigned>(Desktop::View::INPUT_EXTENTS) |
+                                      static_cast<unsigned>(Desktop::View::SKIP_FULLSCREEN_PRIORITY));
+            const Desktop::CViewHitTester tester{*Desktop::viewState()};
+            const PHLWINDOW               under = tester.windowAt(point, searched);
+            for (std::size_t index = 0; index < tiled.windows.size(); index++) {
+                if (under != nullptr && tiled.windows.at(index).lock() == under) {
+                    return index;
+                }
+            }
+
+            if (::State::monitorLayoutController()->isPointOnReservedArea(point, screen)) {
+                return nearestTile(tiled.tiles, pointOf(point));
+            }
+
+            return std::nullopt;
+        }
+
+        // Beside a tiled window, on one side: it takes that half of the window's room, where the layout will put it
+        Drop besideDrop(const PHLWINDOW& window, const PHLMONITOR& screen, const Tiled& tiled, std::size_t index, Side side) {
+            return Drop{
+                .window = window,
+                .kind   = DropKind::Beside,
+                .screen = screen,
+                .beside = tiled.windows.at(index),
+                .side   = side,
+                .area   = dropArea(tiled.tiles.at(index).node, side),
+            };
+        }
+
         // Where letting go of a moved window at a point would put it. `besideOnly`: a window Hyprland took out of the
-        // layout to move, which Hyprland itself puts back where it is let go of, so the top of the screen means nothing.
+        // layout to move, which Hyprland itself puts back where it is let go of, so the top of the screen does not
+        // mean all of the layout.
         std::optional<Drop> dropAt(const PHLWINDOW& window, const Vector2D& point, bool besideOnly) {
             if (window == nullptr || !validMapped(window) || Frame::factsOf(window).fixed) {
                 return std::nullopt;
@@ -485,47 +571,51 @@ namespace frames::host {
                 return std::nullopt;
             }
 
-            if (!besideOnly && atSnapEdge(pointOf(point), boxOf(screen->logicalBox()), state->scale)) {
+            const PHLWORKSPACE workspace = shownWorkspace(screen);
+            const Tiled        tiled     = tilesBut(workspace, window);
+            const bool         atTop     = atSnapEdge(pointOf(point), boxOf(screen->logicalBox()), state->scale);
+            if (atTop && tiled.tiles.empty()) {
+                if (besideOnly) {
+                    return std::nullopt;
+                }
+
                 return Drop{.window = window, .kind = DropKind::Layout, .screen = screen, .area = boxOf(screen->logicalBoxMinusReserved())};
             }
 
-            const PHLWORKSPACE workspace = shownWorkspace(screen);
             if (!besideDropsIn(workspace)) {
                 return std::nullopt;
             }
 
-            for (const WP<Layout::ITarget>& weak : workspace->m_space->targets()) {
-                const SP<Layout::ITarget> target = weak.lock();
-                const PHLWINDOW           tiled  = target == nullptr || target->floating() ? nullptr : target->window();
-                if (tiled == nullptr || tiled == window || !validMapped(tiled) || tiled->isHidden()) {
-                    continue;
+            // With windows in the layout already, the top of a screen puts the window above the one there: dwindle
+            // puts a new window beside one window, never above all of them
+            if (atTop) {
+                const std::optional<std::size_t> index = openingOn(tiled, screen, point);
+                if (!index.has_value()) {
+                    return std::nullopt;
                 }
 
-                // Measured on the window as it shows, the side it takes from its room, where the layout will put it
-                const Box box = boxOf(tiled->getWindowBoxUnified(Desktop::View::RESERVED_EXTENTS));
+                return besideDrop(window, screen, tiled, *index, Side::Top);
+            }
+
+            for (std::size_t index = 0; index < tiled.tiles.size(); index++) {
+                // Measured on the window as it shows
+                const Box& box = tiled.tiles.at(index).frame;
                 if (!contains(box, point.x, point.y)) {
                     continue;
                 }
 
-                const std::optional<Side> side = dropSideAt(box, pointOf(point), state->scale);
+                const std::optional<Side> side = dropSideAt(box, pointOf(point), state->scale, sharedSides(tiled.tiles, index));
                 if (!side.has_value()) {
                     return std::nullopt;
                 }
 
-                return Drop{
-                    .window = window,
-                    .kind   = DropKind::Beside,
-                    .screen = screen,
-                    .beside = tiled,
-                    .side   = *side,
-                    .area   = dropArea(boxOf(target->position()), *side),
-                };
+                return besideDrop(window, screen, tiled, index, *side);
             }
 
             return std::nullopt;
         }
 
-        // While a window is moved: where letting go would put it, shown by its preview
+        // While a window is moved: where letting go would put it, shown by its preview once the pointer stayed there
         void followDrop(const PHLWINDOW& window, const Vector2D& point, bool besideOnly) {
             const std::optional<Drop> found = dropAt(window, point, besideOnly);
             if (!found.has_value()) {
@@ -533,20 +623,37 @@ namespace frames::host {
                 return;
             }
 
-            const bool same = state->drop.has_value() && sameDrop(*state->drop, *found);
-            state->drop     = found;
-            if (!same || !state->preview.has_value()) {
-                showPreview(frameOf(window), found->screen.lock(), found->area);
+            if (state->drop.has_value() && sameDrop(*state->drop, *found)) {
+                state->drop = found;
+                if (!state->preview.has_value()) {
+                    showPreview(frameOf(window), found->screen.lock(), found->area);
+                    return;
+                }
+
+                // The same place, perhaps grown or shrunk with the layout: it moves with it, without fading again
+                const Box& shown = state->preview->area;
+                if (shown.x != found->area.x || shown.y != found->area.y || shown.width != found->area.width || shown.height != found->area.height) {
+                    damageArea(shown);
+                    state->preview->area = found->area;
+                    damageArea(found->area);
+                }
+
                 return;
             }
 
-            // The same place, perhaps grown or shrunk with the layout: it moves with it, without fading again
-            const Box& shown = state->preview->area;
-            if (shown.x != found->area.x || shown.y != found->area.y || shown.width != found->area.width || shown.height != found->area.height) {
-                damageArea(shown);
-                state->preview->area = found->area;
-                damageArea(found->area);
+            // Another place: the one shown goes at once, the new one waits
+            state->drop.reset();
+            hidePreview();
+
+            const double now = nowMs();
+            if (state->waiting.has_value() && sameDrop(state->waiting->drop, *found)) {
+                state->waiting->drop = *found;
+            } else {
+                state->waiting = WaitingDrop{.drop = *found, .sinceMs = now};
             }
+
+            armDrop(now);
+            keepWaiting();
         }
 
         void layoutMessage(const PHLWORKSPACE& workspace, std::string_view message) {
@@ -731,7 +838,7 @@ namespace frames::host {
             const SP<Layout::ITarget> dragged = drag->target();
             const PHLWINDOW           window  = dragged == nullptr || drag->mode() != MBIND_MOVE ? nullptr : dragged->window();
             if (window == nullptr || !window->m_isFloating) {
-                if (state->drop.has_value()) {
+                if (state->drop.has_value() || state->waiting.has_value()) {
                     clearDrop();
                 }
 
@@ -969,9 +1076,10 @@ namespace frames::host {
         }
 
         void button(const IPointer::SButtonEvent& event, Event::SCallbackInfo& info) {
-            // A drop shown while Hyprland moves a window follows the end of that move; the button goes on to Hyprland
-            if (!state->grab.has_value() && state->drop.has_value()) {
-                if (hyprlandDragging()) {
+            // A drop shown while Hyprland moves a window follows the end of that move; the button goes on to Hyprland.
+            // A place still waiting is not taken.
+            if (!state->grab.has_value() && (state->drop.has_value() || state->waiting.has_value())) {
+                if (hyprlandDragging() && state->drop.has_value()) {
                     const Drop drop = *state->drop;
                     finishHyprlandDrag(drop);
                     return;
