@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string_view>
 
 #include "core/layout.hpp"
@@ -25,5 +26,15 @@ namespace frames {
 
     // The cursor (its name in the cursor theme) over an edge that resizes these sides; empty for none
     std::string_view resizeCursor(const Edges& edges) noexcept;
+
+    // A press on the caption: when (the pointer event's time, which wraps) and where
+    struct Click {
+        std::uint32_t timeMs = 0;
+        Point         point  = {};
+    };
+
+    // Whether the second press makes a double click with the first, as Windows counts one: within half a second and
+    // a 4 pixel square around the first (GetDoubleClickTime, SM_CXDOUBLECLK)
+    bool doubleClick(const Click& first, const Click& second, double scale) noexcept;
 
 }

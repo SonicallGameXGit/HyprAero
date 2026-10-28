@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.27)
 
-project(hypraero-frames VERSION 0.3.0 LANGUAGES CXX)
+project(hypraero-frames VERSION 0.4.0 LANGUAGES CXX)
 
 # Hyprland is built with GCC and its plugin interface passes C++ objects: a plugin from another compiler may not
 # match it and could take the session down (AGENTS.md section 3)
@@ -31,12 +31,14 @@ add_custom_target(frames-tokens DEPENDS ${tokensHeader})
 set(coreSources
     src/core/buttons.cpp
     src/core/command.cpp
+    src/core/fade.cpp
     src/core/icons.cpp
     src/core/layout.cpp
     src/core/moving.cpp
     src/core/safety.cpp
     src/core/status.cpp
     src/core/text.cpp
+    src/core/tiling.cpp
     src/core/window.cpp
 )
 
@@ -74,7 +76,7 @@ enable_testing()
 
 set(framesSanitizers -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
 
-foreach(testName buttonsTest commandTest iconsTest layoutTest movingTest safetyTest statusTest textTest windowTest)
+foreach(testName buttonsTest commandTest fadeTest iconsTest layoutTest movingTest safetyTest statusTest textTest tilingTest windowTest)
     add_executable(${testName} tests/${testName}.cpp ${coreSources})
     add_dependencies(${testName} frames-tokens)
     target_include_directories(${testName} PRIVATE src ${generatedFolder})

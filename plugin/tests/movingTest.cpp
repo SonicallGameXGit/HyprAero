@@ -59,6 +59,19 @@ namespace {
         check::that(frames::resizeCursor({}).empty(), "no side, no cursor");
     }
 
+    void doubleClicks() {
+        const frames::Click first = {.timeMs = 1000, .point = {.x = 100, .y = 10}};
+        check::that(frames::doubleClick(first, {.timeMs = 1300, .point = {.x = 101, .y = 11}}, 1), "a second press soon and close by");
+        check::that(frames::doubleClick(first, {.timeMs = 1500, .point = {.x = 102, .y = 8}}, 1), "half a second and 2 pixels away is still one");
+        check::that(!frames::doubleClick(first, {.timeMs = 1501, .point = {.x = 100, .y = 10}}, 1), "later is two clicks");
+        check::that(!frames::doubleClick(first, {.timeMs = 1100, .point = {.x = 103, .y = 10}}, 1), "3 pixels away is two clicks");
+        check::that(frames::doubleClick(first, {.timeMs = 1100, .point = {.x = 104, .y = 10}}, 2), "farther at twice the size");
+
+        const frames::Click beforeWrap = {.timeMs = 0xffffff00U, .point = {.x = 100, .y = 10}};
+        check::that(frames::doubleClick(beforeWrap, {.timeMs = 0x10U, .point = {.x = 100, .y = 10}}, 1), "across the clock wrapping around");
+        check::that(!frames::doubleClick({.timeMs = 1300, .point = {}}, {.timeMs = 1000, .point = {}}, 1), "a second press before the first is not one");
+    }
+
 }
 
 int main() {
@@ -66,5 +79,6 @@ int main() {
     leavingTheLayout();
     theTopOfTheScreen();
     cursors();
+    doubleClicks();
     return check::result("moving");
 }

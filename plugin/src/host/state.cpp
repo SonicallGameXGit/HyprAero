@@ -1,6 +1,7 @@
 #include "host/state.hpp"
 
 #include <any>
+#include <chrono>
 #include <format>
 #include <string>
 #include <unordered_map>
@@ -25,6 +26,15 @@ namespace frames::host {
         }
 
         return generated::aero;
+    }
+
+    double nowMs() noexcept {
+        return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    }
+
+    double fadeTime() noexcept {
+        const bool animated = state == nullptr || state->animationsEnabled == nullptr || !state->animationsEnabled->good() || **state->animationsEnabled;
+        return animated ? currentTokens().motionSoft : 0;
     }
 
     void logLine(Hyprutils::CLI::eLogLevel level, std::string_view text) noexcept {

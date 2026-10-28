@@ -77,10 +77,7 @@ namespace frames {
     // Nothing for a frame too small to have its own edges (a size of 0, negative, not a number or huge)
     std::optional<FrameLayout> layoutFrame(double outerWidth, double outerHeight, const Tokens& tokens, double scale) noexcept;
 
-    // The caption's top band and its sides are edges only on a window that can be resized; else they move it
-    Part partAt(const FrameLayout& layout, double x, double y, bool resizable) noexcept;
-
-    // The sides of the window a press on a point of its edge resizes. Near a corner it is both sides of that corner.
+    // Sides of a window: those a press resizes, or those that can resize at all
     struct Edges {
         bool top    = false;
         bool bottom = false;
@@ -88,6 +85,14 @@ namespace frames {
         bool right  = false;
     };
 
+    constexpr Edges allSides = {.top = true, .bottom = true, .left = true, .right = true};
+
+    // `sides` are the ones that resize the window: all of a floating one, none of one that cannot be resized, those
+    // it shares with a neighbour in the layout (core/tiling.hpp). The caption's top band and its sides are edges only
+    // where their side resizes; else they move the window.
+    Part partAt(const FrameLayout& layout, double x, double y, const Edges& sides) noexcept;
+
+    // The sides of the window a press on a point of its edge resizes. Near a corner it is both sides of that corner.
     Edges edgesAt(const FrameLayout& layout, double x, double y) noexcept;
 
     // The frame around what the app drew. Hyprland keeps a window's room when its app draws less (a fixed size, a size

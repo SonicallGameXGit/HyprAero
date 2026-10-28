@@ -24,6 +24,7 @@ set(frameTokens
     frameClientEdgeDark color
     frameTitleText color
     fontSizeSmall int
+    motionSoft int
 )
 
 file(READ "${THEME}" theme)

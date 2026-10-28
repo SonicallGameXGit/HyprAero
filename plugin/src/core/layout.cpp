@@ -111,7 +111,7 @@ namespace frames {
         return layout;
     }
 
-    Part partAt(const FrameLayout& layout, double x, double y, bool resizable) noexcept {
+    Part partAt(const FrameLayout& layout, double x, double y, const Edges& sides) noexcept {
         if (!contains(layout.outer, x, y)) {
             return Part::Outside;
         }
@@ -134,8 +134,8 @@ namespace frames {
 
         // Along the caption the frame's outermost band resizes, as the sides do below it
         const double band   = layout.extents.border;
-        const bool   onEdge = y < band || x < band || x >= layout.outer.width - band;
-        if (resizable && onEdge) {
+        const bool   onEdge = (sides.top && y < band) || (sides.left && x < band) || (sides.right && x >= layout.outer.width - band);
+        if (onEdge) {
             return Part::Edge;
         }
 

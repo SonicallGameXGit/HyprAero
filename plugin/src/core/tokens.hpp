@@ -51,6 +51,8 @@ namespace frames {
         Color frameClientEdgeDark    = {};
         Color frameTitleText         = {};
         int   fontSizeSmall          = 0;
+        // Milliseconds: how long a soft fade takes (the preview of where a moved window goes)
+        int motionSoft = 0;
         // font-ui's candidates as one comma-separated list, which Pango reads as "the first of these it has"
         std::string_view fontUi = "";
     };

@@ -14,6 +14,10 @@ namespace frames {
         // How far down from the screen's top edge the pointer counts as at it
         constexpr double snapReach = 8;
 
+        // Windows' own: GetDoubleClickTime's default, and half of SM_CXDOUBLECLK each way
+        constexpr std::uint32_t doubleClickTime  = 500;
+        constexpr double        doubleClickReach = 2;
+
     }
 
     double dragThreshold(Placement placement, double scale) noexcept {
@@ -81,6 +85,15 @@ namespace frames {
         }
 
         return "";
+    }
+
+    bool doubleClick(const Click& first, const Click& second, double scale) noexcept {
+        // Unsigned, so a time that wrapped around between the two still counts the few milliseconds between them
+        const std::uint32_t elapsed = second.timeMs - first.timeMs;
+        const double        reach   = doubleClickReach * usableScale(scale);
+        const double        across  = std::abs(second.point.x - first.point.x);
+        const double        down    = std::abs(second.point.y - first.point.y);
+        return elapsed <= doubleClickTime && across <= reach && down <= reach;
     }
 
 }

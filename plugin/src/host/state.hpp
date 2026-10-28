@@ -14,9 +14,12 @@
 #include <string_view>
 #include <vector>
 
+#include "core/fade.hpp"
 #include "core/icons.hpp"
 #include "core/layout.hpp"
+#include "core/moving.hpp"
 #include "core/safety.hpp"
+#include "core/tiling.hpp"
 #include "core/tokens.hpp"
 #include "core/window.hpp"
 #include "host/pictures.hpp"
@@ -32,10 +35,23 @@ namespace frames::host {
     enum class GrabKind : std::uint8_t {
         Move,
         Resize,
+        // A line between windows in the layout
+        Split,
     };
 
-    // A press on a frame's caption or edge, held (host/frames.cpp)
+    // A line between windows in the layout, held: the window on whose side it is, which side, and how far from the
+    // line the pointer holds it
+    struct HeldLine {
+        PHLWINDOWREF window   = {};
+        bool         vertical = true;
+        // The window's right or bottom side; else its left or top
+        bool   after  = false;
+        double offset = 0;
+    };
+
+    // A press on a frame's caption or edge, or on a line between windows, held (host/frames.cpp)
     struct Grab {
+        // None for a line
         WP<Frame> frame = {};
         GrabKind  kind  = GrabKind::Move;
         // Where the press was, and the frame and the window's placement then
@@ -45,8 +61,41 @@ namespace frames::host {
         // Hyprland's own drag of the window has begun: Hyprland moves or resizes it from then on, until it is ended
         bool                dragging = false;
         WP<Layout::ITarget> dragged  = {};
-        // The screen at whose top the pointer is while moving: let go there, the window goes into the layout
-        PHLMONITORREF snapScreen = {};
+        // The lines held, one or both where they meet
+        std::optional<HeldLine> vertical   = std::nullopt;
+        std::optional<HeldLine> horizontal = std::nullopt;
+    };
+
+    enum class DropKind : std::uint8_t {
+        // The top of a screen: into the layout
+        Layout,
+        // Near a side of a tiled window: beside it there
+        Beside,
+    };
+
+    // Where letting go of a window being moved puts it, by its caption or by Hyprland's own drag (host/frames.cpp)
+    struct Drop {
+        PHLWINDOWREF  window = {};
+        DropKind      kind   = DropKind::Layout;
+        PHLMONITORREF screen = {};
+        PHLWINDOWREF  beside = {};
+        Side          side   = Side::Left;
+        // What it takes there, on the screen: the preview's place
+        Box area = {};
+    };
+
+    // Windows 7's glass outline of where a moved window goes, drawn by that window's frame under it, fading in and out
+    struct Preview {
+        WP<Frame>     drawer = {};
+        PHLMONITORREF screen = {};
+        Box           area   = {};
+        Fade          fade   = {};
+    };
+
+    // The last press on a caption, to tell a double click
+    struct LastClick {
+        WP<Frame> frame = {};
+        Click     click = {};
     };
 
     // Made in pluginInit, destroyed in pluginExit
@@ -60,6 +109,10 @@ namespace frames::host {
         IconShelf                                   icons       = {};
         Pictures                                    pictures    = {};
         std::unique_ptr<CConfigValue<Config::BOOL>> blurEnabled = nullptr;
+        // Dwindle's resizing by the side held, which the lines between windows are moved with
+        std::unique_ptr<CConfigValue<Config::BOOL>> smartResizing = nullptr;
+        // Off: the preview appears and goes at once, as everything of Hyprland's then does
+        std::unique_ptr<CConfigValue<Config::BOOL>> animationsEnabled = nullptr;
         // The frames' own scale, QT_SCALE_FACTOR's (core/layout.hpp)
         double scale = 1;
 
@@ -71,6 +124,13 @@ namespace frames::host {
         // The caption or edge held, and the resize cursor the frames show (empty: none)
         std::optional<Grab> grab   = std::nullopt;
         std::string         cursor = "";
+        // Where letting go of the window being moved puts it, its preview, and the preview fading out
+        std::optional<Drop>    drop    = std::nullopt;
+        std::optional<Preview> preview = std::nullopt;
+        std::optional<Preview> leaving = std::nullopt;
+        // For a double click on a caption; its second press was the frames', so its release is too
+        std::optional<LastClick> lastClick  = std::nullopt;
+        bool                     ownRelease = false;
     };
 
     // Empty whenever the plugin is not loaded. With `loads` below, the only globals.
@@ -81,6 +141,10 @@ namespace frames::host {
     extern constinit std::uint64_t loads;
 
     const Tokens& currentTokens() noexcept;
+
+    // The clock the previews fade by, in milliseconds, and how long a fade takes (motion-soft, none without animations)
+    double nowMs() noexcept;
+    double fadeTime() noexcept;
 
     void logLine(Hyprutils::CLI::eLogLevel level, std::string_view text) noexcept;
     void notify(HANDLE handle, eIcons icon, std::string_view text) noexcept;

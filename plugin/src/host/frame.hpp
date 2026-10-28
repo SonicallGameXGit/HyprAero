@@ -13,6 +13,12 @@
 #include "core/tokens.hpp"
 #include "core/window.hpp"
 
+namespace frames::host {
+
+    struct Preview;
+
+}
+
 // One window's frame: a decoration Hyprland owns and calls. Every method Hyprland calls is guarded (host/state.hpp)
 // and does nothing for a frame of an earlier load (`load`), which Hyprland may delete after the plugin is gone.
 namespace frames::host {
@@ -56,8 +62,9 @@ namespace frames::host {
         std::optional<FrameLayout> layoutNow() const;
         std::optional<Box>         outerNow() const;
 
-        // What is at a point of the screen (logical, global), and which sides a point on its edge resizes
-        Part  partAt(const Vector2D& point) const;
+        // What is at a point of the screen (logical, global), and which sides a point on its edge resizes. `sides`
+        // are those that resize the window (core/layout.hpp partAt).
+        Part  partAt(const Vector2D& point, const Edges& sides) const;
         Edges edgesAt(const Vector2D& point) const;
 
         void   pointerMoved(Button at);
@@ -81,7 +88,8 @@ namespace frames::host {
         bool                 framed(const PHLWINDOW& window) const;
         std::optional<Box>   outerBox(const PHLWINDOW& window) const;
         void                 drawFrame(const PHLMONITOR& monitor, float alpha);
-        void                 drawSnapMarker(const PHLMONITOR& monitor, float alpha, const Tokens& tokens);
+        void                 drawPreviews(const PHLMONITOR& monitor, float alpha);
+        void                 drawPreview(const PHLMONITOR& monitor, float alpha, const Preview& preview);
         void                 damageCaption();
         SP<Render::ITexture> iconFor(const PHLWINDOW& window, double pixels);
         SP<Render::ITexture> titleFor(const PHLWINDOW& window, double pixels, int maxWidth);

@@ -107,23 +107,31 @@ namespace {
         }
 
         using frames::Part;
-        check::that(frames::partAt(*layout, -1, 10, true) == Part::Outside, "left of the frame");
-        check::that(frames::partAt(*layout, 400, 10, true) == Part::Outside, "the right edge is outside");
-        check::that(frames::partAt(*layout, 100, 100, true) == Part::Client, "the window");
-        check::that(frames::partAt(*layout, 100, 10, true) == Part::Caption, "the caption");
-        check::that(frames::partAt(*layout, 3, 100, true) == Part::Edge, "a side");
-        check::that(frames::partAt(*layout, 100, 295, true) == Part::Edge, "the bottom");
-        check::that(frames::partAt(*layout, 100, 3, true) == Part::Edge, "the caption's top band resizes");
-        check::that(frames::partAt(*layout, 3, 20, true) == Part::Edge, "and so do its sides");
-        check::that(frames::partAt(*layout, 397, 10, true) == Part::Edge, "right of Close is the right side");
-        check::that(frames::partAt(*layout, 330, 10, true) == Part::Maximize, "Maximize");
-        check::that(frames::partAt(*layout, 370, 10, true) == Part::Close, "Close");
-        check::that(frames::partAt(*layout, 370, 0, true) == Part::Close, "above Close, at the very top, is still Close");
-        check::that(frames::partAt(*layout, 370, 22, true) == Part::Caption, "below Close is the caption");
+        check::that(frames::partAt(*layout, -1, 10, frames::allSides) == Part::Outside, "left of the frame");
+        check::that(frames::partAt(*layout, 400, 10, frames::allSides) == Part::Outside, "the right edge is outside");
+        check::that(frames::partAt(*layout, 100, 100, frames::allSides) == Part::Client, "the window");
+        check::that(frames::partAt(*layout, 100, 10, frames::allSides) == Part::Caption, "the caption");
+        check::that(frames::partAt(*layout, 3, 100, frames::allSides) == Part::Edge, "a side");
+        check::that(frames::partAt(*layout, 100, 295, frames::allSides) == Part::Edge, "the bottom");
+        check::that(frames::partAt(*layout, 100, 3, frames::allSides) == Part::Edge, "the caption's top band resizes");
+        check::that(frames::partAt(*layout, 3, 20, frames::allSides) == Part::Edge, "and so do its sides");
+        check::that(frames::partAt(*layout, 397, 10, frames::allSides) == Part::Edge, "right of Close is the right side");
+        check::that(frames::partAt(*layout, 330, 10, frames::allSides) == Part::Maximize, "Maximize");
+        check::that(frames::partAt(*layout, 370, 10, frames::allSides) == Part::Close, "Close");
+        check::that(frames::partAt(*layout, 370, 0, frames::allSides) == Part::Close, "above Close, at the very top, is still Close");
+        check::that(frames::partAt(*layout, 370, 22, frames::allSides) == Part::Caption, "below Close is the caption");
 
-        check::that(frames::partAt(*layout, 100, 3, false) == Part::Caption, "a window that cannot be resized moves by all of its caption");
-        check::that(frames::partAt(*layout, 3, 20, false) == Part::Caption, "its sides too");
-        check::that(frames::partAt(*layout, 3, 100, false) == Part::Edge, "below the caption its edge stays an edge, that does nothing");
+        check::that(frames::partAt(*layout, 100, 3, {}) == Part::Caption, "a window that cannot be resized moves by all of its caption");
+        check::that(frames::partAt(*layout, 3, 20, {}) == Part::Caption, "its sides too");
+        check::that(frames::partAt(*layout, 3, 100, {}) == Part::Edge, "below the caption its edge stays an edge, that does nothing");
+
+        // In the layout only the sides a neighbour shares resize: here the window below
+        const frames::Edges below = {.bottom = true};
+        check::that(frames::partAt(*layout, 100, 3, below) == Part::Caption, "the top band on the workspace's edge moves the window");
+        check::that(frames::partAt(*layout, 3, 20, below) == Part::Caption, "so do the caption's sides");
+        const frames::Edges right = {.right = true};
+        check::that(frames::partAt(*layout, 397, 10, right) == Part::Edge, "a caption side shared with a neighbour resizes");
+        check::that(frames::partAt(*layout, 100, 3, right) == Part::Caption, "while its top band moves the window");
     }
 
     bool sides(const frames::Edges& edges, bool top, bool bottom, bool left, bool right) {

@@ -9,8 +9,14 @@ Windows 7 window frames for Hyprland, part of HyprAero, a Windows 7 (Aero) style
 - Windows 7's frame around every window: see-through glossy glass with Windows 7's streaks, lighter for the active window and paler for the others. Rounded corners on floating windows, square ones on windows in the layout.
 - The app's icon and the window's title in the middle of the top band. Long titles are cut short with "…".
 - Maximize and Close, Windows 7's own buttons: they glow under the pointer, and Close turns red. A click acts when you let go over the same button. A window in Hyprland's layout counts as maximized: Maximize puts a floating window into the layout, and on a window in the layout it shows Restore, which takes it out. The button always shows the window's real state, however it changed (a keybind too). On a window that cannot change its size, Maximize is pale and does nothing.
-- Moving a window by its title: press and drag. A window in the layout only comes out once you drag it 32 pixels away (a floating one after 4), so a slip of the hand does nothing; it then floats under the pointer. Drag a window to the top of the screen and a glass outline shows: let go there and it goes back into the layout.
-- Resizing by the frame's edges, as on Windows: a side changes only the width or the height, a corner both.
+- Moving a window by its title: press and drag. A window in the layout only comes out once you drag it 32 pixels away (a floating one after 4), so a slip of the hand does nothing; it then floats under the pointer.
+- Putting a moved window back into the layout. A glass outline fades in where it would go, and letting go puts it there; it is the pointer that counts, not the window:
+    - the pointer at the top of a screen: into the layout;
+    - the pointer near a side of a window in the layout (Hyprland's dwindle layout): beside that window, on that side, taking half of its room. In the middle of a window, or anywhere else, the window stays floating where you let go.
+- The same with Hyprland's own move (`bindm = SUPER, mouse:272, movewindow`). A window you take out of the layout that way is put back by Hyprland where you let go, as always; near a window's side, it goes to that side.
+- Double-clicking the title does what Maximize / Restore does.
+- Resizing by the frame's edges, as on Windows: a side changes only the width or the height, a corner both. A window in the layout resizes only by the sides it shares with another window: the only window on a workspace cannot be resized at all, and the edges that touch the screen's edge show no resize cursor.
+- The line between two windows in the layout: grab it in the gap between them, or at either window's edge, and it follows the pointer, both windows with it. Where lines meet, both move at once. This needs dwindle with `smart_resizing` on, which is Hyprland's default; otherwise the shared edges resize their window.
 - No frame for apps that draw their own title bar: Chromium and Electron apps that do (VS Code, Vivaldi, Discord, Obsidian), GTK apps, Firefox. They say so to the compositor, and the frame listens.
 - The frame follows the app: if an app draws itself smaller than the room Hyprland gives it, the frame goes around the app, not around the empty room.
 - The frames grow with `QT_SCALE_FACTOR`, as your Qt apps do.
@@ -19,7 +25,7 @@ Windows 7 window frames for Hyprland, part of HyprAero, a Windows 7 (Aero) style
 Not yet:
 
 - Tooltips on the buttons.
-- Double-clicking the title, and the window menu.
+- The window menu.
 - A way to force the frame on an app that draws its own title bar.
 - A Minimize button: Hyprland has no minimized windows.
 

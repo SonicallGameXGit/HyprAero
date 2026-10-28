@@ -233,6 +233,7 @@ namespace frames::host {
     void Frame::draw(PHLMONITOR monitor, float const& alpha) noexcept {
         run("frame draw", [&] {
             if (mine()) {
+                drawPreviews(monitor, alpha);
                 drawFrame(monitor, alpha);
             }
         });
@@ -265,8 +266,6 @@ namespace frames::host {
 
             drawnOuter = outer;
         }
-
-        drawSnapMarker(monitor, alpha, tokens);
 
         const auto layout = layoutFrame(outer->width, outer->height, tokens, state->scale);
         if (!layout.has_value()) {
@@ -368,25 +367,37 @@ namespace frames::host {
         }
     }
 
-    void Frame::drawSnapMarker(const PHLMONITOR& monitor, float alpha, const Tokens& tokens) {
+    void Frame::drawPreviews(const PHLMONITOR& monitor, float alpha) {
+        // Drawn by the moved window's frame even when it draws no frame of its own (an app with its own title bar)
+        if (monitor == nullptr || !std::isfinite(monitor->m_scale) || monitor->m_scale <= 0 || monitor->m_scale > largestMonitorScale) {
+            return;
+        }
+
+        if (state->leaving.has_value()) {
+            drawPreview(monitor, alpha, *state->leaving);
+        }
+
+        if (state->preview.has_value()) {
+            drawPreview(monitor, alpha, *state->preview);
+        }
+    }
+
+    void Frame::drawPreview(const PHLMONITOR& monitor, float alpha, const Preview& preview) {
         // Under the window being moved and over everything else, as Windows 7 shows where a window will go
-        if (!state->grab.has_value() || state->grab->frame.get() != this) {
+        if (preview.drawer.get() != this || preview.screen.lock() != monitor) {
             return;
         }
 
-        const PHLMONITOR screen = state->grab->snapScreen.lock();
-        if (screen == nullptr || screen != monitor) {
+        const float opacity = alpha * static_cast<float>(opacityAt(preview.fade, nowMs(), fadeTime()));
+        const Box&  area    = preview.area;
+        if (opacity <= 0 || area.width <= 2 || area.height <= 2) {
             return;
         }
 
-        const CBox area = screen->logicalBoxMinusReserved();
-        if (area.w <= 2 || area.h <= 2) {
-            return;
-        }
-
-        const double monitorScale = monitor->m_scale;
-        const Box    marker       = {.x = area.x - monitor->m_position.x, .y = area.y - monitor->m_position.y, .width = area.w, .height = area.h};
-        const auto   device       = [&](const Box& box) {
+        const Tokens& tokens       = currentTokens();
+        const double  monitorScale = monitor->m_scale;
+        const Box     marker       = {.x = area.x - monitor->m_position.x, .y = area.y - monitor->m_position.y, .width = area.width, .height = area.height};
+        const auto    device       = [&](const Box& box) {
             CBox placed = cboxOf(box);
             placed.scale(monitorScale).round();
             return placed;
@@ -396,14 +407,14 @@ namespace frames::host {
         const bool                  blur   = state->blurEnabled != nullptr && state->blurEnabled->good() && **state->blurEnabled;
         CRectPassElement::SRectData glass;
         glass.box   = device(marker);
-        glass.color = colorOf(tokens.frameGlassTint, alpha);
+        glass.color = colorOf(tokens.frameGlassTint, opacity);
         glass.round = static_cast<int>(std::round(radius * monitorScale));
         glass.blur  = blur;
-        glass.blurA = alpha;
+        glass.blurA = opacity;
         g_pHyprRenderer->addPassElement(makeUnique<CRectPassElement>(glass));
 
-        addLine(device(inset(marker, 1)), tokens.frameEdgeOuter, radius - 1, radius, monitorScale, alpha, owner);
-        addLine(device(inset(marker, 2)), tokens.frameEdgeInner, radius - 2, radius - 1, monitorScale, alpha, owner);
+        addLine(device(inset(marker, 1)), tokens.frameEdgeOuter, radius - 1, radius, monitorScale, opacity, owner);
+        addLine(device(inset(marker, 2)), tokens.frameEdgeInner, radius - 2, radius - 1, monitorScale, opacity, owner);
     }
 
     SP<Render::ITexture> Frame::iconFor(const PHLWINDOW& window, double pixels) {
@@ -523,10 +534,15 @@ namespace frames::host {
         }
     }
 
-    Part Frame::partAt(const Vector2D& point) const {
+    Part Frame::partAt(const Vector2D& point, const Edges& sides) const {
         const PHLWINDOW window = owner.lock();
         const auto      outer  = outerNow();
         if (window == nullptr || !outer.has_value()) {
+            return Part::Outside;
+        }
+
+        // Hyprland draws no decoration around a fullscreen window: where the frame would be is not the frame's
+        if (Fullscreen::controller()->getFullscreenModes(window).internal == Fullscreen::FSMODE_FULLSCREEN) {
             return Part::Outside;
         }
 
@@ -535,8 +551,7 @@ namespace frames::host {
             return Part::Outside;
         }
 
-        const WindowFacts facts = factsOf(window);
-        return frames::partAt(*layout, point.x - outer->x, point.y - outer->y, resizable(facts.placement, facts.fixed));
+        return frames::partAt(*layout, point.x - outer->x, point.y - outer->y, sides);
     }
 
     Edges Frame::edgesAt(const Vector2D& point) const {
