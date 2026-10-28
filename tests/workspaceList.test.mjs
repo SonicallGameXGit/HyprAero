@@ -37,15 +37,25 @@ test('special workspaces are never listed', () => {
     assert.deepEqual(ids(buildEntries([-98], [], -98, 2)), [1, 2])
 })
 
-test('a single app gives only a main icon, even with several windows', () => {
+test('a single window gives only a main icon', () => {
+    const entry = entryOf(buildEntries([1], [{ workspaceId: 1, appId: 'code', area: 100, address: '0x1' }], 1, 2), 1)
+    assert.equal(entry.mainApp, 'code')
+    assert.equal(entry.mainWindow, '0x1')
+    assert.equal(entry.secondApp, null)
+    assert.equal(entry.secondWindow, null)
+    assert.equal(entry.occupied, true)
+})
+
+test('two windows of one app show its icon twice, each of its own window', () => {
     const windows = [
-        { workspaceId: 1, appId: 'code', area: 100 },
-        { workspaceId: 1, appId: 'code', area: 50 },
+        { workspaceId: 1, appId: 'code', area: 50, address: '0x2' },
+        { workspaceId: 1, appId: 'code', area: 100, address: '0x1' },
     ]
     const entry = entryOf(buildEntries([1], windows, 1, 2), 1)
     assert.equal(entry.mainApp, 'code')
-    assert.equal(entry.secondApp, null)
-    assert.equal(entry.occupied, true)
+    assert.equal(entry.mainWindow, '0x1')
+    assert.equal(entry.secondApp, 'code')
+    assert.equal(entry.secondWindow, '0x2')
 })
 
 test('several apps: the biggest is main, the second biggest is the badge, the rest are dropped', () => {
@@ -118,7 +128,7 @@ test('a click on a workspace where nothing asks just shows it', () => {
     assert.equal(attentionWindow(entryOf(buildEntries([], [], 1, 2), 2)), '')
 })
 
-test('an app counts with its biggest window', () => {
+test('the badge is the second biggest window, whatever app it is', () => {
     const windows = [
         { workspaceId: 1, appId: 'a', area: 100 },
         { workspaceId: 1, appId: 'a', area: 400 },
@@ -127,6 +137,18 @@ test('an app counts with its biggest window', () => {
     const entry = entryOf(buildEntries([1], windows, 1, 1), 1)
     assert.equal(entry.mainApp, 'a')
     assert.equal(entry.secondApp, 'b')
+})
+
+test('a small window of the main app asking for attention takes the badge from a bigger app', () => {
+    const windows = [
+        { workspaceId: 1, appId: 'code', area: 400, address: '0x1' },
+        { workspaceId: 1, appId: 'kitty', area: 300, address: '0x2' },
+        { workspaceId: 1, appId: 'code', area: 100, address: '0x3', urgent: true },
+    ]
+    const entry = entryOf(buildEntries([1], windows, 1, 1), 1)
+    assert.equal(entry.mainWindow, '0x3')
+    assert.equal(entry.secondWindow, '0x1')
+    assert.equal(entry.secondApp, 'code')
 })
 
 test('equal sizes are ordered by app id', () => {

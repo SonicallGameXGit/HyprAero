@@ -2,10 +2,10 @@ import QtQuick
 import qs.design
 import qs.services
 
-// One workspace: a dot when empty, the app icon when it has one app, and the biggest app's icon
-// with the second biggest as a small badge in the bottom-right corner when it has several (each the icon of
-// that app's biggest window, `IconOverrides.windowIcon`). While a window asks for attention its app is the
-// main icon (of that window), the others after it, and the button flashes as Windows 7's (`bar.attentionFlashes`
+// One workspace: a dot when empty, the window's icon when it has one window, and the biggest window's icon
+// with the second biggest's as a small badge in the bottom-right corner when it has several, of one app or
+// not (each that window's icon, `IconOverrides.windowIcon`). While a window asks for attention it is the
+// main icon, the others after it, and the button flashes as Windows 7's (`bar.attentionFlashes`
 // times, then orange until the window gets focus). A workspace given an icon of its own (`IconOverrides`)
 // always shows only that, whatever its windows are, empty too. One with windows is an open
 // app's button, as on the Windows 7 taskbar, the one on screen brighter. One with windows can be dragged
@@ -19,6 +19,8 @@ TaskbarButton {
 
     readonly property string mainApp: entry === null || entry.mainApp === null ? '' : entry.mainApp
     readonly property string secondApp: entry === null || entry.secondApp === null ? '' : entry.secondApp
+    readonly property string mainWindow: entry === null || typeof entry.mainWindow !== 'string' ? '' : entry.mainWindow
+    readonly property string secondWindow: entry === null || typeof entry.secondWindow !== 'string' ? '' : entry.secondWindow
     // The workspace's own icon, '' when it shows its windows' icons.
     readonly property string ownPath: entry === null ? '' : IconOverrides.workspaceIcon(entry.id)
     readonly property string mainPath: {
@@ -26,9 +28,9 @@ TaskbarButton {
             return ownPath
         }
 
-        return mainApp === '' ? '' : appWindowIcon(mainApp)
+        return mainApp === '' ? '' : IconOverrides.windowIcon(mainWindow, mainApp)
     }
-    readonly property string secondPath: ownPath !== '' || secondApp === '' ? '' : appWindowIcon(secondApp)
+    readonly property string secondPath: ownPath !== '' || secondApp === '' ? '' : IconOverrides.windowIcon(secondWindow, secondApp)
     readonly property int iconSize: 36
     readonly property int badgeSize: 18
 
@@ -39,13 +41,6 @@ TaskbarButton {
     signal reorderEnded()
     // `at` is in this button.
     signal menuRequested(point at)
-
-    // The icon of the app's window asking for attention, else of its biggest (the windows come biggest first).
-    function appWindowIcon(appId: string): string {
-        const asking = entry.windows.find(item => item.appId === appId && item.urgent === true)
-        const window = asking === undefined ? entry.windows.find(item => item.appId === appId) : asking
-        return IconOverrides.windowIcon(window === undefined ? '' : window.address, appId)
-    }
 
     iconSource: mainPath
     open: entry !== null && entry.windows.length > 0

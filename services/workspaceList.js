@@ -6,10 +6,11 @@
 // Buttons: the first `minimumCount` ids are always shown, plus every other regular workspace that
 // currently exists or has focus. Special workspaces (id <= 0) are never listed.
 //
-// Icons: windows are grouped by app; an app counts with its biggest window. The biggest app is the
-// main icon and the second biggest is the small badge. No windows: both are null (the bar draws a dot).
-// An app with a window asking for attention comes first while it asks (`rankApps`).
-// `windows` is [{ workspaceId, appId, title, area, urgent }]. Each entry also carries its own `windows`,
+// Icons: the biggest window gives the main icon and the second biggest the small badge, whatever app each
+// is, so two windows of one app show its icon twice. No windows: both are null (the bar draws a dot).
+// A window asking for attention comes first while it asks (`iconWindows`).
+// `windows` is [{ workspaceId, address, appId, title, area, urgent }]. Each entry carries the app id and
+// address of the two windows (`mainApp` / `mainWindow`, `secondApp` / `secondWindow`), its own `windows`,
 // biggest first, for the hover list, and `attention`: whether any of them asks for attention.
 function buildEntries(workspaceIds, windows, focusedId, minimumCount) {
     const occupied = new Set()
@@ -33,41 +34,29 @@ function buildEntries(workspaceIds, windows, focusedId, minimumCount) {
     const sorted = Array.from(ids).sort((a, b) => a - b)
     return sorted.map(id => {
         const own = windows.filter(window => window.workspaceId === id)
-        const apps = rankApps(own)
+        const ranked = rankWindows(own)
+        const shown = iconWindows(ranked)
         return {
             id: id,
             focused: id === focusedId,
-            occupied: occupied.has(id) || apps.length > 0,
-            mainApp: apps.length > 0 ? apps[0] : null,
-            secondApp: apps.length > 1 ? apps[1] : null,
-            windows: rankWindows(own),
+            occupied: occupied.has(id) || shown.length > 0,
+            mainApp: shown.length > 0 ? shown[0].appId : null,
+            mainWindow: shown.length > 0 ? shown[0].address : null,
+            secondApp: shown.length > 1 ? shown[1].appId : null,
+            secondWindow: shown.length > 1 ? shown[1].address : null,
+            windows: ranked,
             attention: own.some(window => window.urgent === true),
         }
     })
 }
 
-// App ids of the given windows, biggest app first; ties are broken by name so the order is stable. An app
-// with a window asking for attention goes before all the others while it asks (biggest first among such
-// apps), so the workspace's button shows its icon even when it is small; the others keep their order after
-// it, and it falls back into its place once it no longer asks.
-function rankApps(windows) {
-    const biggest = new Map()
-    const asking = new Set()
-    for (const window of windows) {
-        const known = biggest.get(window.appId)
-        if (known === undefined || window.area > known) {
-            biggest.set(window.appId, window.area)
-        }
-
-        if (window.urgent === true) {
-            asking.add(window.appId)
-        }
-    }
-
-    const askingFirst = (a, b) => Number(asking.has(b[0])) - Number(asking.has(a[0]))
-    return Array.from(biggest.entries())
-        .sort((a, b) => askingFirst(a, b) || b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
-        .map(entry => entry[0])
+// The windows of `rankWindows` in the order their icons are shown: those asking for attention go before all
+// the others while they ask (biggest first among them), so the workspace's button shows the icon even of a
+// small one; the others keep their order after them, and it falls back into its place once it no longer asks.
+function iconWindows(ranked) {
+    return ranked
+        .filter(window => window.urgent === true)
+        .concat(ranked.filter(window => window.urgent === false))
 }
 
 // The window a click on a workspace's button goes to: the one asking for attention (the biggest, when

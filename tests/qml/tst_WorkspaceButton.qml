@@ -8,6 +8,7 @@ import '../../modules/bar'
 // with windows asks the bar to reorder (started, moved by the offset along the bar, ended) and never clicks;
 // an up-and-down drag or an empty workspace starts nothing. A right click asks for its menu. A workspace with
 // an icon of its own shows only that, whatever its windows, and empty it stays a plain (not open) button.
+// Two windows of one app give its icon and its badge, each that window's own.
 // One whose window asks for attention flashes orange `bar.attentionFlashes` times, then stays orange until the
 // window no longer asks; asking again starts the flashing over.
 Item {
@@ -43,6 +44,7 @@ Item {
 
         function init() {
             IconOverrides.workspaceIcons = {}
+            IconOverrides.windowIcons = {}
             Config.bar = { attentionFlashes: 7 }
             button.clicks = 0
             button.menus = 0
@@ -80,6 +82,21 @@ Item {
             compare(button.secondPath, '')
             compare(button.iconSource, 'file:///icons/star.png')
             verify(button.open)
+        }
+
+        function test_two_windows_of_one_app_each_give_their_own_icon() {
+            IconOverrides.windowIcons = { '0x1': 'file:///icons/code.png', '0x2': 'file:///icons/code-insiders.png' }
+            button.entry = {
+                id: 2,
+                focused: false,
+                mainApp: 'code',
+                mainWindow: '0x1',
+                secondApp: 'code',
+                secondWindow: '0x2',
+                windows: [{ address: '0x1', appId: 'code' }, { address: '0x2', appId: 'code' }],
+            }
+            compare(button.mainPath, 'file:///icons/code.png')
+            compare(button.secondPath, 'file:///icons/code-insiders.png')
         }
 
         function test_an_empty_workspace_with_its_own_icon_is_not_an_open_button() {
