@@ -35,7 +35,8 @@ PopupWindow {
         separator: entry.isSeparator,
         check: checkKind(entry),
         checked: entry.checkState === Qt.Checked,
-        icon: entry.icon,
+        // An icon the theme does not have is left out, not drawn as the theme's "missing" picture.
+        icon: Tray.pictureOf(entry.icon),
         submenu: entry.hasChildren,
     }))
 
