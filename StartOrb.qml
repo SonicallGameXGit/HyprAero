@@ -5,8 +5,8 @@ import QtQuick.Effects
 import QtQuick.Shapes
 
 // The start orb, after the Windows 7 one (.aero/STYLE.md "Start orb"): a dark glass sphere lit from
-// below, the Hyprland mark glowing in it, a shine over its upper half. Drawn, never a picture, so it is
-// sharp at any size. Hover makes it glow, press darkens it; `highlighted` glows as hover does without
+// below, the Hyprland mark (or a `logo` the module gives) glowing in it, a shine over its upper half. Drawn,
+// never a picture, so it is sharp at any size; a `logo` should be an SVG for the same reason. Hover makes it glow, press darkens it; `highlighted` glows as hover does without
 // the pointer on it (the bar lights it while its menu is open).
 Item {
     id: root
@@ -16,11 +16,51 @@ Item {
     property bool pressed: false
     // Looks hovered without the pointer on it, as `ControlButton.highlighted`.
     property bool highlighted: false
+    // The mark's colours and gaps (`HyprlandMark.colors`, `gaps`).
+    property string markColors: 'hyprland'
+    property bool markGaps: false
+    // A picture in place of the mark (Windows 7's flag, from the module's own resources), '' for the mark.
+    property url logo: ''
 
     readonly property bool lit: hovered || highlighted
+    // The drop sits a little low, to look centred; a logo is centred as it is (its picture's frame is
+    // centred on what it shows).
+    readonly property real markOffset: logo.toString() === '' ? diameter * 0.02 : 0
 
     implicitWidth: diameter
     implicitHeight: diameter
+
+    // The mark, or the logo in its place; the glow and the sharp one below are both this.
+    component Mark: Item {
+        implicitWidth: root.logo.toString() === '' ? mark.implicitWidth : logo.width
+        implicitHeight: root.logo.toString() === '' ? mark.implicitHeight : logo.height
+
+        HyprlandMark {
+            id: mark
+
+            anchors.centerIn: parent
+            visible: root.logo.toString() === ''
+            size: root.diameter * 0.56
+            colors: root.markColors
+            gaps: root.markGaps
+            weight: Theme.orbMarkWeight
+        }
+
+        // Drawn at the screen's own pixels from its vectors (`sourceSize` follows the pixel ratio).
+        Image {
+            id: logo
+
+            anchors.centerIn: parent
+            visible: root.logo.toString() !== ''
+            source: root.logo
+            width: root.diameter * 0.635
+            height: width * (implicitHeight > 0 ? implicitHeight / Math.max(implicitWidth, 1) : 1)
+            sourceSize.width: width
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            mipmap: true
+        }
+    }
 
     // A circle filling the item, for the shapes below.
     component Disc: Shape {
@@ -103,18 +143,27 @@ Item {
         }
     }
 
-    HyprlandMark {
+    // The mark's glow is a blurred copy of the mark in its own colours: a shadow takes one colour, and
+    // its teal around the mark's blue bottom read as a second, blurred mark.
+    Mark {
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: root.diameter * 0.02
-        size: root.diameter * 0.56
+        anchors.verticalCenterOffset: root.markOffset
+        opacity: Theme.orbMarkGlow
         layer.enabled: true
 
         layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowColor: Theme.orbMarkGlow
-            shadowBlur: 0.6
-            shadowHorizontalOffset: 0
-            shadowVerticalOffset: 0
+            blurEnabled: true
+            blur: 0.6
+            blurMax: 16
+        }
+    }
+
+    Mark {
+        anchors.centerIn: parent
+        anchors.verticalCenterOffset: root.markOffset
+        layer.enabled: true
+
+        layer.effect: MultiEffect {
             brightness: root.lit && root.pressed === false ? 0.15 : 0
         }
     }

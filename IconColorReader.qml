@@ -41,7 +41,15 @@ Canvas {
     onImageLoaded: requestPaint()
 
     onPaint: {
-        if (source === '' || IconColor.cached(source) !== undefined) {
+        if (source === '') {
+            return
+        }
+
+        // Another reader of the same icon (the same app on another button) can read it first, while this
+        // one was loading it: take its colour, or this one stays without it.
+        const known = IconColor.cached(source)
+        if (known !== undefined) {
+            mainColor = known
             return
         }
 

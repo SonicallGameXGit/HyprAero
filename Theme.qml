@@ -283,7 +283,7 @@ Singleton {
 
     // The start orb (.aero/STYLE.md "Start orb"), the same in both themes.
     readonly property color orbEdge: '#04101c'
-    readonly property color orbBodyCenter: '#46c2ff'
+    readonly property color orbBodyCenter: '#2a8fd0'
     readonly property color orbBodyMiddle: '#16609c'
     readonly property color orbBodyOuter: '#0a1d33'
     readonly property color orbRim: '#66ffffff'
@@ -295,7 +295,16 @@ Singleton {
     readonly property int orbGlowBlur: 10
     readonly property color orbMarkTop: '#00e5d0'
     readonly property color orbMarkBottom: '#00a8f4'
-    readonly property color orbMarkGlow: '#a600e5d0'
+    readonly property color orbFlagRedTop: '#ff9a5a'
+    readonly property color orbFlagRedBottom: '#e0381a'
+    readonly property color orbFlagGreenTop: '#b8ec5c'
+    readonly property color orbFlagGreenBottom: '#58a812'
+    readonly property color orbFlagBlueTop: '#6ccbff'
+    readonly property color orbFlagBlueBottom: '#1a7ce0'
+    readonly property color orbFlagYellowTop: '#ffe46a'
+    readonly property color orbFlagYellowBottom: '#f2a400'
+    readonly property real orbMarkWeight: 12
+    readonly property real orbMarkGlow: 0.65
 
     // The notification area's glyphs (.aero/STYLE.md "Notification area glyphs"), pixel drawings, the same
     // in both themes.

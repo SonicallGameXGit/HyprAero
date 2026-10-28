@@ -282,16 +282,21 @@ Each material is `light` -> `dark` gradient plus an `edge` outline: `icon-blue` 
 
 The round glass button that opens a start menu, after the Windows 7 orb: a dark glass sphere lit from below, a glossy shine on its upper half, the member's mark glowing in the middle. Drawn from these values, never from a picture of the original.
 
+The mark can instead wear Windows 7's flag: split into four panes at its middle, each in one of the flag's colours with a gloss of its own (`orb-flag-*`, light at the pane's top to dark at its bottom: red top left, green top right, blue bottom left, yellow bottom right). Either way the panes can be parted by gaps as wide as the mark's own opening, as the flag's are. A member may show Windows 7's flag itself in place of its mark: a vector picture the member ships (never a bitmap, so it stays sharp), drawn as it is, with the same glow and the same light under the pointer.
+
 | Token | Value |
 | --- | --- |
 | `orb-edge` | `#04101c` |
-| `orb-body` (radial, from the bottom centre outwards) | `#46c2ff` at 0% -> `#16609c` at 45% -> `#0a1d33` at 100% |
+| `orb-body` (radial, from the bottom centre outwards) | `#2a8fd0` at 0% -> `#16609c` at 45% -> `#0a1d33` at 100% |
 | `orb-rim` (inner ring) | `rgba(255,255,255,0.4)` |
 | `orb-shine` | vertical gradient white 0.75 -> 0.05 over the upper half |
 | `orb-hover-tint` / `orb-pressed-tint` | `rgba(120,215,255,0.28)` / `rgba(0,16,36,0.35)` |
 | `orb-glow` (hover, around the orb) | `rgba(90,200,255,0.85)`, 10px |
 | `orb-mark` | `#00e5d0` -> `#00a8f4` (top -> bottom; Hyprland's colours, for a Hyprland member) |
-| `orb-mark-glow` | `rgba(0,229,208,0.65)` |
+| `orb-flag-red` / `-green` | `#ff9a5a` -> `#e0381a` / `#b8ec5c` -> `#58a812` |
+| `orb-flag-blue` / `-yellow` | `#6ccbff` -> `#1a7ce0` / `#ffe46a` -> `#f2a400` |
+| `orb-mark-weight` (how much bolder than the member's own mark: its outline stroked in its own colours, in the units of its path) | 12 (Hyprland's mark is 312.92 tall; its opening narrows from 27.2 to 15.2, and the gaps with it) |
+| `orb-mark-glow` | 0.65: a blurred copy of the mark in its own colours, under it (one colour of its own would ring the mark's blue bottom in teal, a blurred double) |
 
 ### Notification area glyphs (the same in both themes)
 
