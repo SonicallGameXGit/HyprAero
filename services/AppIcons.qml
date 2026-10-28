@@ -14,7 +14,9 @@ Singleton {
             return ''
         }
 
-        const entry = DesktopEntries.heuristicLookup(appId)
+        // `Apps.appFor` also finds apps whose window is not the program their entry starts (Wine's).
+        const app = Apps.appFor(appId)
+        const entry = app === '' ? null : DesktopEntries.byId(app)
         if (entry !== null && entry !== undefined) {
             const fromEntry = Quickshell.iconPath(entry.icon, true)
             if (fromEntry !== '') {

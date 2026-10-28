@@ -12,13 +12,15 @@ import 'iconOverrides.js' as IconList
 // files, read once when the manager first opens), the file chooser, and whether the manager is open and for
 // what.
 //
-// What is drawn: a window takes its own icon, else its app's, else the theme's; a workspace with an icon of its
-// own always shows it, whatever its windows are (`services/iconOverrides.js`).
+// What is drawn: an app (its pin, its start menu row) takes its own icon, else its desktop entry's; a window
+// takes its own icon, else the one chosen for every window of its app, else the theme's; a workspace with an
+// icon of its own always shows it, whatever its windows are. What a choice in the manager changes is
+// `choiceChanges` in `services/iconOverrides.js`.
 Singleton {
     id: root
 
     readonly property string folder: Apps.stateFolder + '/icons'
-    // `{ apps, windows, workspaces }`, each `{ key: path }`.
+    // `{ apps, appWindows, windows, workspaces }`, each `{ key: path }`.
     property var overrides: IconList.emptyOverrides()
     // Nothing is written before the file has been read, so a slow read never overwrites it.
     property bool loaded: false
@@ -86,7 +88,8 @@ Singleton {
         return chosen !== '' ? sourceOf(chosen) : AppIcons.forName(iconName)
     }
 
-    // A window's icon: its own, else its app's, else the theme's for its app id.
+    // A window's icon: its own, else the one chosen for every window of its app, else the theme's for its
+    // app id.
     function windowIcon(address: string, appId: string): string {
         const own = iconOf('windows', address)
         if (own !== '') {
@@ -94,7 +97,7 @@ Singleton {
         }
 
         const app = Apps.appFor(appId)
-        const chosen = app === '' ? '' : iconOf('apps', app)
+        const chosen = app === '' ? '' : iconOf('appWindows', app)
         return chosen !== '' ? sourceOf(chosen) : AppIcons.pathFor(appId)
     }
 
@@ -104,16 +107,54 @@ Singleton {
         update(IconList.withIcon(overrides, kind, key, path))
     }
 
-    // Copies a picture file into the icons folder and makes it the icon of that thing once it is there.
-    function useFile(kind: string, key: string, source: string): void {
-        const name = IconList.managedFileName(kind, key, source, Date.now())
+    // The open windows of an app (desktop entry id), by address.
+    function appWindowAddresses(app: string): var {
+        if (app === '') {
+            return []
+        }
+
+        return Workspaces.windows
+            .filter(window => window.address !== '' && Apps.appFor(window.appId) === app)
+            .map(window => window.address)
+    }
+
+    // The manager's choice for `target` (`{ kind, key, app }`): `{ allWindows, appIcon }`, see
+    // `IconList.choiceChanges`.
+    function initialChoice(target: var): var {
+        return IconList.initialChoice(overrides, target)
+    }
+
+    // The icon chosen now for `target` with `choice`, as a path ('' for its own).
+    function chosenIcon(target: var, choice: var): string {
+        return IconList.chosenIcon(overrides, target, choice)
+    }
+
+    function changesOf(target: var, choice: var, path: string): var {
+        const app = target.kind === 'apps' ? target.key : target.app
+        return IconList.choiceChanges(target, choice, path, appWindowAddresses(app))
+    }
+
+    // Uses an icon file (a theme's, or a copy already in the icons folder) for `target` with `choice`; ''
+    // gives back the own icons.
+    function choose(target: var, choice: var, path: string): void {
+        update(IconList.withChanges(overrides, changesOf(target, choice, path)))
+    }
+
+    // Whether giving back the own icons would change anything ("Restore Defaults").
+    function canRestore(target: var, choice: var): bool {
+        return IconList.withChanges(overrides, changesOf(target, choice, '')) !== overrides
+    }
+
+    // Copies a picture file into the icons folder and uses it for `target` with `choice` once it is there.
+    function chooseFile(target: var, choice: var, source: string): void {
+        const name = IconList.managedFileName(target.kind, target.key, source, Date.now())
         if (name === '' || copier.running) {
             console.warn(`IconOverrides: cannot use ${source} as an icon`)
             return
         }
 
-        copier.kind = kind
-        copier.key = key
+        copier.choiceTarget = target
+        copier.choice = choice
         copier.target = folder + '/' + name
         copier.command = IconList.copyCommand(source, folder, copier.target)
         copier.running = true
@@ -307,8 +348,8 @@ Singleton {
     Process {
         id: copier
 
-        property string kind: ''
-        property string key: ''
+        property var choiceTarget: null
+        property var choice: null
         property string target: ''
 
         onExited: code => {
@@ -317,7 +358,9 @@ Singleton {
                 return
             }
 
-            root.setIcon(copier.kind, copier.key, copier.target)
+            if (copier.choiceTarget !== null && copier.choice !== null) {
+                root.choose(copier.choiceTarget, copier.choice, copier.target)
+            }
         }
     }
 }

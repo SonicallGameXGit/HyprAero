@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import 'appMatch.js' as AppMatch
 import 'appUsage.js' as AppUsage
 import 'launchPlacement.js' as LaunchPlacement
 import 'startMenu.js' as StartMenuList
@@ -45,6 +46,7 @@ Singleton {
                 id: entry.id,
                 name: entry.name,
                 genericName: entry.genericName,
+                startupClass: entry.startupClass,
                 comment: entry.comment,
                 keywords: Array.from(entry.keywords),
                 command: Array.from(entry.command),
@@ -55,6 +57,8 @@ Singleton {
 
         return result
     }
+    // The apps by the keys a window's class is matched with when Quickshell's lookup finds none (`appFor`).
+    readonly property var classIndex: AppMatch.classIndex(list)
 
     readonly property string stateFolder: {
         const xdg = Quickshell.env('XDG_STATE_HOME')
@@ -222,7 +226,11 @@ Singleton {
         }
 
         const entry = DesktopEntries.heuristicLookup(appId)
-        return entry === null || entry === undefined ? '' : entry.id
+        if (entry !== null && entry !== undefined) {
+            return entry.id
+        }
+
+        return AppMatch.appForClass(classIndex, appId)
     }
 
     function countFocusedApp(): void {

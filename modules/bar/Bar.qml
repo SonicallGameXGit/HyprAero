@@ -28,6 +28,8 @@ PanelWindow {
     property var popupButton: null
     // The last hovered button that had windows; the popup keeps showing it while it fades out.
     property var lastButton: null
+    // The button the pointer rests on while the previews are closed, waiting for `previewTimer`.
+    property var pendingButton: null
 
     // How far above the bar a dragged window still counts as on it (`WorkspaceList.dropWorkspace`), so
     // the bar need not be hit exactly: a little over the buttons, a lot beside them.
@@ -256,6 +258,7 @@ PanelWindow {
     // where they would be.
     function openWorkspaceMenu(entry: var, at: point): void {
         hideTimer.stop()
+        stopPreviewDelay()
         popupButton = null
         Peek.cancel()
         systemMenuOpen = false
@@ -330,6 +333,28 @@ PanelWindow {
             return
         }
 
+        if (button.hovered === false && pendingButton === button) {
+            stopPreviewDelay()
+        }
+
+        // A pointer only crossing the bar opens nothing: while the previews are closed, a button counts as
+        // hovered once the pointer has rested on it for `bar.previewDelay`, and the workspace's peek waits
+        // its own delay from then. Once they are open, they follow the pointer along the buttons at once.
+        if (button.hovered && popup.shown === false) {
+            pendingButton = button
+            previewTimer.restart()
+            return
+        }
+
+        hoverButton(button)
+    }
+
+    function stopPreviewDelay(): void {
+        previewTimer.stop()
+        pendingButton = null
+    }
+
+    function hoverButton(button: var): void {
         // The whole workspace is peeked at once the pointer rests on its button (`Peek`).
         if (button.entry !== null && button.entry.windows.length > 0) {
             if (button.hovered) {
@@ -376,6 +401,19 @@ PanelWindow {
         Window.onActiveChanged: {
             if (Window.active && root.takingKeyboard) {
                 root.takingKeyboard = false
+            }
+        }
+    }
+
+    Timer {
+        id: previewTimer
+
+        interval: Math.max(0, Math.min(Config.bar.previewDelay, 3000))
+        onTriggered: {
+            const button = root.pendingButton
+            root.pendingButton = null
+            if (button !== null && button !== undefined && button.hovered && strip.reordering === false) {
+                root.hoverButton(button)
             }
         }
     }
@@ -688,6 +726,7 @@ PanelWindow {
             onMenuRequested: (entry, at) => root.openWorkspaceMenu(entry, at)
             onReorderBegan: {
                 hideTimer.stop()
+                root.stopPreviewDelay()
                 root.popupButton = null
                 // Also one only waiting for its delay.
                 Peek.cancel()

@@ -10,12 +10,16 @@
 // Grouped by what they are about, one object per group.
 const defaults = {
     bar: {
+        // How long the pointer rests on a workspace button before its window previews open, in milliseconds
+        // (clamped to 0-3000 where used), so crossing the bar opens nothing. Once open, they follow the
+        // pointer along the buttons at once.
+        previewDelay: 250,
         // Resting on a window's preview card for a moment shows that window on its own, almost full screen.
         peek: true,
         // How long the pointer rests on a card before that, in milliseconds (clamped to 100-3000 where used).
         peekDelay: 500,
         // The same for a workspace button: resting on it shows the whole workspace as if it was shown, after
-        // twice the delay.
+        // twice the delay, counted from when its previews opened (`previewDelay`).
         peekWorkspaces: true,
     },
     startMenu: {

@@ -10,6 +10,10 @@ const names = [
     'serializeOverrides',
     'iconFor',
     'withIcon',
+    'withChanges',
+    'choiceChanges',
+    'chosenIcon',
+    'initialChoice',
     'withoutGoneWindows',
     'reorderedWorkspaces',
     'isManaged',
@@ -54,8 +58,20 @@ test('file: wrong keys and paths are skipped and reported, the rest kept', () =>
         windows: { 'not-an-address': '/d.png' },
         workspaces: { 0: '/e.png', '-2': '/f.png', 'x': '/g.png', 4: 5 },
     }))
-    assert.deepEqual(parsed.overrides, { apps: { 'b.desktop': '/b.png' }, windows: {}, workspaces: {} })
+    assert.deepEqual(parsed.overrides, {
+        apps: { 'b.desktop': '/b.png' },
+        appWindows: { 'b.desktop': '/b.png' },
+        windows: {},
+        workspaces: {},
+    })
     assert.equal(parsed.problems.length, 7)
+})
+
+test('file: version 1 showed an app\'s icon on its windows too, and keeps doing so', () => {
+    const old = icons.parseOverrides(JSON.stringify({ version: 1, apps: { 'a.desktop': '/a.png' } }))
+    assert.equal(icons.iconFor(old.overrides, 'appWindows', 'a.desktop'), '/a.png')
+    const current = icons.parseOverrides(JSON.stringify({ version: 2, apps: { 'a.desktop': '/a.png' } }))
+    assert.equal(icons.iconFor(current.overrides, 'appWindows', 'a.desktop'), '')
 })
 
 test('file: broken JSON or the wrong shape starts fresh and says so', () => {
@@ -68,6 +84,7 @@ test('file: broken JSON or the wrong shape starts fresh and says so', () => {
 test('file: what is written reads back the same', () => {
     let overrides = icons.withIcon(icons.emptyOverrides(), 'apps', 'kitty.desktop', '/k.png')
     overrides = icons.withIcon(overrides, 'workspaces', '2', '/w.png')
+    overrides = icons.withIcon(overrides, 'appWindows', 'foot.desktop', '/f.png')
     assert.deepEqual(icons.parseOverrides(icons.serializeOverrides(overrides)).overrides, overrides)
 })
 
@@ -89,6 +106,61 @@ test('set: nothing changes for the same icon, a bad key or a relative path', () 
     assert.equal(icons.withIcon(set, 'workspaces', '0', '/a.png'), set)
     assert.equal(icons.withIcon(set, 'apps', 'b.desktop', 'a.png'), set)
     assert.equal(icons.withIcon(set, 'things', 'x', '/a.png'), set)
+})
+
+const appTarget = { kind: 'apps', key: 'a.desktop', app: '' }
+const windowTarget = { kind: 'windows', key: '0x1', app: 'a.desktop' }
+
+test('choice: an app\'s icon only, or everywhere with its windows (their own icons taken away)', () => {
+    let overrides = icons.withIcon(icons.emptyOverrides(), 'windows', '0x1', '/own.png')
+    overrides = icons.withIcon(overrides, 'windows', '0x9', '/other.png')
+    const only = icons.withChanges(overrides, icons.choiceChanges(appTarget, { allWindows: false, appIcon: true }, '/n.png', ['0x1', '0x2']))
+    assert.deepEqual(only.apps, { 'a.desktop': '/n.png' })
+    assert.deepEqual(only.appWindows, {})
+    assert.deepEqual(only.windows, overrides.windows)
+    const everywhere = icons.withChanges(overrides, icons.choiceChanges(appTarget, { allWindows: true, appIcon: true }, '/n.png', ['0x1', '0x2']))
+    assert.deepEqual(everywhere.apps, { 'a.desktop': '/n.png' })
+    assert.deepEqual(everywhere.appWindows, { 'a.desktop': '/n.png' })
+    assert.deepEqual(everywhere.windows, { '0x9': '/other.png' })
+})
+
+test('choice: a window alone, or every window of its app, with or without the app\'s icon', () => {
+    const empty = icons.emptyOverrides()
+    const alone = icons.withChanges(empty, icons.choiceChanges(windowTarget, { allWindows: false, appIcon: false }, '/n.png', ['0x1', '0x2']))
+    assert.deepEqual(alone, { apps: {}, appWindows: {}, windows: { '0x1': '/n.png' }, workspaces: {} })
+    const aloneAndApp = icons.withChanges(empty, icons.choiceChanges(windowTarget, { allWindows: false, appIcon: true }, '/n.png', []))
+    assert.deepEqual(aloneAndApp, { apps: { 'a.desktop': '/n.png' }, appWindows: {}, windows: { '0x1': '/n.png' }, workspaces: {} })
+    const withOwn = icons.withIcon(empty, 'windows', '0x1', '/own.png')
+    const every = icons.withChanges(withOwn, icons.choiceChanges(windowTarget, { allWindows: true, appIcon: false }, '/n.png', ['0x2']))
+    assert.deepEqual(every, { apps: {}, appWindows: { 'a.desktop': '/n.png' }, windows: {}, workspaces: {} })
+})
+
+test('choice: a window without an app or a workspace changes only itself', () => {
+    const lone = { kind: 'windows', key: '0x1', app: '' }
+    assert.deepEqual(icons.choiceChanges(lone, { allWindows: true, appIcon: true }, '/n.png', []), [{ kind: 'windows', key: '0x1', path: '/n.png' }])
+    const workspace = { kind: 'workspaces', key: '3', app: '' }
+    assert.deepEqual(icons.choiceChanges(workspace, { allWindows: true, appIcon: true }, '/n.png', []), [{ kind: 'workspaces', key: '3', path: '/n.png' }])
+})
+
+test('choice: restoring changes nothing when nothing was chosen there', () => {
+    const overrides = icons.withIcon(icons.emptyOverrides(), 'apps', 'a.desktop', '/a.png')
+    assert.equal(icons.withChanges(overrides, icons.choiceChanges(windowTarget, { allWindows: true, appIcon: false }, '', ['0x1'])), overrides)
+    assert.notEqual(icons.withChanges(overrides, icons.choiceChanges(windowTarget, { allWindows: true, appIcon: true }, '', ['0x1'])), overrides)
+})
+
+test('choice: the manager opens on what is chosen now', () => {
+    const empty = icons.emptyOverrides()
+    assert.deepEqual(icons.initialChoice(empty, appTarget), { allWindows: true, appIcon: true })
+    const appOnly = icons.withIcon(empty, 'apps', 'a.desktop', '/a.png')
+    assert.deepEqual(icons.initialChoice(appOnly, appTarget), { allWindows: false, appIcon: true })
+    assert.deepEqual(icons.initialChoice(appOnly, windowTarget), { allWindows: false, appIcon: false })
+    const everywhere = icons.withIcon(appOnly, 'appWindows', 'a.desktop', '/a.png')
+    assert.deepEqual(icons.initialChoice(everywhere, appTarget), { allWindows: true, appIcon: true })
+    assert.deepEqual(icons.initialChoice(everywhere, windowTarget), { allWindows: true, appIcon: true })
+    assert.equal(icons.chosenIcon(everywhere, windowTarget, { allWindows: true, appIcon: true }), '/a.png')
+    const own = icons.withIcon(everywhere, 'windows', '0x1', '/own.png')
+    assert.deepEqual(icons.initialChoice(own, windowTarget), { allWindows: false, appIcon: false })
+    assert.equal(icons.chosenIcon(own, windowTarget, { allWindows: false, appIcon: false }), '/own.png')
 })
 
 test('windows: only the windows still there keep their icons', () => {

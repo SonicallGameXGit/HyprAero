@@ -9,14 +9,18 @@
 // without a platform theme), so the list is made of the theme folders' files and a chosen one is kept by its
 // path.
 
-// The kinds of things an icon can be chosen for, as kept in the file: an app by its desktop entry id (every
-// window of it, its pin, its start menu row), a window by its Hyprland address (only while it lives), a
-// workspace by its number (whatever its windows are).
+// The kinds of things an icon can be chosen for, as kept in the file: an app by its desktop entry id (its
+// pin, its start menu row), every window of an app by the app's id, a window by its Hyprland address (only
+// while it lives), a workspace by its number (whatever its windows are).
 const kinds = [
     'apps',
+    'appWindows',
     'windows',
     'workspaces',
 ]
+
+// The file's version. Version 1 had no `appWindows`: an app's icon was its windows' too.
+const fileVersion = 2
 
 // The pictures a chosen file may be: what Qt's image plugins read.
 const pictureExtensions = [
@@ -33,7 +37,7 @@ const pictureExtensions = [
 ]
 
 function emptyOverrides() {
-    return { apps: {}, windows: {}, workspaces: {} }
+    return { apps: {}, appWindows: {}, windows: {}, workspaces: {} }
 }
 
 // Whether `key` can name a thing of `kind`: a window's address goes into nothing but the file, still only
@@ -51,12 +55,13 @@ function validKey(kind, key) {
         return /^[1-9][0-9]*$/.test(key)
     }
 
-    return kind === 'apps'
+    return kind === 'apps' || kind === 'appWindows'
 }
 
-// Reads the file: `{ "version": 1, "apps": { id: path }, "windows": { address: path }, "workspaces":
-// { number: path } }`. Whatever is wrong is left out and described in `problems`; an empty or missing file
-// means no icon was chosen.
+// Reads the file: `{ "version": 2, "apps": { id: path }, "appWindows": { id: path }, "windows": { address:
+// path }, "workspaces": { number: path } }`. Whatever is wrong is left out and described in `problems`; an
+// empty or missing file means no icon was chosen. A version 1 file keeps showing what it showed: each app's
+// icon on its windows too.
 function parseOverrides(text) {
     const result = { overrides: emptyOverrides(), problems: [] }
     if (text.trim() === '') {
@@ -97,13 +102,18 @@ function parseOverrides(text) {
         }
     }
 
+    if (data.version !== fileVersion && data.appWindows === undefined) {
+        result.overrides.appWindows = Object.assign({}, result.overrides.apps)
+    }
+
     return result
 }
 
 function serializeOverrides(overrides) {
     return JSON.stringify({
-        version: 1,
+        version: fileVersion,
         apps: overrides.apps,
+        appWindows: overrides.appWindows,
         windows: overrides.windows,
         workspaces: overrides.workspaces,
     }, null, 4) + '\n'
@@ -140,6 +150,79 @@ function withIcon(overrides, kind, key, path) {
     const copy = Object.assign({}, overrides)
     copy[kind] = section
     return copy
+}
+
+// The overrides with every change of `changes` (`[{ kind, key, path }]`, as `withIcon`). The same object
+// when nothing changes.
+function withChanges(overrides, changes) {
+    let result = overrides
+    for (const change of changes) {
+        result = withIcon(result, change.kind, change.key, change.path)
+    }
+
+    return result
+}
+
+// What choosing `path` in the Icon Manager changes ('' gives back the own icon, "Restore Defaults"), as
+// `[{ kind, key, path }]`. `target` is `{ kind, key, app }` (`app`: a window's app, '' when it has no desktop
+// entry), `choice` is `{ allWindows, appIcon }`, `appWindowAddresses` the open windows of the app.
+// - An app: its icon (pin, start menu row); with `allWindows` also every window of it.
+// - A window: its own icon, or with `allWindows` every window of its app; with `appIcon` its app's icon too.
+// - A workspace: its icon.
+// "Every window" takes away the own icons of the app's open windows, which would win over it: chosen for
+// every window, it shows on every window.
+function choiceChanges(target, choice, path, appWindowAddresses) {
+    if (target.kind === 'workspaces') {
+        return [{ kind: 'workspaces', key: target.key, path: path }]
+    }
+
+    const app = target.kind === 'apps' ? target.key : target.app
+    const changes = []
+    if (target.kind === 'apps' || (choice.appIcon && app !== '')) {
+        changes.push({ kind: 'apps', key: app, path: path })
+    }
+
+    if (choice.allWindows && app !== '') {
+        changes.push({ kind: 'appWindows', key: app, path: path })
+        for (const address of appWindowAddresses) {
+            changes.push({ kind: 'windows', key: address, path: '' })
+        }
+
+        if (target.kind === 'windows' && appWindowAddresses.includes(target.key) === false) {
+            changes.push({ kind: 'windows', key: target.key, path: '' })
+        }
+    } else if (target.kind === 'windows') {
+        changes.push({ kind: 'windows', key: target.key, path: path })
+    }
+
+    return changes
+}
+
+// The icon the manager shows as chosen now for `target` with `choice` ('' for the own icon).
+function chosenIcon(overrides, target, choice) {
+    if (target.kind === 'windows' && choice.allWindows && target.app !== '') {
+        return iconFor(overrides, 'appWindows', target.app)
+    }
+
+    return iconFor(overrides, target.kind, target.key)
+}
+
+// The choice the manager opens with, so it shows what is chosen now: an app is chosen everywhere unless its
+// windows have another icon than it; a window without an icon of its own but with one for every window of
+// its app is shown as that one; the app's icon is ticked when it is the one shown.
+function initialChoice(overrides, target) {
+    if (target.kind === 'apps') {
+        const allWindows = iconFor(overrides, 'apps', target.key) === iconFor(overrides, 'appWindows', target.key)
+        return { allWindows: allWindows, appIcon: true }
+    }
+
+    if (target.kind !== 'windows' || target.app === '') {
+        return { allWindows: false, appIcon: false }
+    }
+
+    const allWindows = iconFor(overrides, 'windows', target.key) === '' && iconFor(overrides, 'appWindows', target.app) !== ''
+    const shown = chosenIcon(overrides, target, { allWindows: allWindows, appIcon: false })
+    return { allWindows: allWindows, appIcon: shown !== '' && iconFor(overrides, 'apps', target.app) === shown }
 }
 
 // The overrides without the windows that are gone (`liveAddresses`): an address names a window only while it

@@ -9,9 +9,10 @@ import qs.services
 // menu row), a window or a workspace, opened by "Change icon..." in its right-click menu. "Look for icons in"
 // picks an icon theme (or all of them) as Windows 7 picks a file, the search field narrows the list by name,
 // and "Browse..." picks a picture file of one's own, shown first in the list until OK copies it in
-// (`IconOverrides.useFile`). A window can give its icon to every window of its app instead. OK uses the
-// selected icon (as does a double click or Enter), Cancel changes nothing, "Restore Defaults" goes back to
-// the thing's own icon. A window of its own.
+// (`IconOverrides.chooseFile`). Under the list it asks how far the icon goes: an app's only for the app (its
+// pin, its start menu row) or everywhere, its windows too; a window's only for that window or for every window
+// of its app, and for the app too or not. OK uses the selected icon (as does a double click or Enter), Cancel
+// changes nothing, "Restore Defaults" gives back the own icons as far as the choice goes. A window of its own.
 FloatingWindow {
     id: root
 
@@ -19,13 +20,16 @@ FloatingWindow {
     readonly property var target: IconOverrides.target === null
         ? ({ kind: '', key: '', name: '', app: '', appName: '' })
         : IconOverrides.target
-    // A window's icon given to every window of its app instead.
-    property bool forApp: false
-    readonly property bool canBeForApp: target.kind === 'windows' && target.app !== ''
-    readonly property string scopeKind: canBeForApp && forApp ? 'apps' : target.kind
-    readonly property string scopeKey: canBeForApp && forApp ? target.app : target.key
+    // A window of an app with a desktop entry, which can give its icon to the app's other windows and to it.
+    readonly property bool hasApp: target.kind === 'windows' && target.app !== ''
+    readonly property string appName: target.kind === 'apps' ? target.name : target.appName
+    // How far the icon goes (`IconOverrides.choiceChanges`): an app's or a window's to every window of the
+    // app, a window's to its app too.
+    property bool allWindows: false
+    property bool appIcon: false
+    readonly property var choice: ({ allWindows: allWindows, appIcon: appIcon })
     // The icon chosen for it now ('' for its own).
-    readonly property string currentPath: scopeKind === '' ? '' : IconOverrides.iconOf(scopeKind, scopeKey)
+    readonly property string currentPath: target.kind === '' ? '' : IconOverrides.chosenIcon(target, choice)
     // A picture just chosen in "Browse...", not copied in yet.
     property string chosenFile: ''
     // The picture of one's own shown first in the list: the one just chosen, else the copy in use now.
@@ -81,25 +85,16 @@ FloatingWindow {
         }
 
         if (selectedPath === chosenFile) {
-            IconOverrides.useFile(scopeKind, scopeKey, chosenFile)
+            IconOverrides.chooseFile(target, choice, chosenFile)
         } else {
-            IconOverrides.setIcon(scopeKind, scopeKey, selectedPath)
-        }
-
-        // The window shows its app's icon now, not one of its own.
-        if (scopeKind === 'apps' && canBeForApp) {
-            IconOverrides.setIcon('windows', target.key, '')
+            IconOverrides.choose(target, choice, selectedPath)
         }
 
         IconOverrides.closeManager()
     }
 
     function restoreDefaults(): void {
-        IconOverrides.setIcon(scopeKind, scopeKey, '')
-        if (scopeKind === 'apps' && canBeForApp) {
-            IconOverrides.setIcon('windows', target.key, '')
-        }
-
+        IconOverrides.choose(target, choice, '')
         IconOverrides.closeManager()
     }
 
@@ -179,11 +174,10 @@ FloatingWindow {
 
         function onManagerOpenChanged(): void {
             if (IconOverrides.managerOpen) {
-                const target = root.target
-                // A window whose app has an icon and that has none of its own is shown as the app's.
-                root.forApp = root.canBeForApp
-                    && IconOverrides.iconOf('windows', target.key) === ''
-                    && IconOverrides.iconOf('apps', target.app) !== ''
+                // Opened on what is chosen now.
+                const choice = IconOverrides.initialChoice(root.target)
+                root.allWindows = choice.allWindows
+                root.appIcon = choice.appIcon
                 root.theme = ''
                 root.chosenFile = ''
                 search.text = ''
@@ -497,7 +491,7 @@ FloatingWindow {
             id: details
 
             x: Theme.space5
-            y: (forAppBox.visible ? forAppBox.y - Theme.space3 : strip.y - Theme.space3) - height
+            y: (options.visible ? options.y : strip.y) - Theme.space3 - height
             width: parent.width - Theme.space5 * 2
             text: root.selectedPath
             elide: Text.ElideMiddle
@@ -506,15 +500,51 @@ FloatingWindow {
             font.pixelSize: Theme.fontSizeSmall
         }
 
-        CheckBox {
-            id: forAppBox
+        // How far the icon goes, asked rather than guessed.
+        Column {
+            id: options
 
             x: Theme.space5
             y: strip.y - Theme.space3 - height
-            visible: root.canBeForApp
-            text: qsTr('Use this icon for every window of %1').arg(root.target.appName)
-            checked: root.forApp
-            onToggled: on => root.forApp = on
+            width: parent.width - Theme.space5 * 2
+            spacing: Theme.space2
+            visible: root.target.kind === 'apps' || root.target.kind === 'windows'
+
+            // Said rather than leaving the choices out without a word.
+            Text {
+                width: parent.width
+                visible: root.target.kind === 'windows' && root.hasApp === false
+                text: qsTr('This window\'s app has no entry the shell can find, so the icon is for this window only.')
+                wrapMode: Text.Wrap
+                color: Theme.textMuted
+                font.family: Theme.fontUi
+                font.pixelSize: Theme.fontSizeBody
+            }
+
+            RadioButton {
+                visible: root.target.kind === 'apps' || root.hasApp
+                text: root.target.kind === 'apps'
+                    ? qsTr('Only for the app: its pin and its row in the start menu')
+                    : qsTr('Only for this window')
+                checked: root.allWindows === false
+                onPicked: root.allWindows = false
+            }
+
+            RadioButton {
+                visible: root.target.kind === 'apps' || root.hasApp
+                text: root.target.kind === 'apps'
+                    ? qsTr('Everywhere: also for every window of %1').arg(root.appName)
+                    : qsTr('For every window of %1').arg(root.appName)
+                checked: root.allWindows
+                onPicked: root.allWindows = true
+            }
+
+            CheckBox {
+                visible: root.hasApp
+                text: qsTr('Also for the app: its pin and its row in the start menu')
+                checked: root.appIcon
+                onToggled: on => root.appIcon = on
+            }
         }
 
         // The buttons on a grey strip along the bottom, as in a Windows 7 dialog.
@@ -538,7 +568,7 @@ FloatingWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 width: Math.max(implicitWidth, 80)
                 text: qsTr('Restore Defaults')
-                enabled: root.currentPath !== '' || (root.scopeKind === 'apps' && root.canBeForApp && IconOverrides.iconOf('windows', root.target.key) !== '')
+                enabled: root.target.kind !== '' && IconOverrides.canRestore(root.target, root.choice)
                 activeFocusOnTab: true
                 onClicked: root.restoreDefaults()
             }
