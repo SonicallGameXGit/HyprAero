@@ -1,12 +1,14 @@
 import QtQuick
 import QtQuick.Shapes
+import 'taskbarFlash.js' as TaskbarFlash
 
 // An app's button on the taskbar strip, Windows 7's (.aero/STYLE.md, "Taskbar items"): only its icon at
 // rest; under the pointer two side lines fading out to the top and bottom, a small light at the bottom
 // centre and a light in the app's own colour following the pointer along the bottom; pressed, a face
 // darkening through the middle, and what is inside it a pixel down and right. An `open` app is a rounded
-// button of its own (`TaskbarItemFace`), the `current` one brighter, fading in and out as it changes. What is
-// put inside (the icon) is drawn over all of it.
+// button of its own (`TaskbarItemFace`), the `current` one brighter, fading in and out as it changes. One
+// whose app asks for `attention` flashes orange, then stays orange. What is put inside (the icon) is drawn
+// over all of it.
 Item {
     id: root
 
@@ -16,6 +18,12 @@ Item {
     property bool current: false
     // Looks hovered without the pointer on it, e.g. while something dragged is over it.
     property bool highlighted: false
+    // The app asks for attention: the face flashes orange `attentionFlashes` times (0: for as long as it
+    // asks), then stays orange (`taskbarFlash.js`); `flash()` starts it over, for a new request.
+    property bool attention: false
+    property int attentionFlashes: 7
+    // Flash intervals since the flashing started.
+    property int flashStep: 0
     default property alias content: contentItem.data
 
     readonly property bool hovered: hoverHandler.hovered
@@ -30,6 +38,7 @@ Item {
     // at the bottom centre only, as on Windows 7.
     readonly property bool glowShown: open && (lit || pressed)
     readonly property bool faceShown: (open || current) && pressed === false
+    readonly property bool attentionShown: attention && pressed === false && TaskbarFlash.flashLit(flashStep, attentionFlashes)
     readonly property var faceNow: {
         if (current) {
             return Theme.taskbarItemFaceCurrent
@@ -47,6 +56,15 @@ Item {
         const eased = along * along * (3 - 2 * along)
         const white = Theme.taskbarItemGlowCore * Math.exp(-(along * along) / 0.06)
         return Qt.alpha(Qt.tint(glowColor, Qt.rgba(1, 1, 1, white)), Theme.taskbarItemGlowStrength * (1 - eased))
+    }
+
+    function flash(): void {
+        flashStep = 0
+        if (attention && TaskbarFlash.flashDone(0, attentionFlashes) === false) {
+            flashTimer.restart()
+        } else {
+            flashTimer.stop()
+        }
     }
 
     // A dark or light side line, fading out to the top and bottom.
@@ -72,6 +90,22 @@ Item {
     Accessible.role: Accessible.Button
     Accessible.onPressAction: clicked()
 
+    onAttentionChanged: flash()
+    Component.onCompleted: flash()
+
+    Timer {
+        id: flashTimer
+
+        interval: Theme.taskbarItemFlashInterval
+        repeat: true
+        onTriggered: {
+            root.flashStep++
+            if (TaskbarFlash.flashDone(root.flashStep, root.attentionFlashes)) {
+                stop()
+            }
+        }
+    }
+
     IconColorReader {
         id: colorReader
 
@@ -87,6 +121,18 @@ Item {
 
         Behavior on opacity {
             NumberAnimation { duration: Theme.motionSoft; easing.type: Easing.OutCubic }
+        }
+    }
+
+    // The orange face of an app asking for attention, over the open one.
+    TaskbarItemFace {
+        anchors.fill: parent
+        face: Theme.taskbarItemFaceAttention
+        outline: false
+        opacity: root.attentionShown ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.motionFast; easing.type: Easing.OutCubic }
         }
     }
 
@@ -230,7 +276,7 @@ Item {
     TaskbarItemFace {
         anchors.fill: parent
         fill: false
-        opacity: root.faceShown || root.glowShown ? 1 : 0
+        opacity: root.faceShown || root.glowShown || (root.attention && root.pressed === false) ? 1 : 0
 
         Behavior on opacity {
             NumberAnimation { duration: Theme.motionSoft; easing.type: Easing.OutCubic }

@@ -108,6 +108,8 @@ Singleton {
     readonly property var taskbarItemFaceOpen: slate ? ['#2effffff', '#0dffffff', '#0dffffff'] : ['#6effffff', '#17ffffff', '#17ffffff']
     readonly property var taskbarItemFaceOpenHover: slate ? ['#3dffffff', '#14ffffff', '#14ffffff'] : ['#8cffffff', '#24ffffff', '#24ffffff']
     readonly property var taskbarItemFaceCurrent: slate ? ['#66ffffff', '#2effffff', '#33ffffff'] : ['#ccffffff', '#57ffffff', '#61ffffff']
+    readonly property var taskbarItemFaceAttention: slate ? ['#cce6bc50', '#ccc87024', '#ccbe6822'] : ['#e6ffde5a', '#e6f28c30', '#e6ec822c']
+    readonly property int taskbarItemFlashInterval: 530
     readonly property var taskbarItemShine: slate ? ['#17ffffff', '#04ffffff'] : ['#3affffff', '#0affffff']
     readonly property color taskbarItemBorder: slate ? '#cc000000' : '#8c000a19'
     readonly property color taskbarItemInner: slate ? '#29ffffff' : '#73ffffff'
