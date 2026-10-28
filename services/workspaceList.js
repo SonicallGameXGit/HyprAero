@@ -8,8 +8,9 @@
 //
 // Icons: windows are grouped by app; an app counts with its biggest window. The biggest app is the
 // main icon and the second biggest is the small badge. No windows: both are null (the bar draws a dot).
-// `windows` is [{ workspaceId, appId, title, area }]. Each entry also carries its own `windows`, biggest
-// first, for the hover list.
+// An app with a window asking for attention comes first while it asks (`rankApps`).
+// `windows` is [{ workspaceId, appId, title, area, urgent }]. Each entry also carries its own `windows`,
+// biggest first, for the hover list, and `attention`: whether any of them asks for attention.
 function buildEntries(workspaceIds, windows, focusedId, minimumCount) {
     const occupied = new Set()
     for (const id of workspaceIds) {
@@ -40,27 +41,45 @@ function buildEntries(workspaceIds, windows, focusedId, minimumCount) {
             mainApp: apps.length > 0 ? apps[0] : null,
             secondApp: apps.length > 1 ? apps[1] : null,
             windows: rankWindows(own),
+            attention: own.some(window => window.urgent === true),
         }
     })
 }
 
-// App ids of the given windows, biggest app first; ties are broken by name so the order is stable.
+// App ids of the given windows, biggest app first; ties are broken by name so the order is stable. An app
+// with a window asking for attention goes before all the others while it asks (biggest first among such
+// apps), so the workspace's button shows its icon even when it is small; the others keep their order after
+// it, and it falls back into its place once it no longer asks.
 function rankApps(windows) {
     const biggest = new Map()
+    const asking = new Set()
     for (const window of windows) {
         const known = biggest.get(window.appId)
         if (known === undefined || window.area > known) {
             biggest.set(window.appId, window.area)
         }
+
+        if (window.urgent === true) {
+            asking.add(window.appId)
+        }
     }
 
+    const askingFirst = (a, b) => Number(asking.has(b[0])) - Number(asking.has(a[0]))
     return Array.from(biggest.entries())
-        .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+        .sort((a, b) => askingFirst(a, b) || b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
         .map(entry => entry[0])
 }
 
-// The windows as { address, appId, title, area, width, height, floating, offScreen, preview }, biggest
-// first; ties are broken by app id, then title.
+// The window a click on a workspace's button goes to: the one asking for attention (the biggest, when
+// several ask), as clicking Windows 7's flashing button brings up the window that flashes; '' when none asks
+// (the workspace is just shown). `entry` is one of `buildEntries`.
+function attentionWindow(entry) {
+    const window = entry.windows.find(item => item.urgent === true)
+    return window === undefined ? '' : window.address
+}
+
+// The windows as { address, appId, title, area, width, height, floating, offScreen, preview, urgent },
+// biggest first; ties are broken by app id, then title.
 function rankWindows(windows) {
     return windows
         .map(window => ({
@@ -73,6 +92,7 @@ function rankWindows(windows) {
             floating: window.floating,
             offScreen: window.offScreen,
             preview: window.preview,
+            urgent: window.urgent === true,
         }))
         .sort((a, b) => b.area - a.area || compareText(a.appId, b.appId) || compareText(a.title, b.title))
 }

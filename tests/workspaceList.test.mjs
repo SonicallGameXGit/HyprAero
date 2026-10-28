@@ -8,7 +8,7 @@ import { join } from 'node:path'
 // The module is a QML library script; strip the pragma and evaluate it as plain JS.
 const source = readFileSync(new URL('../services/workspaceList.js', import.meta.url), 'utf8').replace('.pragma library', '')
 const buildEntries = new Function(source + '\nreturn buildEntries')()
-const { cornerPosition, parseOpenWindow } = new Function(source + '\nreturn { cornerPosition, parseOpenWindow }')()
+const { cornerPosition, parseOpenWindow, attentionWindow } = new Function(source + '\nreturn { cornerPosition, parseOpenWindow, attentionWindow }')()
 
 const ids = entries => entries.map(entry => entry.id)
 const entryOf = (entries, id) => entries.find(entry => entry.id === id)
@@ -58,6 +58,64 @@ test('several apps: the biggest is main, the second biggest is the badge, the re
     const entry = entryOf(buildEntries([1, 2], windows, 1, 2), 1)
     assert.equal(entry.mainApp, 'big')
     assert.equal(entry.secondApp, 'middle')
+})
+
+test('an app asking for attention is the main icon while it asks, the others shifted down', () => {
+    const windows = [
+        { workspaceId: 1, appId: 'discord', area: 300, address: '0x1' },
+        { workspaceId: 1, appId: 'kitty', area: 200, address: '0x2' },
+        { workspaceId: 1, appId: 'telegram', area: 100, address: '0x3', urgent: true },
+    ]
+    const asking = entryOf(buildEntries([1], windows, 1, 1), 1)
+    assert.equal(asking.mainApp, 'telegram')
+    assert.equal(asking.secondApp, 'discord')
+    assert.equal(asking.attention, true)
+
+    const answered = entryOf(buildEntries([1], windows.map(window => ({ ...window, urgent: false })), 1, 1), 1)
+    assert.equal(answered.mainApp, 'discord')
+    assert.equal(answered.secondApp, 'kitty')
+    assert.equal(answered.attention, false)
+})
+
+test('several apps asking: the biggest of them first, then the rest by size', () => {
+    const windows = [
+        { workspaceId: 1, appId: 'big', area: 300 },
+        { workspaceId: 1, appId: 'small', area: 10, urgent: true },
+        { workspaceId: 1, appId: 'middle', area: 200, urgent: true },
+    ]
+    const entry = entryOf(buildEntries([1], windows, 1, 1), 1)
+    assert.equal(entry.mainApp, 'middle')
+    assert.equal(entry.secondApp, 'small')
+})
+
+test('a window asking elsewhere changes nothing here', () => {
+    const windows = [
+        { workspaceId: 1, appId: 'a', area: 300 },
+        { workspaceId: 1, appId: 'b', area: 100 },
+        { workspaceId: 2, appId: 'b', area: 50, urgent: true },
+    ]
+    const entries = buildEntries([1, 2], windows, 1, 1)
+    assert.equal(entryOf(entries, 1).mainApp, 'a')
+    assert.equal(entryOf(entries, 1).attention, false)
+    assert.equal(entryOf(entries, 2).attention, true)
+})
+
+test('a click goes to the window asking for attention, the biggest when several ask', () => {
+    const windows = [
+        { workspaceId: 1, appId: 'a', area: 300, address: '0x1' },
+        { workspaceId: 1, appId: 'b', area: 100, address: '0x2', urgent: true },
+        { workspaceId: 1, appId: 'c', area: 200, address: '0x3', urgent: true },
+    ]
+    const entry = entryOf(buildEntries([1], windows, 1, 1), 1)
+    assert.equal(attentionWindow(entry), '0x3')
+    assert.equal(entry.windows.find(window => window.address === '0x3').urgent, true)
+    assert.equal(entry.windows.find(window => window.address === '0x1').urgent, false)
+})
+
+test('a click on a workspace where nothing asks just shows it', () => {
+    const entry = entryOf(buildEntries([1], [{ workspaceId: 1, appId: 'a', area: 300, address: '0x1' }], 1, 1), 1)
+    assert.equal(attentionWindow(entry), '')
+    assert.equal(attentionWindow(entryOf(buildEntries([], [], 1, 2), 2)), '')
 })
 
 test('an app counts with its biggest window', () => {

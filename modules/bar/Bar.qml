@@ -321,7 +321,7 @@ PanelWindow {
         } else if (item.action === 'customizeTray') {
             Tray.openCustomize()
         } else if (item.action === 'workspace') {
-            Workspaces.switchTo(item.id)
+            Workspaces.showWorkspace(item.id)
         } else if (item.action === 'changeIcon') {
             IconOverrides.openManager(item.kind, item.key, item.name, item.app)
         }

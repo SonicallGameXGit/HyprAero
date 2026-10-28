@@ -289,7 +289,7 @@ Item {
                 return index < Workspaces.entries.length ? Workspaces.entries[index] : null
             }
             highlighted: (entry !== null && root.dropTarget === entry.id) || root.joinTarget === index
-            onClicked: Workspaces.switchTo(entry.id)
+            onClicked: Workspaces.showWorkspace(entry.id)
             onHoveredChanged: root.buttonHovered(button)
             onReorderStarted: root.begin(index)
             onReorderMoved: offset => root.move(offset)

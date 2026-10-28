@@ -21,6 +21,10 @@ const defaults = {
         // The same for a workspace button: resting on it shows the whole workspace as if it was shown, after
         // twice the delay, counted from when its previews opened (`previewDelay`).
         peekWorkspaces: true,
+        // How many times a workspace's button flashes when a window on it asks for attention, before it
+        // stays orange until the window gets focus (Windows 7's ForegroundFlashCount, 7 by default there too;
+        // clamped to 0-100 where used). 0 flashes for as long as the window asks.
+        attentionFlashes: 7,
     },
     startMenu: {
         // Drag the app list to scroll it, and hold an app (a long press) to pick it up, as on a phone. Off:

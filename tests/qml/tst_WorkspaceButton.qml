@@ -1,5 +1,6 @@
 import QtQuick
 import QtTest
+import qs.design
 import qs.services
 import '../../modules/bar'
 
@@ -7,6 +8,8 @@ import '../../modules/bar'
 // with windows asks the bar to reorder (started, moved by the offset along the bar, ended) and never clicks;
 // an up-and-down drag or an empty workspace starts nothing. A right click asks for its menu. A workspace with
 // an icon of its own shows only that, whatever its windows, and empty it stays a plain (not open) button.
+// One whose window asks for attention flashes orange `bar.attentionFlashes` times, then stays orange until the
+// window no longer asks; asking again starts the flashing over.
 Item {
     id: root
 
@@ -40,6 +43,7 @@ Item {
 
         function init() {
             IconOverrides.workspaceIcons = {}
+            Config.bar = { attentionFlashes: 7 }
             button.clicks = 0
             button.menus = 0
             button.starts = 0
@@ -103,6 +107,44 @@ Item {
         function test_an_up_and_down_drag_starts_nothing() {
             drag(0, -40)
             compare(button.starts, 0)
+        }
+
+        function asking() {
+            return { id: 2, focused: false, mainApp: 'kitty', secondApp: null, attention: true, windows: [{ address: '0x1', appId: 'kitty', urgent: true }] }
+        }
+
+        function test_a_window_asking_for_attention_flashes_the_button_then_keeps_it_orange() {
+            Config.bar = { attentionFlashes: 2 }
+            button.entry = asking()
+            verify(button.attention)
+            verify(button.attentionShown)
+            tryCompare(button, 'attentionShown', false, 1000)
+            tryCompare(button, 'attentionShown', true, 1000)
+            wait(Theme.taskbarItemFlashInterval * 2)
+            verify(button.attentionShown)
+            Config.bar = { attentionFlashes: 7 }
+        }
+
+        function test_the_orange_goes_once_the_window_no_longer_asks() {
+            button.entry = asking()
+            verify(button.attentionShown)
+            button.entry = { id: 2, focused: false, mainApp: 'kitty', secondApp: null, attention: false, windows: [{ address: '0x1', appId: 'kitty', urgent: false }] }
+            compare(button.attention, false)
+            compare(button.attentionShown, false)
+        }
+
+        function test_asking_again_starts_the_flashing_over() {
+            Config.bar = { attentionFlashes: 1 }
+            button.entry = asking()
+            verify(button.attentionShown)
+            Config.bar = { attentionFlashes: 3 }
+            button.flashStep = 4
+            Workspaces.attentionRequested('0x9')
+            compare(button.flashStep, 4)
+            Workspaces.attentionRequested('0x1')
+            compare(button.flashStep, 0)
+            tryCompare(button, 'attentionShown', false, 1000)
+            Config.bar = { attentionFlashes: 7 }
         }
 
         function test_an_empty_workspace_is_not_dragged() {

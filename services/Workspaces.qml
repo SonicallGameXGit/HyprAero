@@ -65,6 +65,9 @@ Singleton {
                 offScreen: WorkspaceList.hangsOffMonitor(info.at, size, monitorRect(toplevel.monitor)),
                 // The Wayland handle the live preview captures; null when the compositor has none.
                 preview: toplevel.wayland,
+                // Asks for attention (Hyprland's `urgent`: an activation request or an urgency hint while it
+                // is not focused). Quickshell drops it once the window gets focus; the focused one never asks.
+                urgent: toplevel.urgent === true && toplevel.activated === false,
             })
         }
 
@@ -115,6 +118,9 @@ Singleton {
 
     // A window closed (its address); what the shell kept for it can go.
     signal windowClosed(string address)
+    // A window asked for attention (its address), also again while it already asks, as each of Windows'
+    // flash requests starts the flashing over.
+    signal attentionRequested(string address)
 
     // Hyprland only tells us about opened / closed / moved windows; resizes arrive as raw events.
     // Refreshing (debounced) keeps the window sizes behind the icon order current.
@@ -136,6 +142,10 @@ Singleton {
 
             if (event.name === 'closewindow' && /^[0-9a-fA-F]+$/.test(event.data)) {
                 root.windowClosed('0x' + event.data)
+            }
+
+            if (event.name === 'urgent' && /^[0-9a-fA-F]+$/.test(event.data)) {
+                root.attentionRequested('0x' + event.data)
             }
 
             if (event.name === 'openwindow' && cornerTitle !== '') {
@@ -232,6 +242,20 @@ Singleton {
     // Hyprland 0.56 with a Lua config takes Lua dispatchers here; the old 'workspace N' text is rejected.
     function switchTo(id: int): void {
         Hyprland.dispatch(`hl.dsp.focus({ workspace = ${id} })`)
+    }
+
+    // Shows the workspace; one with a window asking for attention focuses that window instead (its workspace
+    // shown with it), as clicking Windows 7's flashing button brings up the window that flashes, which also
+    // ends its asking.
+    function showWorkspace(id: int): void {
+        const entry = entries.find(item => item.id === id)
+        const address = entry === undefined ? '' : WorkspaceList.attentionWindow(entry)
+        if (address === '') {
+            switchTo(id)
+            return
+        }
+
+        focusWindow(address)
     }
 
     function switchToFirstEmpty(): void {

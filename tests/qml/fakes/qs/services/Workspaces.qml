@@ -14,7 +14,13 @@ QtObject {
     property var reordered: null
     property var joined: null
 
+    signal attentionRequested(string address)
+
     function switchTo(id: int): void {
+        switchedTo = id
+    }
+
+    function showWorkspace(id: int): void {
         switchedTo = id
     }
 
