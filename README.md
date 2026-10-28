@@ -14,6 +14,7 @@ Each notification appears as a Windows 7 balloon: a white to light grey-blue bub
 - The app's icon sits before the title (Windows 7's own icons for information, warnings, errors and questions; a plain window icon for an app without one), and a picture sent with the notification (a chat avatar, a photo) shows at the left.
 - Messages are shown as plain text, cut after 255 characters (the title after 63), as Windows 7 did.
 - It never takes the keyboard: typing in another app goes on undisturbed.
+- **Hide an app's notifications** (needs HyprAero's bar): on the bar's **Notification Area Icons** page (the tray's "Customize..."), choose **Hide icon and notifications** or **Only show icon** for an app's tray icon, or **Hide notifications** for an app without one (those that sent you notifications are listed after the icons). **Hide all notifications** on the same page hides every one. A hidden notification is never shown. Without the bar every notification shows.
 
 ## Setting it up
 

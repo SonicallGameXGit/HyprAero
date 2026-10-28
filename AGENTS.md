@@ -16,7 +16,7 @@ This file only adds to them or narrows them. A deliberate exception is marked **
 
 `design/` is a git submodule (the `design` branch), not a folder of this branch: a clone needs `--recurse-submodules` (or `git submodule update --init`), and a change to it is made and pushed on the `design` branch, then taken here by committing the new pointer (`design/AGENTS.md` section 2).
 
-Working name: **HyprAero** (placeholder, final name not chosen); this branch is its `notifications` module. Identifiers (`design/AGENTS.md` section 5): app id `app.hyprAero.notifications`; D-Bus name `org.freedesktop.Notifications` (the standard server name, owned while running); layer namespace `hypraero-notifications`; in the shared config folder `notifications.json`.
+Working name: **HyprAero** (placeholder, final name not chosen); this branch is its `notifications` module. Identifiers (`design/AGENTS.md` section 5): app id `app.hyprAero.notifications`; D-Bus name `org.freedesktop.Notifications` (the standard server name, owned while running); layer namespace `hypraero-notifications`; in the shared config folder `notifications.json`, in the shared state folder `notification-apps.json` (section 2.1).
 
 ## 1. What this is
 
@@ -28,8 +28,18 @@ It is not a notification history app, not a do-not-disturb scheduler and not the
 
 - Role: **addition** (a module of HyprAero; the base is the `bar`).
 - Works without: the bar and every other module. Placement must never depend on the bar being there.
-- Optional integrations: the bar, through documented interfaces only (`design/AGENTS.md` section 2). None is defined yet; the first one (if any, for example a balloon pointing at the bar's notification area) is designed with the owner and written here, versioned, with a fake.
+- Optional integrations: the bar, through documented interfaces only (`design/AGENTS.md` section 2): which apps' notifications to hide (section 2.1). Any other (for example a balloon pointing at the bar's notification area) is designed with the owner and written here, versioned, with a fake.
 - Target host: **Hyprland** on Wayland, Linux, any distribution. Only one program can own `org.freedesktop.Notifications`: while another server (mako, dunst, swaync, a desktop's own) has it, this module logs so and takes the name as soon as it is free (Quickshell's own behaviour, run and observed).
+
+### 2.1 Hidden apps (with the `bar` module)
+
+The bar's "Notification Area Icons" page says which apps' notifications to hide (the bar's `AGENTS.md` section 2.1). The two modules share no code and never run each other: each writes one file in the shared state folder (`$XDG_STATE_HOME/hypraero/`) and only reads the other's. Both are JSON, version 1; a reader that meets another version ignores the file (and logs it), so a change of meaning is a new version.
+
+- **`notification-apps.json`**, this module's (`services/NotificationApps.qml`, `services/notificationApps.js`), written at startup and whenever an app sends its first notification or its name, icon or tray icon changes: `{ "version": 1, "apps": [{ "key", "name", "icon", "entry", "tray" }] }`, first seen first. `key` is the app's name as it gives it (`appName`), else its desktop entry; `name` and `icon` (an `image://icon/<name>` or `file://` address, '' for none) come from its desktop entry when it has one, else from the notification; `entry` is the desktop entry ('' for none); `tray` the key of its icon among the bar's `trayIcons`, '' for none. Never what a notification said, nor its picture.
+- **`notification-filter.json`**, the bar's: `{ "version": 1, "hideAll", "trayIcons": [{ "key", "name", "icon" }], "hiddenTrayIcons": [tray key], "hiddenApps": [app key] }`, read again when it changes (the bar works `hiddenTrayIcons` out from its icons' behaviours). A notification is hidden when `hideAll` is on, its app's key is in `hiddenApps`, or the tray icon its app matches is in `hiddenTrayIcons`.
+- **Matching an app with a tray icon** happens here only (`trayOf`), so the bar never guesses it: the same name, id or desktop entry once case, spaces, Electron's `_status_icon_<n>` and an unread count in brackets are left out ('Telegram Desktop' and 'TelegramDesktop', 'discord' and 'discord_status_icon_1'), or a theme icon named after the desktop entry ('org.telegram.desktop-mute-symbolic'). An app that matches no icon gets a row of its own on the bar's page, so the manual way always works.
+- Without the bar (no filter file) nothing is hidden. A hidden notification is logged as hidden and not kept, so the server tells its app at once that it was dismissed (reason 2).
+- The fakes are the files themselves: `tests/notificationApps.test.mjs` reads and writes them as the other side does.
 
 ## 3. Tech stack
 
@@ -50,8 +60,9 @@ HyprAero/                       (the notifications branch)
     .gitmodules                 design/ -> the design branch
     design/                     submodule: tokens, primitives, the kit (design/.aero/), rules shared by every module
     shell.qml                   entry point: makes the services and the balloon window exist
-    services/                   state and logic, no drawing: Notifications.qml and Config.qml (singletons); settings.js,
-                                balloons.js, notificationText.js, notificationIcon.js, notificationLog.js
+    services/                   state and logic, no drawing: Notifications.qml, NotificationApps.qml and Config.qml
+                                (singletons); settings.js, balloons.js, notificationText.js, notificationIcon.js,
+                                notificationLog.js, notificationApps.js
     modules/                    BalloonWindow.qml (the layer surface), NotificationBalloon.qml (one balloon)
     resources/                  Windows' own pictures this module uses (design/AGENTS.md section 4.3): icons/, README.md
     tests/                      node tests (*.test.mjs)
@@ -96,6 +107,7 @@ Each notification is Windows 7's notification balloon (`design/Balloon.qml`, `.a
 - **Clicks and actions**: every action the app gives is a button along the bottom, in its order, wrapping onto more rows; the first is the main one (accent), as in the old AGS shell. The "default" action is a button too ("Open" when the app gave it no words), and a click on the balloon also does it (else dismisses it); the close button dismisses it (reason 2). Invoking an action closes the balloon unless the app made it resident. All of these close at once, without fading.
 - **Words**: plain text. The server tells apps it takes no markup, and markup sent anyway is cleaned (tags out, entities turned back into characters, `services/notificationText.js`).
 - **Icon and picture** (`services/notificationIcon.js`): the app's icon (16px, before the title): the standard message icons (`dialog-information`, `-warning`, `-error`, `-question`) are Windows 7's own (`resources/icons/`); any other is the app's from its path or the icon theme, else its desktop entry's, else the design's generic app icon. A picture sent with the notification (a chat avatar, an album cover) shows as well, 48px left of the title and the words, where Windows put its large icon; an image that is only an icon's name (`notify-send -i`) counts as the icon.
+- **Hidden apps**: an app hidden on the bar's "Notification Area Icons" page (its tray icon's behaviour "Hide icon and notifications" or "Only show icon", or "Hide notifications" for an app without one), or every app with "Hide all notifications" there, shows no balloon (section 2.1).
 - **Errors never carry words**: Quickshell's JavaScript engine lacks some of node's methods (`tests/engine.test.mjs` lists them and checks no script uses them), and its error messages quote the string a call was made on, which can be a notification's words. Preparing the words is wrapped: a failure logs the notification's number and the error's kind only.
 
 The old AGS shell (`/home/sonicall/Downloads/AGSTest`) was the reference for what a notification needs (actions, cleaned markup, cut text, pictures, icon resolution); its look and its stack are replaced by Windows 7's.
@@ -104,7 +116,7 @@ Tokens live in: `design/Theme.qml`. Primitives live in: `design/` (listed in `de
 
 ## 8. Roadmap and current state
 
-Works today: the server and its balloons as in section 7, the config file. The server owns `org.freedesktop.Notifications`, keeps each notification until it expires, is closed or its app closes it, and writes a line about each one to the log (`services/notificationLog.js`).
+Works today: the server and its balloons as in section 7, the config file, the apps hidden on the bar's page (section 2.1). The server owns `org.freedesktop.Notifications`, keeps each notification until it expires, is closed or its app closes it, and writes a line about each one to the log (`services/notificationLog.js`).
 
 Not built yet, roughly in this order (each decided with the owner first):
 
@@ -112,7 +124,7 @@ Not built yet, roughly in this order (each decided with the owner first):
 2. Inline replies (the standard's `inline-reply`), if wanted.
 3. Settings window.
 4. Sounds (Windows 7's "Windows Balloon" sound), if the owner wants them.
-5. Any interface with the bar (for example a balloon pointing at the bar's notification area icon of the app).
+5. Any other interface with the bar (for example a balloon pointing at the bar's notification area icon of the app).
 
 ## 9. Decision log
 

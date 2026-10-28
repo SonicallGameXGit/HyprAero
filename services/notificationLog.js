@@ -17,7 +17,7 @@ function plural(count, word) {
 }
 
 // `fields`: { id, appName, urgency (a NotificationUrgency value), summaryLength, bodyLength, actionCount,
-// hasImage }.
+// hasImage, hidden (the user chose not to see this app's notifications, or any) }.
 function describe(fields) {
     const urgency = urgencyNames[fields.urgency]
     const parts = [
@@ -33,6 +33,9 @@ function describe(fields) {
     }
     if (fields.hasImage) {
         parts.push('a picture')
+    }
+    if (fields.hidden === true) {
+        parts.push('hidden as chosen on the bar\'s Notification Area Icons page')
     }
 
     return `#${fields.id} from ` + parts.join(', ')

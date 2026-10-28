@@ -27,6 +27,11 @@ test('body, actions and picture are mentioned only when there', () => {
     assert.equal(notificationLog.describe(one), '#3 from "Firefox", low, summary of 1 character, 1 action')
 })
 
+test('a notification the user chose not to see says so', () => {
+    const line = notificationLog.describe(Object.assign({}, plain, { hidden: true }))
+    assert.equal(line, '#3 from "Firefox", normal, summary of 12 characters, hidden as chosen on the bar\'s Notification Area Icons page')
+})
+
 test('an app without a name and an unknown urgency still give a line', () => {
     const odd = Object.assign({}, plain, { appName: '', urgency: 7, summaryLength: 0 })
     assert.equal(notificationLog.describe(odd), '#3 from an app without a name, urgency 7, summary of 0 characters')

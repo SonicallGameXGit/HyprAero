@@ -12,7 +12,8 @@ import 'notificationText.js' as NotificationText
 // The notification server: owns `org.freedesktop.Notifications` on the session bus, so the notifications apps
 // send come here. Each one is kept until it closes and writes a line to the log (`notificationLog.js`, never
 // the words). Which of them show as balloons, where, for how long and with what words and icon is decided
-// here (`balloons.js`, `notificationText.js`, `notificationIcon.js`); `modules/Balloons.qml` draws them.
+// here (`balloons.js`, `notificationText.js`, `notificationIcon.js`); `modules/Balloons.qml` draws them. One
+// from an app the user chose not to see on the bar's page (`NotificationApps`) is logged and not kept.
 Singleton {
     id: root
 
@@ -120,6 +121,8 @@ Singleton {
         // Windows 7's balloons show plain text; markup sent anyway is cleaned (`notificationText.js`).
         bodyMarkupSupported: false
         onNotification: notification => {
+            const hidden = NotificationApps.hides(notification)
+            NotificationApps.seen(notification)
             console.info('Notifications: ' + NotificationLog.describe({
                 id: notification.id,
                 appName: notification.appName,
@@ -128,7 +131,14 @@ Singleton {
                 bodyLength: notification.body.length,
                 actionCount: notification.actions.length,
                 hasImage: notification.image !== '',
+                hidden: hidden,
             }))
+            // One the user chose not to see is not kept, so the server tells its app at once that it was
+            // dismissed (reason 2), as for one closed without being read.
+            if (hidden) {
+                return
+            }
+
             notification.tracked = true
         }
     }
