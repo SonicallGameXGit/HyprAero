@@ -242,3 +242,29 @@ function nextAppRow(rows, from, step) {
 
     return from
 }
+
+// What a request from outside (a key binding: 'toggle', 'open' or 'close') does: 'open', 'close', 'wake'
+// (the shell has had no input yet, so Qt would refuse the menu's grab: wake the pointer first, then open),
+// 'cancel' (stop a wake on its way to opening) or 'none'.
+function requestStep(request, menuOpen, hadInput, waking) {
+    const busy = menuOpen || waking
+    const closing = request === 'close' || (request === 'toggle' && busy)
+    const opening = request === 'open' || (request === 'toggle' && busy === false)
+    if (closing) {
+        if (menuOpen) {
+            return 'close'
+        }
+
+        return waking ? 'cancel' : 'none'
+    }
+
+    if (opening === false) {
+        return 'none'
+    }
+
+    if (menuOpen || hadInput) {
+        return 'open'
+    }
+
+    return waking ? 'none' : 'wake'
+}

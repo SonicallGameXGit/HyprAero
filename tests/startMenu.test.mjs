@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 
 // The module is a QML library script; strip the pragma and evaluate it as plain JS.
 const source = readFileSync(new URL('../services/startMenu.js', import.meta.url), 'utf8').replace('.pragma library', '')
-const menu = new Function(source + '\nreturn { buildSections, searchApps, launchCommand, terminalCommand, menuRows, searchRows, nextAppRow, appDetail }')()
+const menu = new Function(source + '\nreturn { buildSections, searchApps, launchCommand, terminalCommand, menuRows, searchRows, nextAppRow, appDetail, requestStep }')()
 
 const app = (id, name, extra = {}) => ({
     id: id,
@@ -120,4 +120,25 @@ test('detail: the description, else the program, else nothing', () => {
     assert.equal(menu.appDetail(app('firefox', 'Firefox', { comment: ' Browse the Web ' })), 'Browse the Web')
     assert.equal(menu.appDetail(app('kitty', 'kitty', { command: ['/usr/bin/kitty', '--single'] })), '/usr/bin/kitty')
     assert.equal(menu.appDetail(app('x', 'X', { command: [] })), '')
+})
+
+test('a request before any input wakes the pointer instead of opening', () => {
+    assert.equal(menu.requestStep('toggle', false, false, false), 'wake')
+    assert.equal(menu.requestStep('open', false, false, false), 'wake')
+    assert.equal(menu.requestStep('toggle', false, true, false), 'open')
+    assert.equal(menu.requestStep('open', false, true, false), 'open')
+})
+
+test('a request while waking cancels it or waits for it', () => {
+    assert.equal(menu.requestStep('toggle', false, false, true), 'cancel')
+    assert.equal(menu.requestStep('close', false, false, true), 'cancel')
+    assert.equal(menu.requestStep('open', false, false, true), 'none')
+})
+
+test('an open menu is closed by toggle and close, and open moves it', () => {
+    assert.equal(menu.requestStep('toggle', true, true, false), 'close')
+    assert.equal(menu.requestStep('close', true, true, false), 'close')
+    assert.equal(menu.requestStep('open', true, true, false), 'open')
+    assert.equal(menu.requestStep('close', false, true, false), 'none')
+    assert.equal(menu.requestStep('other', false, true, false), 'none')
 })

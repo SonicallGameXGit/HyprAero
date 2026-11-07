@@ -14,8 +14,8 @@ PanelWindow {
     id: root
 
     WlrLayershell.namespace: 'hypraero-bar'
-    // Never the keyboard's, except for a moment at startup (`takingKeyboard`).
-    WlrLayershell.keyboardFocus: takingKeyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    // Never the keyboard's: its popups that need it grab it.
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
     anchors {
         bottom: true
@@ -81,13 +81,6 @@ PanelWindow {
     // How many workspace buttons there are. It holds still during a drag (rebuilding the buttons would
     // destroy the one a drag started from) and while the buttons are reordered.
     property int buttonCount: 0
-    // Qt gives a popup that takes the keyboard (the start menu) only to a program that has had some input,
-    // and closes it at once otherwise: opened by a key binding (IPC) right after the shell started, the
-    // menu was gone as soon as it opened. So at startup the first screen's bar takes the keyboard for a
-    // moment, which is input, and gives it back as soon as it has it (or after `keyboardTimer`). Not when
-    // the menu opens: giving it back then raced with the menu's own grab and closed the menu at random
-    // (Hyprland moves the keyboard off a layer and its popups once the layer stops taking it).
-    property bool takingKeyboard: Quickshell.screens.length > 0 && root.screen === Quickshell.screens[0]
 
     Binding on buttonCount {
         value: Workspaces.entries.length
@@ -377,16 +370,6 @@ PanelWindow {
         hideTimer.restart()
     }
 
-    // Hyprland may not give the bar the keyboard (a lock screen or another layer holding it): the bar never
-    // keeps it.
-    Timer {
-        id: keyboardTimer
-
-        interval: 300
-        running: root.takingKeyboard
-        onTriggered: root.takingKeyboard = false
-    }
-
     // A start menu opening on any screen: these grab too, so they would become its parent (`StartMenuState`).
     Connections {
         target: StartMenuState
@@ -394,14 +377,6 @@ PanelWindow {
         function onOpening(): void {
             barMenu.close()
             trayMenu.close()
-        }
-    }
-
-    Item {
-        Window.onActiveChanged: {
-            if (Window.active && root.takingKeyboard) {
-                root.takingKeyboard = false
-            }
         }
     }
 

@@ -10,6 +10,10 @@ import qs.services
 // taken from, a glass ghost stays; it lights up while a drop would put it back (the pointer on it, or
 // anywhere on the start menu an app came from), and such a drop changes nothing.
 //
+// It also covers the screen for a moment while the start menu waits for the shell's first input
+// (`StartMenuState.waking`): Hyprland moves the pointer onto the layer when it appears, and Qt counts that
+// as input, which it needs before it lets the menu take the keyboard.
+//
 // The picture is drawn here instead of as the compositor's drag icon because Hyprland 0.56 pins the icon's
 // top-left corner to the pointer: Qt sends the grab point as a surface offset and Hyprland's attach
 // overwrites it.
@@ -65,7 +69,7 @@ PanelWindow {
     }
 
     color: 'transparent'
-    visible: BarDrag.active
+    visible: BarDrag.active || StartMenuState.waking
     onVisibleChanged: {
         pointerKnown = false
         settleTimer.stop()
@@ -126,6 +130,16 @@ PanelWindow {
         visible: root.hovered && root.pointerKnown
         opacity: Theme.dragImageOpacity
         smooth: true
+    }
+
+    // Enabled only while waking: a handler stays `hovered` through an unmap and would miss the next enter.
+    HoverHandler {
+        enabled: StartMenuState.waking
+        onHoveredChanged: {
+            if (hovered) {
+                StartMenuState.inputArrived()
+            }
+        }
     }
 
     // A drag never presses on this layer, so a press means it was left behind (a drag that ended without
