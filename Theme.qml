@@ -80,6 +80,12 @@ Singleton {
     readonly property color taskbarGlassShineMiddle: slate ? '#05ffffff' : '#0dffffff'
     readonly property color taskbarGlassText: slate ? '#e9eef3' : '#ffffff'
     readonly property color taskbarGlassLink: slate ? '#9fd0f7' : '#cfe8ff'
+    // taskbar-glass-text-shadow: offset (the same to the right and down), blur, colour, and how many times it
+    // is drawn over itself; it is cast by the words in bold, so its strokes are thicker than theirs.
+    readonly property int taskbarGlassTextShadowOffset: 1
+    readonly property int taskbarGlassTextShadowBlur: 3
+    readonly property color taskbarGlassTextShadowColor: '#000000'
+    readonly property int taskbarGlassTextShadowLayers: 2
     // The taskbar strip itself: Windows 7's taskbar, lighter and more see-through than the menus over it.
     readonly property color taskbarBarTint: slate ? '#c7161b22' : '#bf96afcd'
     readonly property color taskbarBarEdge: slate ? '#d9000000' : '#cc0c1e34'

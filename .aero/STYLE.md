@@ -120,6 +120,7 @@ Windows 7 and Vista give the taskbar, the start menu and the flyouts over the ta
 | `taskbar-glass-shine` | vertical gradient white 0.18 at 0% -> 0.05 at 42% -> 0 at 43% | same shape, white 0.08 -> 0.02 -> 0 |
 | `taskbar-glass-text` | `#ffffff` | `#e9eef3` |
 | `taskbar-glass-link` | `#cfe8ff` | `#9fd0f7` |
+| `taskbar-glass-text-shadow` (small words drawn straight on the taskbar, with no pane behind: Windows 7's soft dark shadow, strongest down and to the right, a little on every side: `x y blur colour`, drawn twice over and cast by the words in bold, so its strokes are thicker than theirs, not stretched) | `1px 1px 6px rgba(0,0,0,1)` | same |
 
 A solid pane set into the taskbar glass (the start menu's list) is edged like Windows 7's: a `taskbar-glass-border-outer` line around it and a `taskbar-glass-border-inner` line outside that one.
 
