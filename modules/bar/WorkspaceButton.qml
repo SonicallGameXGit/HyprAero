@@ -1,4 +1,6 @@
 import QtQuick
+import QtQuick.Effects
+import Qt5Compat.GraphicalEffects
 import qs.design
 import qs.services
 
@@ -11,7 +13,8 @@ import qs.services
 // app's button, as on the Windows 7 taskbar, the one on screen brighter. One with windows can be dragged
 // along the bar to move the workspace among the others, as Windows 7 reorders its buttons; where it goes is
 // the bar's business (`reorder*` signals, the offset along the bar since the press). A right click asks for
-// its menu (`menuRequested`).
+// its menu (`menuRequested`). A title the user gave the workspace (`WorkspaceTitles`) is drawn small along
+// the bottom of the button, with a soft shadow and nothing behind it.
 TaskbarButton {
     id: root
 
@@ -31,6 +34,8 @@ TaskbarButton {
         return mainApp === '' ? '' : IconOverrides.windowIcon(mainWindow, mainApp)
     }
     readonly property string secondPath: ownPath !== '' || secondApp === '' ? '' : IconOverrides.windowIcon(secondWindow, secondApp)
+    // The user's title for it, '' for none.
+    readonly property string title: entry === null ? '' : WorkspaceTitles.titleOf(entry.id)
     readonly property int iconSize: 36
     readonly property int badgeSize: 18
 
@@ -88,40 +93,134 @@ TaskbarButton {
         onTapped: eventPoint => root.menuRequested(eventPoint.position)
     }
 
-    DotIcon {
-        anchors.centerIn: parent
-        visible: root.mainApp === '' && root.ownPath === ''
+    // Everything but the title: with a title it fades out towards the bottom, down to the title's height, so
+    // the words are easy to read over it while the button stays see-through (a mask, not a pane). Without a GPU
+    // (Qt's software renderer leaves effects out) it stays as it is. `OpacityMask` (Qt5Compat) does it:
+    // `MultiEffect`'s mask took no effect when its mask item was not drawn, and one that is drawn shows.
+    Item {
+        id: icons
+
+        anchors.fill: parent
+        // With a title the faded copy below is what shows, drawn from this one.
+        visible: root.title === ''
+        layer.enabled: root.title !== ''
+
+        DotIcon {
+            anchors.centerIn: icons
+            visible: root.mainApp === '' && root.ownPath === ''
+        }
+
+        GenericAppIcon {
+            anchors.centerIn: icons
+            width: root.iconSize
+            height: root.iconSize
+            visible: root.mainApp !== '' && root.mainPath === ''
+        }
+
+        AppIconImage {
+            anchors.centerIn: icons
+            width: root.iconSize
+            height: root.iconSize
+            visible: root.mainPath !== ''
+            source: root.mainPath
+        }
+
+        GenericAppIcon {
+            x: icons.width / 2 + root.iconSize / 2 - root.badgeSize + 2
+            y: icons.height / 2 + root.iconSize / 2 - root.badgeSize + 2
+            width: root.badgeSize
+            height: root.badgeSize
+            visible: root.ownPath === '' && root.secondApp !== '' && root.secondPath === ''
+        }
+
+        AppIconImage {
+            x: icons.width / 2 + root.iconSize / 2 - root.badgeSize + 2
+            y: icons.height / 2 + root.iconSize / 2 - root.badgeSize + 2
+            width: root.badgeSize
+            height: root.badgeSize
+            visible: root.secondPath !== ''
+            source: root.secondPath
+        }
     }
 
-    GenericAppIcon {
-        anchors.centerIn: parent
-        width: root.iconSize
-        height: root.iconSize
-        visible: root.mainApp !== '' && root.mainPath === ''
+    OpacityMask {
+        anchors.fill: icons
+        visible: root.title !== ''
+        source: icons
+        maskSource: fadeMask
     }
 
-    AppIconImage {
-        anchors.centerIn: parent
-        width: root.iconSize
-        height: root.iconSize
-        visible: root.mainPath !== ''
-        source: root.mainPath
+    // Only its transparency counts, and it is never drawn itself.
+    Item {
+        id: fadeMask
+
+        anchors.fill: parent
+        visible: false
+
+        Rectangle {
+            anchors.fill: parent
+
+            // Whole down to just above the title, gone by the middle of its height. (A stop's `parent` is the
+            // gradient, not the rectangle, so the size is read from the mask.)
+            gradient: Gradient {
+                GradientStop {
+                    position: Math.max(0, (fadeMask.height - titleText.implicitHeight - Theme.space1) / fadeMask.height)
+                    color: '#ffffff'
+                }
+
+                GradientStop {
+                    position: Math.max(0, (fadeMask.height - titleText.implicitHeight / 2) / fadeMask.height)
+                    color: 'transparent'
+                }
+            }
+        }
     }
 
-    GenericAppIcon {
-        x: parent.width / 2 + root.iconSize / 2 - root.badgeSize + 2
-        y: parent.height / 2 + root.iconSize / 2 - root.badgeSize + 2
-        width: root.badgeSize
-        height: root.badgeSize
-        visible: root.ownPath === '' && root.secondApp !== '' && root.secondPath === ''
+    // The user's title for the workspace (`WorkspaceTitles`): white words with Windows 7's soft shadow, drawn
+    // straight on the button along the bottom; the badge stays over it. The effects sit under the text, which
+    // draws over them again: without a GPU (Qt's software renderer leaves effects out) the text alone still
+    // shows, over the bold copy. What casts the shadow: the same words in bold, so the shadow is thicker than the text without being
+    // stretched. Black, and under the text.
+    GlassText {
+        id: shadowText
+
+        anchors.centerIn: titleText
+        color: Theme.taskbarGlassTextShadowColor
+        visible: root.title !== ''
+        text: root.title
+        elide: Text.ElideRight
+        // Bold is a little wider than the title: room for that, cut off the same way when it is long.
+        width: Math.min(implicitWidth, parent.width - Theme.space1)
+        font.pixelSize: Theme.fontSizeSmall
+        // font.bold: true
     }
 
-    AppIconImage {
-        x: parent.width / 2 + root.iconSize / 2 - root.badgeSize + 2
-        y: parent.height / 2 + root.iconSize / 2 - root.badgeSize + 2
-        width: root.badgeSize
-        height: root.badgeSize
-        visible: root.secondPath !== ''
-        source: root.secondPath
+    Repeater {
+        model: root.title === '' ? 0 : Theme.taskbarGlassTextShadowLayers
+
+        MultiEffect {
+            anchors.fill: shadowText
+            source: shadowText
+            shadowEnabled: true
+            shadowColor: Theme.taskbarGlassTextShadowColor
+            shadowHorizontalOffset: Theme.taskbarGlassTextShadowOffset
+            shadowVerticalOffset: Theme.taskbarGlassTextShadowOffset
+            shadowBlur: 1
+            blurMax: Theme.taskbarGlassTextShadowBlur
+            autoPaddingEnabled: true
+        }
+    }
+
+    GlassText {
+        id: titleText
+
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 1
+        width: Math.min(implicitWidth, parent.width - Theme.space1)
+        elide: Text.ElideRight
+        visible: root.title !== ''
+        text: root.title
+        font.pixelSize: Theme.fontSizeSmall
     }
 }

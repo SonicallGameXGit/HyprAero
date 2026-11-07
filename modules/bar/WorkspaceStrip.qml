@@ -15,7 +15,7 @@ import '../../services/workspaceList.js' as WorkspaceList
 // turns see-through over it, and let go its windows go to that workspace (`Workspaces.moveWorkspace`), the
 // others gliding back. Until Hyprland has done either, the buttons keep showing what they showed when the drag
 // started (`frozen`), so nothing flickers in between; the workspaces' own icons go with their buttons then
-// (`IconOverrides.reorderWorkspaces`), a joined workspace keeping its own.
+// (`IconOverrides.reorderWorkspaces`, `WorkspaceTitles.reorder`), a joined workspace keeping its own.
 Item {
     id: root
 
@@ -194,6 +194,7 @@ Item {
         caughtUpTimer.stop()
         if (iconMove !== null) {
             IconOverrides.reorderWorkspaces(iconMove.ids, iconMove.from, iconMove.to)
+            WorkspaceTitles.reorder(iconMove.ids, iconMove.from, iconMove.to)
             iconMove = null
         }
 

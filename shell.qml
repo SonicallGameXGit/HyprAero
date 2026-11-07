@@ -36,4 +36,7 @@ ShellRoot {
 
     IconManager {
     }
+
+    WorkspaceTitleDialog {
+    }
 }

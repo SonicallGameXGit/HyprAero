@@ -104,3 +104,18 @@ test('the start orb shows Hyprland\'s mark by default, or Windows 7\'s flag, and
     assert.equal(values.startMenu.orbLogo, 'hyprland')
     assert.match(problems[0], /startMenu\.orbLogo.*"hyprland", "windows"/)
 })
+
+test('workspace titles keep numbered, non-empty text and drop the rest with a problem each', () => {
+    const { values, problems } = parseConfig('{ "bar": { "workspaceTitles": { "1": " Mail ", "2": "", "x": "Bad", "3": 5, "04": "Zero" } } }')
+    assert.deepEqual(values.bar.workspaceTitles, { 1: 'Mail' })
+    assert.equal(problems.length, 3)
+    assert.ok(problems.some(problem => /workspaceTitles\.x.*number/.test(problem)))
+    assert.ok(problems.some(problem => /workspaceTitles\.3.*string.*number/.test(problem)))
+    assert.ok(problems.some(problem => /workspaceTitles\.04.*number/.test(problem)))
+})
+
+test('workspace titles that are not an object fall back to none', () => {
+    const { values, problems } = parseConfig('{ "bar": { "workspaceTitles": ["Mail"] } }')
+    assert.deepEqual(values.bar.workspaceTitles, {})
+    assert.equal(problems.length, 1)
+})

@@ -7,3 +7,4 @@ singleton Tray 1.0 Tray.qml
 singleton SystemIcons 1.0 SystemIcons.qml
 singleton IconOverrides 1.0 IconOverrides.qml
 singleton Config 1.0 Config.qml
+singleton WorkspaceTitles 1.0 WorkspaceTitles.qml

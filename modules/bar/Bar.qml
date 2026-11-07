@@ -261,6 +261,7 @@ PanelWindow {
         barMenu.show([
             { text: qsTr('Go to workspace %1').arg(entry.id), bold: true, action: 'workspace', id: entry.id },
             { separator: true },
+            { text: qsTr('Set title...'), action: 'setTitle', id: entry.id },
             { text: qsTr('Change icon...'), action: 'changeIcon', kind: 'workspaces', key: String(entry.id), name: name, app: '' },
         ], at)
     }
@@ -315,6 +316,8 @@ PanelWindow {
             Tray.openCustomize()
         } else if (item.action === 'workspace') {
             Workspaces.showWorkspace(item.id)
+        } else if (item.action === 'setTitle') {
+            WorkspaceTitles.openDialog(item.id)
         } else if (item.action === 'changeIcon') {
             IconOverrides.openManager(item.kind, item.key, item.name, item.app)
         }

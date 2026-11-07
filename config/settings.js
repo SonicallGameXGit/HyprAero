@@ -25,6 +25,11 @@ const defaults = {
         // stays orange until the window gets focus (Windows 7's ForegroundFlashCount, 7 by default there too;
         // clamped to 0-100 where used). 0 flashes for as long as the window asks.
         attentionFlashes: 7,
+        // A short name for a workspace, drawn small on its button to tell workspaces apart at a glance:
+        // `{ "1": "Mail", "3": "Code" }`, the workspace's number to its title. Only the user sets these (here,
+        // or by "Set title..." in a workspace button's menu); no app can change one. A title follows its
+        // button when the workspaces are reordered. A workspace with no entry shows no title.
+        workspaceTitles: {},
     },
     startMenu: {
         // Drag the app list to scroll it, and hold an app (a long press) to pick it up, as on a phone. Off:
@@ -68,6 +73,39 @@ const choices = {
         'windows',
         'hyprland',
     ],
+}
+
+// Settings whose value needs more than its kind checked: each takes what the user wrote and gives
+// `{ value, problems }`, with the unusable parts left out.
+const cleaners = {
+    'bar.workspaceTitles': cleanTitles,
+}
+
+// Workspace numbers (1, 2, 3, ...) to non-empty text; anything else is left out and reported.
+function cleanTitles(given) {
+    const value = {}
+    const problems = []
+    for (const key of Object.keys(given)) {
+        const title = given[key]
+        if (/^[1-9][0-9]*$/.test(key) === false) {
+            problems.push(`"bar.workspaceTitles.${key}": a workspace is a number (1, 2, ...), ignored`)
+        } else if (typeof title !== 'string') {
+            problems.push(`"bar.workspaceTitles.${key}" must be a string, not a ${kindOf(title)}, ignored`)
+        } else if (title.trim() !== '') {
+            value[key] = title.trim()
+        }
+    }
+
+    return { value: value, problems: problems }
+}
+
+// Whether `value` is what the setting has by default (lists and objects compare by content).
+function isDefault(value, fallback) {
+    if (typeof value === 'object' && value !== null) {
+        return JSON.stringify(value) === JSON.stringify(fallback)
+    }
+
+    return value === fallback
 }
 
 function kindOf(value) {
@@ -140,7 +178,18 @@ function parseConfig(text) {
                 continue
             }
 
-            values[group][name] = value
+            const cleaner = cleaners[group + '.' + name]
+            if (cleaner === undefined) {
+                values[group][name] = value
+                continue
+            }
+
+            const cleaned = cleaner(value)
+            for (const problem of cleaned.problems) {
+                problems.push(problem)
+            }
+
+            values[group][name] = cleaned.value
         }
     }
 
@@ -171,7 +220,7 @@ function setSetting(text, group, name, value) {
     }
 
     const values = Object.assign({}, data[group])
-    if (value === defaults[group][name]) {
+    if (isDefault(value, defaults[group][name])) {
         delete values[name]
     } else {
         values[name] = value
